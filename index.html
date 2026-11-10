@@ -157,7 +157,7 @@
     </div>
     <div class="row" style="align-items:center">
       <div class="badge" id="clock">—</div>
-      <button class="menu" data-a="menu">⚙️</button>
+      <button class="menu" data-a="daily" id="dailyBtn" style="position:relative">📅</button><button class="menu" data-a="menu">⚙️</button>
     </div>
   </header>
   <div class="tri"></div>
@@ -243,7 +243,8 @@ const REQ={days:15,comp:100,forme:70,motiv:75,disc:60};
 /* ======================= ÉTAT ======================= */
 function newGame(){
   const now=Date.now();
-  return {v:1,gid:Math.random().toString(36).slice(2)+now.toString(36),seed:(now%100000)+7,
+  const keep=(typeof S!=='undefined'&&S&&S.daily)?Object.assign(JSON.parse(JSON.stringify(S.daily)),{missions:[],mDay:'',chest:false,pendingPopup:true}):null;
+  return {daily:keep,v:1,gid:Math.random().toString(36).slice(2)+now.toString(36),seed:(now%100000)+7,
     stage:'egg',kind:Math.floor(Math.random()*5),sex:Math.random()<.5?'F':'M',first:'',name:'',created:now,t:now,born:null,
     warmth:55,hatch:0,coldMs:0,
     food:75,energy:80,moral:70,tenue:80,health:100,
@@ -383,7 +384,7 @@ function step(s,dt){
     } else if(s.tenue<30){
       s.disc=clamp(s.disc-8);log(s,ECO?'👔 Inspection du matin : treillis froissé, rangers ternes. Corvée de quartier !':'👔 Au rassemblement, sa tenue était négligée. Remarque du chef.','bad');
     } else {
-      s.disc=clamp(s.disc+4);log(s,SVC&&s.sub==='GR'?`✅ Prise de faction devant le ${s.palace} : tenue impeccable.`:ECO?'✅ Rassemblement : à l\'heure et impeccable, félicité devant la section.':'✅ À l\'heure et impeccable à la prise de service.','good');
+      dailyEvent(s,'ontime');s.disc=clamp(s.disc+4);log(s,SVC&&s.sub==='GR'?`✅ Prise de faction devant le ${s.palace} : tenue impeccable.`:ECO?'✅ Rassemblement : à l\'heure et impeccable, félicité devant la section.':'✅ À l\'heure et impeccable à la prise de service.','good');
     }
   }
 
@@ -1036,6 +1037,8 @@ function render(){
   }
   $('cards').innerHTML=T(html);
   renderActions();
+  {const b=$('dailyBtn');if(b){const pend=dailyPending(s);b.style.boxShadow=pend?'0 0 0 2px #f3c74b':'';b.style.display=(st==='over'||st==='egg'&&!s.daily)?'none':'';}
+   if(s.daily&&s.daily.pendingPopup&&$('home').classList.contains('hide')&&!$('sheet').classList.contains('show')&&st!=='over'){openDaily();}}
   // journal
   const L=s.log.slice(-7).reverse();
   $('journal').innerHTML=L.length?L.map(e=>`<div><time>${fmtT(e.t)}</time><span class="${e.c||''}">${esc(T(e.txt))}</span></div>`).join(''):'<span class="sub">Rien à signaler.</span>';
@@ -1139,9 +1142,9 @@ function act(a){
     const cdA=(k,hh)=>{if(cool(s['_'+k]||0,hh)){toast('Il l\'a déjà fait récemment. Laisse retomber la pression.');return true;}s['_'+k]=s.t;return false;};
     const risky=(base,what)=>{if(riskRoll(s,base)){arrest(s,s.t);sheet(`<h3>Pris sur le fait ! 🚔</h3><p>${esc(s.log[s.log.length-1].txt)}</p><button class="primary" data-o="close">…</button>`,true);save();render();return true;}return false;};
     switch(a){
-    case 'manif':if(s.energy<20)return toast('Trop fatigué pour défiler.');s.busyUntil=s.t+20*M;s.energy=clamp(s.energy-10);log(s,'📢 Il part manifester avec le groupe (20 min).');toast('En route pour la manif ! 📢');lastLook='';lastBg=null;save();render();return;
+    case 'manif':if(s.energy<20)return toast('Trop fatigué pour défiler.');dailyEvent(s,'manif');s.busyUntil=s.t+20*M;s.energy=clamp(s.energy-10);log(s,'📢 Il part manifester avec le groupe (20 min).');toast('En route pour la manif ! 📢');lastLook='';lastBg=null;save();render();return;
     case 'tag':if(cdA('tagc',1))return;if(risky(.14))return;s.rep=clamp((s.rep||0)+5);s.discr=clamp((s.discr||0)-10);s.tenue=clamp(s.tenue-6);fx('🎨',2);log(s,'🎨 Un tag de plus sur un mur du quartier. Réputation +5.');toast('Tag réalisé… discrétion en baisse.');break;
-    case 'banderole':if(cdA('banc',1))return;s.rep=clamp((s.rep||0)+3);s.motiv=clamp(s.motiv+4);s.energy=clamp(s.energy-6);fx('🏳️');toast('Banderoles prêtes pour la prochaine manif.');break;
+    case 'banderole':if(cdA('banc',1))return;dailyEvent(s,'banderole');s.rep=clamp((s.rep||0)+3);s.motiv=clamp(s.motiv+4);s.energy=clamp(s.energy-6);fx('🏳️');toast('Banderoles prêtes pour la prochaine manif.');break;
     case 'reseaux':if(cdA('resc',2))return;if(risky(.06))return;s.rep=clamp((s.rep||0)+4);s.discr=clamp((s.discr||0)-6);fx('📱');log(s,'📱 Il poste des vidéos de manif : nouveaux abonnés, mais il se fait remarquer.');toast('Réputation +4… et pas que chez ses amis.');break;
     case 'cacher':if(cdA('cachc',3))return;s.discr=clamp((s.discr||0)+25);s.motiv=clamp(s.motiv-4);fx('🕶️');toast('Nouveau look, téléphone éteint : il se fait oublier.');break;
     case 'muscle':if(s.motiv<50)return toast('Pas assez de rage pour ça.');if(s.energy<30)return toast('Trop fatigué.');if(cool(s._musc||0,3))return toast('Trop tôt : les forces de l\'ordre sont encore sur les dents.');return fuiteGame();
@@ -1158,6 +1161,7 @@ function act(a){
     }
   }
   if(CTX==='grDuty'&&!['impassible','rectif','releve','dossier','menu','restart'].includes(a))return toast('Impossible : il est en faction devant le palais. Il ne peut pas quitter son poste !');
+  if(a==='daily')return openDaily();
   switch(a){
   case 'impassible':
     if(s.sick)return toast('Il est malade… demande la relève.');
@@ -1195,7 +1199,7 @@ function act(a){
     s._fam=s.t;s.moral=clamp(s.moral+14);s.motiv=clamp(s.motiv+4);fx('💙',2);log(s,s.mission&&s.mission.type==='om'?'📞 Appel à la famille malgré le décalage horaire. Ça fait du bien !':'📞 Appel à la famille depuis le cantonnement.','good');toast('Ça fait du bien d\'entendre ses proches.');break;
   case 'warm':
     if(s.warmth>=100)return toast('Il est déjà bien au chaud 🔥');
-    s.warmth=clamp(s.warmth+14);fx('🔥',2);break;
+    dailyEvent(s,'warm');s.warmth=clamp(s.warmth+14);fx('🔥',2);break;
   case 'eat':
     const AUT_=s.stage==='autre';
     return sheet(`<h3>${ECO?'Au self de l\'école':AUT_?'Au squat':'Au menu'}</h3>
@@ -1206,13 +1210,13 @@ function act(a){
   case 'sleep':
     if(CTX==='grDuty')return toast('Il est en faction !');
     if(s.sleeping){s.sleeping=false;s.bedByPlayer=false;if(s.energy<50){s.moral=clamp(s.moral-8);toast('Il est grognon d\'être réveillé…');}else toast('Debout ! ☀️');}
-    else{if(s.energy>85&&hourOf(s.t)>6&&hourOf(s.t)<21)return toast("Il n'a pas sommeil !");if(refuses(.6))return;s.sleeping=true;s.bedByPlayer=true;s.sleepStart=s.t;s.lateNight=false;s.phoneMode=false;
+    else{if(s.energy>85&&hourOf(s.t)>6&&hourOf(s.t)<21)return toast("Il n'a pas sommeil !");if(refuses(.6))return;s.sleeping=true;s.bedByPlayer=true;s.sleepStart=s.t;s.lateNight=false;s.phoneMode=false;if(hourOf(s.t)>=20&&hourOf(s.t)<23.5)dailyEvent(s,'bed');
       toast(hourOf(s.t)>=19||hourOf(s.t)<5?`Bonne nuit 🌙 Réveil programmé à ${isWeekday(s.t+12*H)?'7 h 45':'8 h 45'}`:'Petite sieste 😴');log(s,'🛏️ Tu l\'as envoyé se coucher.','good');}
     break;
   case 'wash':
     if(refuses())return;
     if(s.tenue>=95)return toast('Il est déjà impeccable ✨');
-    s.tenue=100;s.moral=clamp(s.moral+3);fx('🫧',4);fx('✨',2);toast(ECO?'Douche, treillis repassé, paquetage au carré 👌':'Douche, uniforme repassé, rangers cirées 👌');break;
+    dailyEvent(s,'wash');s.tenue=100;s.moral=clamp(s.moral+3);fx('🫧',4);fx('✨',2);toast(ECO?'Douche, treillis repassé, paquetage au carré 👌':'Douche, uniforme repassé, rangers cirées 👌');break;
   case 'sport':
     if(s.sick)return toast("Il est malade : direction l'infirmerie d'abord.");
     if(s.energy<20)return toast('Il est trop fatigué pour le sport.');
@@ -1238,7 +1242,7 @@ function act(a){
     if(s.tenue<30)return toast('Pas question de sortir dans cette tenue ! 👔');
     if(s.food<15)return toast("Il a le ventre vide, fais-le manger d'abord.");
     if(refuses(.7))return;
-    s.patrolSet=CTX==='gd'?'gd':CTX==='gm_om'?'om':CTX==='gm_rf'?'rf':'gav';s.patrolIdx=Math.floor(rnd(s)*((s.patrolSet==='gav'?PATROLS:PATROL_SETS[s.patrolSet]).length));s.busyUntil=s.t+15*M;log(s,'🚓 Parti en patrouille pour 15 minutes.');toast('En route ! Retour dans 15 minutes 🚓');lastLook='';break;
+    dailyEvent(s,'patrol');s.patrolSet=CTX==='gd'?'gd':CTX==='gm_om'?'om':CTX==='gm_rf'?'rf':'gav';s.patrolIdx=Math.floor(rnd(s)*((s.patrolSet==='gav'?PATROLS:PATROL_SETS[s.patrolSet]).length));s.busyUntil=s.t+15*M;log(s,'🚓 Parti en patrouille pour 15 minutes.');toast('En route ! Retour dans 15 minutes 🚓');lastLook='';break;
   case 'talk':
     return sheet(`<h3>${ECO?'Entretien avec le cadre de contact':s.stage==='service'?'Entretien avec le commandant d\'unité':'Entretien individuel'}</h3><p>Le dialogue compte beaucoup pour sa motivation.</p>
       <button class="opt" data-o="talk:career"><span class="e">🎓</span><span>${ECO?'Parler de son avenir et de son affectation':s.stage==='service'?'Parler de ses perspectives de carrière':'Lui parler de l\'école de sous-off'}<small>Motivation ++ (s'il a le moral)</small></span></button>
@@ -1296,6 +1300,9 @@ function act(a){
 function option(o){
   const [k,v]=o.split(':');const s=S;tick();
   if(k==='close'){closeSheet();return;}
+  if(k==='daily'){openDaily();return;}
+  if(k==='chest'){openChest();return;}
+  if(k==='qday'){openQDay();return;}
   if(k==='promote'){
     if(!s.board||s.board.until<=s.t||!promoCrit(s,s.board.k).every(x=>x[1])){closeSheet();return toast('Trop tard ou conditions non remplies.');}
     if(isRebel(s)&&Math.random()<.5){closeSheet();return refuses(1);}
@@ -1311,13 +1318,14 @@ function option(o){
   if(['eat:popote','eat:salade','talk:career','talk:praise','talk:recadrer','fun:famille'].includes(o)&&refuses())return;
   if(k==='eat'){
     if(s.food>=95)return toast("Il n'a plus faim !");
+    if(v==='popote'||v==='salade')dailyEvent(s,'eat_healthy');
     if(v==='popote'){s.food=clamp(s.food+40);s.forme=clamp(s.forme+2);s.moral=clamp(s.moral+4);fx('🍲');}
     if(v==='salade'){s.food=clamp(s.food+22);s.forme=clamp(s.forme+5);s.moral=clamp(s.moral-4);s.malbouffe=Math.max(0,s.malbouffe-.5);fx('🥗');}
     if(v==='fast'){s.food=clamp(s.food+50);s.moral=clamp(s.moral+10);s.forme=clamp(s.forme-6);s.malbouffe+=1;fx('🍔');if(s.malbouffe>=3)toast('Attention, trop de malbouffe : il risque de tomber malade !');}
     jump();
   }
   if(k==='talk'){
-    const tired=cool(s.lastTalk,2);s.lastTalk=s.t;const f=tired?.35:1;
+    dailyEvent(s,'talk');const tired=cool(s.lastTalk,2);s.lastTalk=s.t;const f=tired?.35:1;
     if(v==='career'){
       if(s.moral<35){s.motiv=clamp(s.motiv+4*f);toast("Il n'a pas trop la tête à ça… remonte-lui le moral d'abord.");}
       else{s.motiv=clamp(s.motiv+16*f);fx('🔥',3);toast(tired?'Il connaît le discours par cœur maintenant…':'Il se voit déjà avec ses galons de gendarme ! 🔥');}
@@ -1353,7 +1361,7 @@ function sportGame(){
   function finish(){
     clearInterval(timer);tick();
     const gain=Math.min(22,Math.round(taps/3));
-    s.forme=clamp(s.forme+gain);s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-25);s.food=clamp(s.food-8);s.moral=clamp(s.moral+5);s.motiv=clamp(s.motiv+2);s.lastSport=s.t;s.malbouffe=Math.max(0,s.malbouffe-.5);
+    dailyEvent(s,'sport');s.forme=clamp(s.forme+gain);s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-25);s.food=clamp(s.food-8);s.moral=clamp(s.moral+5);s.motiv=clamp(s.motiv+2);s.lastSport=s.t;s.malbouffe=Math.max(0,s.malbouffe-.5);
     log(s,`🏃 Séance de sport : ${taps} répétitions (forme +${gain}).`,'good');
     sheet(`<h3>${taps>=60?'Performance de commando ! 💪':taps>=35?'Belle séance ! 👍':'Séance un peu molle… 😅'}</h3><p>${taps} répétitions · forme +${gain}. Pense à la douche après !</p><button class="primary" data-o="close">OK</button>`,true);
     save();render();
@@ -1382,7 +1390,7 @@ function impassibleGame(){
   setTimeout(round,600);
   function finish(){
     if(done)return;done=true;tick();
-    s.disc=clamp(s.disc+(held>=4?held*1.5:-3));s.exp=clamp((s.exp||0)+held);s.moral=clamp(s.moral-2);s.energy=clamp(s.energy-4);if(held>=5)s.motiv=clamp(s.motiv+3);
+    dailyEvent(s,'impassible');s.disc=clamp(s.disc+(held>=4?held*1.5:-3));s.exp=clamp((s.exp||0)+held);s.moral=clamp(s.moral-2);s.energy=clamp(s.energy-4);if(held>=5)s.motiv=clamp(s.motiv+3);
     log(s,held>=4?`😐 Impassible malgré ${N} provocations (${held}/${N}). Le chef de poste apprécie.`:`😅 Il a souri en faction (${held}/${N}). Le chef de poste l'a vu…`,held>=4?'good':'bad');
     sheet(`<h3>${held>=5?'Statue de marbre 🗿':held>=4?'Bonne tenue 👍':'Il a craqué… 😅'}</h3><p>${held}/${N} provocations ignorées.</p><button class="primary" data-o="close">Reprendre la faction</button>`,true);
     save();render();
@@ -1408,7 +1416,7 @@ function ligneGame(training){
   $('tap').addEventListener('pointerdown',e=>{e.preventDefault();p=Math.max(0,p-7.5);});
   function finish(){
     if(done)return;done=true;cancelAnimationFrame(raf);tick();
-    if(training){s.exp=clamp((s.exp||0)+(broke?1:4));s.forme=clamp(s.forme+4);s.energy=clamp(s.energy-12);s.tenue=clamp(s.tenue-10);}
+    dailyEvent(s,'ligne');if(training){s.exp=clamp((s.exp||0)+(broke?1:4));s.forme=clamp(s.forme+4);s.energy=clamp(s.energy-12);s.tenue=clamp(s.tenue-10);}
     else{s.exp=clamp((s.exp||0)+(broke?3:12));s.disc=clamp(s.disc+(broke?-3:4));s.energy=clamp(s.energy-15);s.tenue=clamp(s.tenue-15);s.moral=clamp(s.moral+(broke?-6:4));if(!broke)s.motiv=clamp(s.motiv+3);}
     log(s,training?`🛡️ Entraînement MO : ${broke?'la ligne a cédé, on recommence':'ligne tenue, belle cohésion'}.`:(broke?'🛡️ La ligne a cédé sous la pression… repli ordonné. Débriefing tendu.':'🛡️ La ligne a tenu ! L\'escadron a rempli sa mission.'),broke?'bad':'good');
     sheet(`<h3>${broke?'La ligne a cédé… 😬':'La ligne a tenu ! 💪'}</h3><p>${broke?'Il faudra plus de cohésion la prochaine fois.':'Bravo, l\'escadron est resté soudé.'}</p><button class="primary" data-o="close">OK</button>`,true);
@@ -1422,7 +1430,7 @@ function instrGD(){
   $('panel').querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>{
     const i=+b.dataset.q,ok=i===q.c;tick();
     $('panel').querySelectorAll('[data-q]').forEach((x,j)=>{x.disabled=true;if(j===q.c)x.classList.add('right');else if(j===i)x.classList.add('wrong');});
-    s.exp=clamp((s.exp||0)+(ok?6:2));s.energy=clamp(s.energy-6);if(ok){s.disc=clamp(s.disc+1);s.motiv=clamp(s.motiv+1);}
+    if(ok)dailyEvent(s,'quizok');s.exp=clamp((s.exp||0)+(ok?6:2));s.energy=clamp(s.energy-6);if(ok){s.disc=clamp(s.disc+1);s.motiv=clamp(s.motiv+1);}
     log(s,ok?'📘 Instruction : bonne réponse, il maîtrise ses textes.':'📘 Instruction : erreur, il relit ses fiches.',ok?'good':'');save();render();
     setTimeout(()=>{$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:4px">${ok?'✅ Bonne réponse ! Expérience +6':'❌ Raté… Expérience +2'}</p><button class="primary" data-o="close">Continuer</button>`);},250);
   }));
@@ -1457,7 +1465,7 @@ function ordreGame(){
   function finish(){
     if(done)return;done=true;cancelAnimationFrame(raf);tick();
     const gain=Math.min(26,Math.round(score*1.15));
-    s.ordre=clamp((s.ordre||0)+gain);s.energy=clamp(s.energy-10);s.tenue=clamp(s.tenue-8);s.food=clamp(s.food-4);if(score>=16)s.disc=clamp(s.disc+3);
+    dailyEvent(s,'ordre');s.ordre=clamp((s.ordre||0)+gain);s.energy=clamp(s.energy-10);s.tenue=clamp(s.tenue-8);s.food=clamp(s.food-4);if(score>=16)s.disc=clamp(s.disc+3);
     log(s,`🥾 Ordre serré : ${score}/${N*2} points (ordre serré +${gain}).`,score>=12?'good':'');
     sheet(`<h3>${score>=18?'Impeccable, digne du 14 Juillet ! 🇫🇷':score>=10?'Pas mal, la section suit ! 👍':'Ça manque de cadence… 😅'}</h3><p>${score} points sur ${N*2} · ordre serré +${gain}.</p><button class="primary" data-o="close">Rompez !</button>`,true);
     save();render();
@@ -1492,7 +1500,7 @@ function tirGame(){
   function finish(){
     if(done)return;done=true;clearTimeout(timer);tick();
     const gain=Math.min(25,Math.round(pts/4.4));
-    s.tir=clamp((s.tir||0)+gain);s.energy=clamp(s.energy-6);s.moral=clamp(s.moral+(pts>=60?6:2));
+    dailyEvent(s,'tir');s.tir=clamp((s.tir||0)+gain);s.energy=clamp(s.energy-6);s.moral=clamp(s.moral+(pts>=60?6:2));
     log(s,`🎯 Séance de tir : ${pts}/${N*10} points (tir +${gain}).`,pts>=60?'good':'');
     sheet(`<h3>${pts>=90?'Tireur d\'élite ! 🎯':pts>=55?'Bon groupement 👍':'Il faut travailler la visée… 😬'}</h3><p>${pts} points sur ${N*10} · tir +${gain}.</p><button class="primary" data-o="close">Arme à la bretelle !</button>`,true);
     save();render();
@@ -1506,7 +1514,7 @@ function quizOne(){
   $('panel').querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>{
     const i=+b.dataset.q,ok=i===q.c;tick();
     $('panel').querySelectorAll('[data-q]').forEach((x,j)=>{x.disabled=true;if(j===q.c)x.classList.add('right');else if(j===i)x.classList.add('wrong');});
-    if(ECO)s.droit=clamp((s.droit||0)+(ok?9:3));else s.comp=clamp(s.comp+(isRebel(s)?(ok?3:1):(ok?12:4)));s.energy=clamp(s.energy-8);s.moral=clamp(s.moral-(ok?0:3));if(ok)s.motiv=clamp(s.motiv+2);
+    if(ok)dailyEvent(s,'quizok');if(ECO)s.droit=clamp((s.droit||0)+(ok?9:3));else s.comp=clamp(s.comp+(isRebel(s)?(ok?3:1):(ok?12:4)));s.energy=clamp(s.energy-8);s.moral=clamp(s.moral-(ok?0:3));if(ok)s.motiv=clamp(s.motiv+2);
     log(s,(ECO?'📚 Cours : ':'📚 Révisions : ')+(ok?'bonne réponse, il progresse !':'il s\'est trompé, mais il apprend.'),ok?'good':'');
     save();render();
     setTimeout(()=>{$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:4px">${ok?(ECO?'✅ Bonne réponse ! Droit +9':'✅ Bonne réponse ! Révisions +12'):(ECO?'❌ Raté… Droit +3':'❌ Raté… Révisions +4')}</p><button class="primary" data-o="close">Continuer</button>`);},250);
@@ -1555,6 +1563,8 @@ function handleEvents(){
   if(ev.includes('back')){toast('🚓 Retour de patrouille !');lastLook='';}
   if(ev.includes('over')){lastLook='';actKey='';}
   if(ev.includes('arrest')){lastLook='';actKey='';lastBg=null;toast('🚔 Interpellé ! Direction la garde à vue.');}
+  if(ev.includes('dmission'))toast('📋 Mission du jour accomplie !');
+  if(ev.includes('medal'))toast('🎖️ Nouvelle médaille débloquée !');
   if(ev.includes('mission')){lastLook='';actKey='';toast(`🚨 Départ en déplacement : ${S.mission?MISSIONS[S.mission.type].n+' — '+S.mission.place:''} !`);}
   if(ev.includes('missionEnd')){lastLook='';actKey='';toast('🏠 Retour de déplacement !');}
   if(ev.includes('choix')){lastLook='';actKey='';toast('🎓 Fin de scolarité : à toi de choisir sa subdivision !');}
@@ -1583,10 +1593,120 @@ function askName(){
   };
   $('nameOk').addEventListener('click',go);$('nameIn').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
 }
+/* ======================= PACK QUOTIDIEN ======================= */
+function dayKey(t){const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function keyNoon(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d,12).getTime();}
+function dayGap(a,b){return Math.round((keyNoon(b)-keyNoon(a))/D);}
+function hashStr(x){let h=2166136261;for(const c of x){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+const DAILY_POOL={
+ warm:{l:'Couver l\'œuf 8 fois',g:8,ok:s=>s.stage==='egg'},
+ sport:{l:'Faire une séance de sport',g:1,ok:s=>['gav','ecole','service'].includes(s.stage)&&ctxOf(s)!=='grDuty'},
+ eat_healthy:{l:'Lui servir 2 repas équilibrés',g:2,ok:s=>!['egg','over','choix'].includes(s.stage)},
+ wash:{l:'Remettre sa tenue au propre',g:1,ok:s=>!['egg','over','choix'].includes(s.stage)},
+ talk:{l:'Faire un entretien',g:1,ok:s=>['gav','ecole','service'].includes(s.stage)},
+ quizok:{l:'Réussir 2 questions (révisions, cours ou instruction)',g:2,ok:s=>['gav','ecole'].includes(s.stage)||(s.stage==='service'&&s.sub==='GD')},
+ ontime:{l:'Être à l\'heure au rassemblement',g:1,ok:s=>['gav','ecole','service'].includes(s.stage)},
+ bed:{l:'Le coucher entre 20 h et 23 h 30',g:1,ok:s=>!['egg','over','choix'].includes(s.stage)},
+ mood:{l:'Avoir le moral au-dessus de 70',g:1,ok:s=>!['egg','over','choix'].includes(s.stage)},
+ patrol:{l:'Partir en patrouille',g:1,ok:s=>s.stage==='gav'||(s.stage==='service'&&(s.sub==='GD'||(s.sub==='GM'&&s.mission&&s.mission.type!=='mo')))},
+ ordre:{l:'Faire une séance d\'ordre serré',g:1,ok:s=>s.stage==='ecole'},
+ tir:{l:'Passer au stand de tir',g:1,ok:s=>s.stage==='ecole'},
+ impassible:{l:'Rester impassible en faction',g:1,ok:s=>s.stage==='service'&&s.sub==='GR'},
+ ligne:{l:'S\'entraîner ou tenir la ligne (MO)',g:1,ok:s=>s.stage==='service'&&s.sub==='GM'},
+ manif:{l:'Aller manifester',g:1,ok:s=>s.stage==='autre'},
+ banderole:{l:'Préparer des banderoles',g:1,ok:s=>s.stage==='autre'},
+};
+const MEDALS={s3:['🥉','3 jours de présence'],s7:['🥈','7 jours de présence'],s14:['🥇','14 jours de présence'],s30:['🏅','30 jours : pilier de la brigade'],c5:['📦','5 ordres du jour complets'],c20:['🎖️','20 ordres du jour complets'],q10:['🧠','10 questions du jour réussies']};
+function ensureDaily(s){if(!s.daily)s.daily={streak:0,best:0,lastDay:'',perm:1,permWeek:'',missions:[],mDay:'',chest:false,chests:0,qDay:'',qOk:0,medals:[],days:[]};return s.daily;}
+function addMedal(s,k){const d=ensureDaily(s);if(d.medals.includes(k))return;d.medals.push(k);log(s,`${MEDALS[k][0]} Médaille débloquée : ${MEDALS[k][1]} !`,'good');events.push('medal');}
+function genMissions(s,day){
+  const ids=Object.keys(DAILY_POOL).filter(k=>DAILY_POOL[k].ok(s));let seed=hashStr(day+s.gid),out=[];
+  while(out.length<Math.min(3,ids.length)){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const k=ids[seed%ids.length];if(!out.includes(k))out.push(k);}
+  return out.map(k=>({id:k,p:0,done:false}));
+}
+function dailyEvent(s,id,n=1){
+  const d=s.daily;if(!d||d.mDay!==dayKey(s.t))return;
+  const m=d.missions.find(x=>x.id===id&&!x.done);if(!m)return;
+  m.p+=n;if(m.p>=DAILY_POOL[id].g){m.done=true;log(s,`📋 Mission du jour accomplie : ${DAILY_POOL[id].l}`,'good');events.push('dmission');}
+}
+/* appelée à chaque tick (jour réel) */
+function checkDaily(s){
+  if(!s)return false;
+  const d=ensureDaily(s),today=dayKey(Date.now());let changed=false;
+  // permission hebdomadaire (le lundi)
+  const wk=(()=>{const x=new Date(Date.now());const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return dayKey(x.getTime());})();
+  if(d.permWeek!==wk){d.permWeek=wk;d.perm=1;changed=true;}
+  if(d.lastDay!==today){
+    if(!d.lastDay)d.streak=1;
+    else{const g=dayGap(d.lastDay,today);
+      if(g===1)d.streak++;
+      else if(g===2&&d.perm>0){d.perm--;d.streak++;log(s,'🎟️ Une permission a protégé ta série de présence (un jour manqué).','good');}
+      else if(g>1){log(s,`💔 Série de présence perdue après ${d.streak} jour(s). On repart !`,'bad');d.streak=1;}}
+    d.lastDay=today;d.best=Math.max(d.best,d.streak);d.days.push(today);if(d.days.length>30)d.days.splice(0,d.days.length-30);
+    if(d.streak===3){s.moral=clamp(s.moral+15);addMedal(s,'s3');}
+    if(d.streak===7){s.motiv=clamp(s.motiv+10);addMedal(s,'s7');}
+    if(d.streak===14){s.motiv=clamp(s.motiv+10);s.moral=clamp(s.moral+10);addMedal(s,'s14');}
+    if(d.streak===30)addMedal(s,'s30');
+    d.pendingPopup=s.stage!=='over';changed=true;
+  }
+  if(s.stage==='over')return changed;
+  if(d.mDay!==today){d.mDay=today;d.missions=genMissions(s,today);d.chest=false;changed=true;}
+  // missions devenues impossibles (changement de phase) : on les régénère en gardant la progression des autres
+  if(d.missions.some(m=>!m.done&&!DAILY_POOL[m.id].ok(s))){const keep=d.missions.filter(m=>m.done||DAILY_POOL[m.id].ok(s));const fresh=genMissions(s,today+'b').filter(m=>!keep.some(k=>k.id===m.id));d.missions=keep.concat(fresh).slice(0,3);changed=true;}
+  if(s.moral>=70)dailyEvent(s,'mood');
+  return changed;
+}
+function questionOfDay(s){
+  const pool=(s.stage==='service'&&s.sub==='GD')?QUIZ_GD:QUIZ.concat(QUIZ_GD);
+  return pool[hashStr(dayKey(Date.now())+'q')%pool.length];
+}
+function dailyPending(s){const d=s&&s.daily;if(!d||s.stage==='over')return false;return d.qDay!==dayKey(Date.now())||(d.missions.length&&d.missions.every(m=>m.done)&&!d.chest);}
+function openDaily(){
+  const s=S;tick();const d=ensureDaily(s);d.pendingPopup=false;
+  const today=dayKey(Date.now());
+  const cal=Array.from({length:7},(_,i)=>{const k=dayKey(Date.now()-(6-i)*D);const on=d.days.includes(k);const lbl=DAYS[new Date(keyNoon(k)).getDay()];return `<div style="text-align:center;flex:1"><div style="font-size:11px;color:var(--muted)">${lbl}</div><div style="font-size:20px">${on?'✅':k===today?'⬜':'▫️'}</div></div>`;}).join('');
+  const all=d.missions.length&&d.missions.every(m=>m.done);
+  const qDone=d.qDay===today;
+  sheet(`<h3>📅 Ordre du jour</h3>
+    <div class="card" style="background:var(--card2)"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">🔥 ${d.streak} jour${d.streak>1?'s':''} de présence</b><span class="sub">record : ${d.best} · 🎟️ ${d.perm} permission</span></div>
+      <div style="display:flex;margin-top:8px">${cal}</div>
+      <p style="margin-top:6px;font-size:12.5px">Paliers : 3 j moral +15 · 7 j motivation +10 · 14 j bonus · 30 j médaille. La permission (1 par semaine) protège la série si tu manques un jour.</p></div>
+    <div>${d.missions.map(m=>{const P=DAILY_POOL[m.id];return `<div class="crit"><span>${m.done?'✅':'⬜'}</span><span>${P.l}</span><span>${Math.min(m.p,P.g)}/${P.g}</span></div>`;}).join('')||'<p>Aucune mission aujourd\'hui.</p>'}</div>
+    ${all&&!d.chest?`<button class="primary gold" data-o="chest">🎁 Ouvrir le coffre du jour</button>`:d.chest?`<p>🎁 Coffre du jour déjà ouvert. Nouvelles missions demain !</p>`:`<p>Termine les 3 missions pour ouvrir le coffre du jour 🎁</p>`}
+    ${qDone?`<p>❓ Question du jour : déjà faite ${d.qLast?'✅':'❌'}. Rendez-vous demain !</p>`:`<button class="primary" data-o="qday">❓ Question du jour</button>`}
+    ${d.medals.length?`<div><div class="sub" style="margin:4px 0">Médailles</div><div style="display:flex;flex-wrap:wrap;gap:6px">${d.medals.map(k=>`<span class="badge" style="color:var(--ink)">${MEDALS[k][0]} ${MEDALS[k][1]}</span>`).join('')}</div></div>`:''}
+    <button class="cancel" data-o="close">Fermer</button>`);
+}
+function openChest(){
+  const s=S,d=ensureDaily(s);if(d.chest||!d.missions.every(m=>m.done))return;
+  d.chest=true;d.chests=(d.chests||0)+1;s.motiv=clamp(s.motiv+8);s.moral=clamp(s.moral+10);
+  let extra='';
+  if(s.stage==='gav'){s.comp=clamp(s.comp+6);extra='Révisions +6';}else if(s.stage==='ecole'){s.droit=clamp((s.droit||0)+4);s.tir=clamp((s.tir||0)+4);s.ordre=clamp((s.ordre||0)+4);extra='Droit, tir et ordre serré +4';}
+  else if(s.stage==='service'){s.exp=clamp((s.exp||0)+8);extra='Expérience +8';}else if(s.stage==='autre'){s.rep=clamp((s.rep||0)+6);extra='Réputation +6';}
+  log(s,`🎁 Coffre du jour ouvert : motivation +8, moral +10${extra?', '+extra:''}.`,'good');
+  if(d.chests===5)addMedal(s,'c5');if(d.chests===20)addMedal(s,'c20');
+  fx('🎁',3);fx('⭐',4);save();render();
+  sheet(`<h3>🎁 Coffre du jour !</h3><p>Motivation +8 · Moral +10${extra?' · '+extra:''}</p><p>${d.chests} ordre(s) du jour complet(s) au total.</p><button class="primary" data-o="daily">Retour</button>`,true);
+}
+function openQDay(){
+  const s=S,d=ensureDaily(s),today=dayKey(Date.now());if(d.qDay===today)return openDaily();
+  const q=questionOfDay(s);
+  sheet(`<h3>❓ Question du jour</h3><p>${esc(q.q)}</p>${q.a.map((a,i)=>`<button class="opt" data-qd="${i}">${esc(a)}</button>`).join('')}`,true);
+  $('panel').querySelectorAll('[data-qd]').forEach(b=>b.addEventListener('click',()=>{
+    tick();if(d.qDay===today)return;const i=+b.dataset.qd,ok=i===q.c;d.qDay=today;d.qLast=ok;
+    $('panel').querySelectorAll('[data-qd]').forEach((x,j)=>{x.disabled=true;if(j===q.c)x.classList.add('right');else if(j===i)x.classList.add('wrong');});
+    if(ok){d.qOk=(d.qOk||0)+1;s.motiv=clamp(s.motiv+6);s.moral=clamp(s.moral+5);if(s.stage==='gav')s.comp=clamp(s.comp+5);else if(s.stage==='ecole')s.droit=clamp((s.droit||0)+5);else if(s.stage==='service')s.exp=clamp((s.exp||0)+5);dailyEvent(s,'quizok');if(d.qOk===10)addMedal(s,'q10');}
+    else s.moral=clamp(s.moral+1);
+    log(s,ok?'❓ Question du jour réussie ! Motivation +6, moral +5.':'❓ Question du jour ratée… la réponse est affichée, retiens-la !',ok?'good':'');
+    save();render();
+    setTimeout(()=>{$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:4px">${ok?'✅ Bravo ! Motivation +6 · Moral +5':'❌ Raté. Nouvelle question demain !'}</p><button class="primary" data-o="daily">Retour à l'ordre du jour</button>`);},250);
+  }));
+}
 function tick(){
   if(!S)return;
   const before=S.stage;simulate(S,Date.now());
-  const ch=handleEvents()||before!==S.stage;saveLocal();if(ch)saveRemote();
+  const dch=checkDaily(S);
+  const ch=handleEvents()||before!==S.stage||dch;saveLocal();if(ch)saveRemote();
 }
 function homeLabel(s){
   if(!s)return '';if(s.stage==='egg')return 'Un œuf à couver';
