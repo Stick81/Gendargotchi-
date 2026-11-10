@@ -1,0 +1,16 @@
+{
+  "name": "Gendargotchi",
+  "short_name": "Gendargotchi",
+  "description": "Couve, élève et motive ta recrue : de l'œuf au gendarme… ou pas !",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1730",
+  "theme_color": "#0f1730",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
