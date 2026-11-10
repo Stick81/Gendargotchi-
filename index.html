@@ -223,7 +223,28 @@ const QUIZ=[
  {q:"Quel est le grade le plus élevé du corps des sous-officiers de gendarmerie ?",a:["Adjudant-chef","Major","Lieutenant","Aspirant"],c:1},
  {q:"Quel est le premier grade d'officier ?",a:["Aspirant","Sous-lieutenant","Lieutenant","Capitaine"],c:1},
  {q:"Quelle unité est spécialisée dans la sécurité routière sur les autoroutes ?",a:["Le PSIG","La brigade de recherches","Le peloton autoroutier","La brigade nautique"],c:2},
- {q:"Quelle unité départementale mène les enquêtes judiciaires les plus complexes ?",a:["La brigade de recherches","La brigade territoriale autonome","Le peloton motorisé","La maison de protection des familles"],c:0}
+ {q:"Quelle unité départementale mène les enquêtes judiciaires les plus complexes ?",a:["La brigade de recherches","La brigade territoriale autonome","Le peloton motorisé","La maison de protection des familles"],c:0},
+ // --- organisation ---
+ {q:"Quel échelon regroupe les compagnies de gendarmerie départementale d'un département ?",a:["La région","Le groupement","L'escadron","La zone de défense"],c:1},
+ {q:"Que signifie COB ?",a:["Compagnie opérationnelle de brigade","Communauté de brigades","Cellule d'observation des brigades","Commandement opérationnel de base"],c:1},
+ {q:"Que signifie MPF ?",a:["Maison de protection des familles","Mission de prévention fiscale","Moyens de police financière","Maison de prévention des fugues"],c:0},
+ {q:"Que signifie EDSR ?",a:["Équipe de défense et de soutien régional","Escadron départemental de sécurité routière","État-major départemental de sûreté renforcée","Escadron de défense et de surveillance routière"],c:1}
+];
+const QUIZ_CPP=[
+ {q:"Quel article du CPP régit l'enquête préliminaire ?",a:["Article 53","Article 63","Article 75","Article 99"],c:2},
+ {q:"Quel article du CPP encadre l'enquête en recherche des causes de la mort (découverte de cadavre) ?",a:["Article 61","Article 74","Article 75","Article 78"],c:1},
+ {q:"Quel article du CPP permet l'enquête pour disparition inquiétante ?",a:["Article 74-1","Article 74-2","Article 77-1","Article 78-2"],c:0},
+ {q:"Quel article du CPP permet de rechercher une personne en fuite ?",a:["Article 73","Article 74-1","Article 74-2","Article 76"],c:2},
+ {q:"Quel article du CPP définit la garde à vue ?",a:["Article 61-1","Article 62-2","Article 63-4","Article 706-88"],c:1},
+ {q:"Quel article du CPP prévoit la notification des droits au gardé à vue ?",a:["Article 63-1","Article 63-2","Article 63-3","Article 63-4"],c:0},
+ {q:"Quel article du CPP prévoit le droit de faire prévenir un proche et l'employeur ?",a:["Article 63-1","Article 63-2","Article 63-3","Article 63-3-1"],c:1},
+ {q:"Quel article du CPP prévoit l'examen médical du gardé à vue ?",a:["Article 63-2","Article 63-3","Article 63-4","Article 64"],c:1},
+ {q:"Quel article du CPP permet de prolonger la garde à vue jusqu'à 96 heures en criminalité organisée ?",a:["Article 63","Article 77","Article 706-73","Article 706-88"],c:3},
+ {q:"Quel article du CPP encadre l'audition libre d'un suspect ?",a:["Article 61-1","Article 62","Article 62-2","Article 78"],c:0},
+ {q:"En flagrance, quel article permet de requérir une personne qualifiée pour des constatations ou examens techniques ?",a:["Article 60","Article 60-1","Article 77-1","Article 99-3"],c:0},
+ {q:"En flagrance, quel article permet de requérir la remise de documents ou d'informations ?",a:["Article 60","Article 60-1","Article 77-1-1","Article 99-3"],c:1},
+ {q:"En enquête préliminaire, quel article permet de requérir une personne qualifiée ?",a:["Article 60","Article 76","Article 77-1","Article 77-1-1"],c:2},
+ {q:"En enquête préliminaire, quel article permet de requérir la remise de documents ou d'informations ?",a:["Article 60-1","Article 77-1","Article 77-1-1","Article 99-3"],c:2},
 ];
 const PATROLS=[
  ["Contrôle routier sans histoire. Il a été poli et carré.",'good'],
@@ -1450,7 +1471,7 @@ function ligneGame(training){
 }
 /* --- Gendarmerie départementale : instruction --- */
 function instrGD(){
-  const s=S,q=QUIZ_GD[Math.floor(Math.random()*QUIZ_GD.length)];
+  const s=S,POOL_=QUIZ_GD.concat(QUIZ_CPP),q=POOL_[Math.floor(Math.random()*POOL_.length)];
   sheet(`<h3>📘 Instruction — textes en vigueur</h3><p>${esc(q.q)}</p>${q.a.map((a,i)=>`<button class="opt" data-q="${i}">${esc(a)}</button>`).join('')}`,true);
   $('panel').querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>{
     const i=+b.dataset.q,ok=i===q.c;tick();
@@ -1533,8 +1554,8 @@ function tirGame(){
 }
 /* --- révisions --- */
 function quizOne(){
-  const s=S,q=QUIZ[Math.floor(Math.random()*QUIZ.length)];
-  const ECO=s.stage==='ecole';
+  const ECO=S.stage==='ecole';
+  const s=S,POOL_=ECO?QUIZ.concat(QUIZ_CPP):QUIZ,q=POOL_[Math.floor(Math.random()*POOL_.length)];
   sheet(`<h3>${ECO?'📚 Cours de droit & procédure':'📚 Révisions'}</h3><p>${esc(q.q)}</p>${q.a.map((a,i)=>`<button class="opt" data-q="${i}">${esc(a)}</button>`).join('')}`,true);
   $('panel').querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>{
     const i=+b.dataset.q,ok=i===q.c;tick();
@@ -1682,7 +1703,7 @@ function checkDaily(s){
   return changed;
 }
 function questionOfDay(s){
-  const pool=(s.stage==='service'&&s.sub==='GD')?QUIZ_GD:QUIZ.concat(QUIZ_GD);
+  const pool=(s.stage==='service'&&s.sub==='GD')?QUIZ_GD.concat(QUIZ_CPP):QUIZ.concat(QUIZ_GD,QUIZ_CPP);
   return pool[hashStr(dayKey(Date.now())+'q')%pool.length];
 }
 function dailyPending(s){const d=s&&s.daily;if(!d||s.stage==='over')return false;return d.qDay!==dayKey(Date.now())||(d.missions.length&&d.missions.every(m=>m.done)&&!d.chest);}
