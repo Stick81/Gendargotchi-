@@ -205,6 +205,25 @@ const QUIZ=[
  {q:"Quelle est la mission phare de la gendarmerie mobile ?",a:["Le maintien de l'ordre","La police de la route uniquement","La garde des palais","Les enquêtes financières"],c:0},
  {q:"Quelle subdivision compte un régiment de cavalerie ?",a:["La gendarmerie départementale","La gendarmerie mobile","La Garde républicaine","La gendarmerie maritime"],c:2},
  {q:"Comment s'appelle l'unité de base de la gendarmerie mobile ?",a:["La compagnie","L'escadron","Le peloton","La brigade"],c:1},
+ // --- procédure pénale ---
+ {q:"Quel article du Code de procédure pénale définit le crime ou délit flagrant ?",a:["Article 16","Article 53","Article 63","Article 75"],c:1},
+ {q:"Hors prolongation, combien de temps peut durer une enquête de flagrance ?",a:["48 heures","8 jours","15 jours","1 mois"],c:1},
+ {q:"Combien de temps dure, au maximum, chaque entretien du gardé à vue avec son avocat ?",a:["15 minutes","30 minutes","1 heure","Sans limite"],c:1},
+ {q:"Lequel de ces droits n'est PAS notifié à une personne placée en garde à vue ?",a:["Le droit de garder le silence","Le droit d'être examinée par un médecin","Le droit de faire prévenir un proche","Le droit de choisir l'OPJ qui l'entend"],c:3},
+ {q:"Hors exceptions, entre quelles heures une perquisition peut-elle commencer ?",a:["Entre 5 h et 22 h","Entre 6 h et 21 h","Entre 7 h et 20 h","À toute heure"],c:1},
+ {q:"En enquête préliminaire, une perquisition nécessite en principe…",a:["Une commission rogatoire","L'assentiment exprès de la personne","Un simple avis au maire","Aucune formalité"],c:1},
+ {q:"Qui délivre une commission rogatoire ?",a:["Le procureur de la République","Le juge d'instruction","Le préfet","Le commandant de groupement"],c:1},
+ // --- justice pénale des mineurs (CJPM) ---
+ {q:"Selon le CJPM, en dessous de quel âge un mineur est-il présumé ne pas être capable de discernement ?",a:["10 ans","12 ans","13 ans","16 ans"],c:2},
+ {q:"En dessous de quel âge un mineur ne peut-il pas être placé en garde à vue (seulement retenu) ?",a:["10 ans","13 ans","15 ans","16 ans"],c:1},
+ {q:"Quelle est la durée initiale de la retenue d'un mineur de 10 à 13 ans ?",a:["4 heures","12 heures","24 heures","48 heures"],c:1},
+ // --- institution ---
+ {q:"En quelle année le GIGN a-t-il été créé ?",a:["1958","1968","1974","1985"],c:2},
+ {q:"À quelle date la gendarmerie fête-t-elle traditionnellement sainte Geneviève ?",a:["3 janvier","14 juillet","26 novembre","25 décembre"],c:2},
+ {q:"Quel est le grade le plus élevé du corps des sous-officiers de gendarmerie ?",a:["Adjudant-chef","Major","Lieutenant","Aspirant"],c:1},
+ {q:"Quel est le premier grade d'officier ?",a:["Aspirant","Sous-lieutenant","Lieutenant","Capitaine"],c:1},
+ {q:"Quelle unité est spécialisée dans la sécurité routière sur les autoroutes ?",a:["Le PSIG","La brigade de recherches","Le peloton autoroutier","La brigade nautique"],c:2},
+ {q:"Quelle unité départementale mène les enquêtes judiciaires les plus complexes ?",a:["La brigade de recherches","La brigade territoriale autonome","Le peloton motorisé","La maison de protection des familles"],c:0}
 ];
 const PATROLS=[
  ["Contrôle routier sans histoire. Il a été poli et carré.",'good'],
@@ -483,6 +502,12 @@ const QUIZ_GD=[
  {q:"Un vol simple est…",a:["Une contravention","Un délit","Un crime","Une simple faute civile"],c:1},
  {q:"Dès quand une personne gardée à vue peut-elle demander l'assistance d'un avocat ?",a:["Dès le début de la mesure","Après 12 heures","Après 24 heures","Uniquement en cas de prolongation"],c:0},
  {q:"Qui dirige l'enquête de flagrance ?",a:["Le maire","Le préfet","Le procureur de la République","Le commandant de brigade seul"],c:2},
+ // --- code de la route ---
+ {q:"Hors agglomération, sur une route à double sens sans séparateur central, quelle est la vitesse maximale par défaut ?",a:["70 km/h","80 km/h","90 km/h","110 km/h"],c:1},
+ {q:"Sur autoroute, quelle est la vitesse maximale par temps de pluie ?",a:["90 km/h","100 km/h","110 km/h","130 km/h"],c:2},
+ {q:"Combien de points a un jeune conducteur au début de son permis probatoire ?",a:["3 points","6 points","8 points","12 points"],c:1},
+ {q:"Quel est le nombre maximal de points d'un permis de conduire ?",a:["10","12","15","20"],c:1},
+ {q:"Conduire sans être titulaire du permis est…",a:["Une contravention de 4e classe","Une contravention de 5e classe","Un délit","Un crime"],c:2}
 ];
 const PATROL_SETS={
  gav:null,
