@@ -119,6 +119,9 @@
   .tapzone{height:150px;border-radius:20px;background:linear-gradient(135deg,#e8414f,#f3964b);font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px}
   .tapzone:active{transform:scale(.97)}
   #casBtn{position:relative}
+  .medalpop{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:99;background:rgba(20,28,60,.96);border:2px solid #f3c74b;border-radius:20px;padding:18px 26px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5);animation:mpop 3.8s ease forwards}
+  .medalpop b{color:#f3c74b;font-size:17px}.medalpop span{font-size:14px;max-width:220px}
+  @keyframes mpop{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-12deg)}10%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}16%{transform:translate(-50%,-50%) scale(1)}85%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
   .tri{height:6px;border-radius:3px;background:linear-gradient(90deg,#2f5bd3 33%,#fff 33% 66%,#e8414f 66%)}
   .help{color:var(--muted);font-size:12.5px;text-align:center;line-height:1.4}
   .row{display:flex;gap:8px}
@@ -1163,6 +1166,9 @@ function renderActions(){
 }
 
 let toastT=0;
+function medalPop(k){if(!k||!MEDALS[k])return toast('🎖️ Nouvelle médaille débloquée !');
+  const o=document.createElement('div');o.className='medalpop';o.innerHTML=`${medalSVG(k,96)}<b>Médaille débloquée !</b><span>${MEDALS[k][1]}</span>`;
+  document.body.appendChild(o);o.addEventListener('click',()=>o.remove());setTimeout(()=>o.remove(),3800);}
 function toast(t){const e=$('toast');e.textContent=T(t);e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('show'),2600);}
 function fx(emoji,n=1){const sc=$('scene');for(let i=0;i<n;i++){const f=document.createElement('span');f.className='fx';f.textContent=emoji;f.style.left=(38+Math.random()*22)+'%';f.style.top=(40+Math.random()*18)+'%';f.style.animationDelay=(i*.12)+'s';sc.appendChild(f);setTimeout(()=>f.remove(),1700+i*120);}}
 function jump(){const p=$('pet');p.classList.remove('jump');void p.offsetWidth;p.classList.add('jump');}
@@ -1616,7 +1622,7 @@ function handleEvents(){
   if(ev.includes('over')){lastLook='';actKey='';}
   if(ev.includes('arrest')){lastLook='';actKey='';lastBg=null;toast('🚔 Interpellé ! Direction la garde à vue.');}
   if(ev.includes('dmission'))toast('📋 Mission du jour accomplie !');
-  if(ev.includes('medal'))toast('🎖️ Nouvelle médaille débloquée !');
+  if(ev.includes('medal'))medalPop(window._lastMedal);
   if(ev.includes('mission')){lastLook='';actKey='';toast(`🚨 Départ en déplacement : ${S.mission?MISSIONS[S.mission.type].n+' — '+S.mission.place:''} !`);}
   if(ev.includes('missionEnd')){lastLook='';actKey='';toast('🏠 Retour de déplacement !');}
   if(ev.includes('choix')){lastLook='';actKey='';toast('🎓 Fin de scolarité : à toi de choisir sa subdivision !');}
@@ -1670,7 +1676,43 @@ const DAILY_POOL={
 };
 const MEDALS={s3:['🥉','3 jours de présence'],s7:['🥈','7 jours de présence'],s14:['🥇','14 jours de présence'],s30:['🏅','30 jours : pilier de la brigade'],c5:['📦','5 ordres du jour complets'],c20:['🎖️','20 ordres du jour complets'],q10:['🧠','10 questions du jour réussies']};
 function ensureDaily(s){if(!s.daily)s.daily={streak:0,best:0,lastDay:'',perm:1,permWeek:'',missions:[],mDay:'',chest:false,chests:0,qDay:'',qOk:0,medals:[],days:[]};return s.daily;}
-function addMedal(s,k){const d=ensureDaily(s);if(d.medals.includes(k))return;d.medals.push(k);log(s,`${MEDALS[k][0]} Médaille débloquée : ${MEDALS[k][1]} !`,'good');events.push('medal');}
+/* ===== Médailles dessinées ===== */
+const MEDAL_ART={
+ s3:{m:'bronze',r:['#1b3a8c','#fff','#c8102e'],sym:'n',t:'3'},
+ s7:{m:'silver',r:['#1b3a8c','#fff','#c8102e'],sym:'n',t:'7'},
+ s14:{m:'gold',r:['#1b3a8c','#fff','#c8102e'],sym:'n',t:'14'},
+ s30:{m:'gold',r:['#7a1020','#f3c74b','#7a1020'],sym:'star',t:'30'},
+ c5:{m:'silver',r:['#2e8b57','#fff','#2e8b57'],sym:'scroll'},
+ c20:{m:'gold',r:['#2e8b57','#f3c74b','#2e8b57'],sym:'scroll2'},
+ q10:{m:'blue',r:['#5b3fa8','#fff','#5b3fa8'],sym:'book'},
+ duo10:{m:'gold',r:['#1b3a8c','#f3c74b','#1b3a8c'],sym:'duo'},
+ duoSport:{m:'bronze',r:['#e8414f','#fff','#e8414f'],sym:'dumbbell'}
+};
+const METALS={bronze:['#f2b27a','#c06a2b','#7a3d12'],silver:['#ffffff','#b9c2cc','#6b7684'],gold:['#fff3a8','#f0b92c','#9a6a07'],blue:['#bfe0ff','#3d7fd6','#183f7a']};
+function medalSVG(k,size=56,locked=false){
+  const a=MEDAL_ART[k]||{m:'gold',r:['#1b3a8c','#fff','#c8102e'],sym:'star'},[l,mid,d]=METALS[a.m],id='md'+k+(locked?'L':'')+size;
+  const ink=a.m==='blue'?'#fff':d,t=a.t||'';
+  const sym={
+   n:`<text x="32" y="${t.length>1?54:55}" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="${t.length>1?17:20}" fill="${ink}">${t}</text>`,
+   star:`<path d="M32 36l3.2 6.6 7.2 1-5.2 5 1.3 7.2L32 52.4l-6.5 3.4 1.3-7.2-5.2-5 7.2-1z" fill="${ink}"/>`,
+   scroll:`<rect x="24" y="36" width="16" height="20" rx="2" fill="none" stroke="${ink}" stroke-width="2.4"/><path d="M28 42h8M28 46h8M28 50h5" stroke="${ink}" stroke-width="2" stroke-linecap="round"/>`,
+   scroll2:`<rect x="24" y="36" width="16" height="20" rx="2" fill="none" stroke="${ink}" stroke-width="2.4"/><path d="M27.5 45l3 3 6-6.5" fill="none" stroke="${ink}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+   book:`<path d="M32 40c-3-2-7-2.5-10-2v15c3-.5 7 0 10 2 3-2 7-2.5 10-2V38c-3-.5-7 0-10 2z" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linejoin="round"/><path d="M32 40v15" stroke="${ink}" stroke-width="2"/>`,
+   duo:`<circle cx="27" cy="40" r="3.6" fill="${ink}"/><circle cx="37" cy="40" r="3.6" fill="${ink}"/><path d="M20.5 55c0-6 3-9 6.5-9s6.5 3 6.5 9zM30.5 55c0-6 3-9 6.5-9s6.5 3 6.5 9z" fill="${ink}"/>`,
+   dumbbell:`<rect x="21" y="40" width="5" height="12" rx="1.5" fill="${ink}"/><rect x="38" y="40" width="5" height="12" rx="1.5" fill="${ink}"/><rect x="18" y="43" width="3" height="6" rx="1" fill="${ink}"/><rect x="43" y="43" width="3" height="6" rx="1" fill="${ink}"/><rect x="26" y="44.5" width="12" height="3" fill="${ink}"/>`
+  }[a.sym];
+  const [r1,r2,r3]=a.r;
+  return `<svg viewBox="0 0 64 72" width="${size}" height="${size*72/64}" style="${locked?'filter:grayscale(1) opacity(.35)':'filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))'}" aria-hidden="true">
+  <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${l}"/><stop offset=".55" stop-color="${mid}"/><stop offset="1" stop-color="${d}"/></linearGradient></defs>
+  <path d="M18 2h9l9 26h-9z" fill="${r1}"/><path d="M27 2h10l-1 26h-9z" fill="${r2}"/><path d="M37 2h9l-10 26h-0z" fill="${r3}"/>
+  <path d="M18 2h28" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
+  <rect x="24" y="24" width="16" height="6" rx="2" fill="${d}"/>
+  <circle cx="32" cy="46" r="19" fill="url(#${id})" stroke="${d}" stroke-width="2"/>
+  <circle cx="32" cy="46" r="15" fill="none" stroke="${l}" stroke-opacity=".7" stroke-width="1.3" stroke-dasharray="2 2"/>
+  <path d="M19 40a14 14 0 0 1 10-9" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  ${sym}</svg>`;
+}
+function addMedal(s,k){const d=ensureDaily(s);if(d.medals.includes(k))return;d.medals.push(k);log(s,`${MEDALS[k][0]} Médaille débloquée : ${MEDALS[k][1]} !`,'good');events.push('medal');window._lastMedal=k;}
 function genMissions(s,day){
   const ids=Object.keys(DAILY_POOL).filter(k=>DAILY_POOL[k].ok(s));let seed=hashStr(day+s.gid),out=[];
   while(out.length<Math.min(3,ids.length)){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const k=ids[seed%ids.length];if(!out.includes(k))out.push(k);}
@@ -1726,7 +1768,7 @@ function openDaily(){
     <div>${d.missions.map(m=>{const P=DAILY_POOL[m.id];return `<div class="crit"><span>${m.done?'✅':'⬜'}</span><span>${P.l}</span><span>${Math.min(m.p,P.g)}/${P.g}</span></div>`;}).join('')||'<p>Aucune mission aujourd\'hui.</p>'}</div>
     ${all&&!d.chest?`<button class="primary gold" data-o="chest">🎁 Ouvrir le coffre du jour</button>`:d.chest?`<p>🎁 Coffre du jour déjà ouvert. Nouvelles missions demain !</p>`:`<p>Termine les 3 missions pour ouvrir le coffre du jour 🎁</p>`}
     ${qDone?`<p>❓ Question du jour : déjà faite ${d.qLast?'✅':'❌'}. Rendez-vous demain !</p>`:`<button class="primary" data-o="qday">❓ Question du jour</button>`}
-    ${d.medals.length?`<div><div class="sub" style="margin:4px 0">Médailles</div><div style="display:flex;flex-wrap:wrap;gap:6px">${d.medals.map(k=>`<span class="badge" style="color:var(--ink)">${MEDALS[k][0]} ${MEDALS[k][1]}</span>`).join('')}</div></div>`:''}
+    <div><div class="sub" style="margin:4px 0">Médailles (${d.medals.length}/${Object.keys(MEDALS).length})</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 4px;text-align:center">${Object.keys(MEDALS).map(k=>{const has=d.medals.includes(k);return `<div style="display:flex;flex-direction:column;align-items:center;font-size:10.5px;line-height:1.2;color:${has?'var(--ink)':'rgba(255,255,255,.4)'}">${medalSVG(k,44,!has)}<span style="margin-top:3px">${MEDALS[k][1]}</span></div>`;}).join('')}</div></div>
     <button class="cancel" data-o="close">Fermer</button>`);
 }
 function openChest(){
