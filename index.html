@@ -119,6 +119,10 @@
   .tapzone{height:150px;border-radius:20px;background:linear-gradient(135deg,#e8414f,#f3964b);font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px}
   .tapzone:active{transform:scale(.97)}
   #casBtn{position:relative}
+  .gsec{box-sizing:border-box;max-width:100%;overflow:hidden;background:#ffffff0d;border-radius:12px;padding:8px 10px;margin:8px 0}.gsec summary{font-weight:700;cursor:pointer;font-size:15px}
+  .gsec p{font-size:13.5px;margin:6px 0}.gnote{font-size:12.5px!important;opacity:.85}
+  .gtab{width:100%;table-layout:fixed;word-wrap:break-word;hyphens:auto;border-collapse:collapse;font-size:12.5px;margin:6px 0}.gtab th{background:#f3c74b;color:#1b2547;padding:5px 3px;font-weight:700}.gtab td{padding:5px 3px;border-bottom:1px solid #ffffff18;text-align:center}.gtab td:first-child{text-align:left;font-weight:600;hyphens:none}.gtab th:first-child{width:31%}
+  .gmed{display:grid;grid-template-columns:1fr 1fr;gap:6px}.gmed div{display:flex;align-items:center;gap:6px;font-size:12px}
   .medalpop{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:99;background:rgba(20,28,60,.96);border:2px solid #f3c74b;border-radius:20px;padding:18px 26px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5);animation:mpop 3.8s ease forwards}
   .medalpop b{color:#f3c74b;font-size:17px}.medalpop span{font-size:14px;max-width:220px}
   @keyframes mpop{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-12deg)}10%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}16%{transform:translate(-50%,-50%) scale(1)}85%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
@@ -1169,6 +1173,29 @@ let toastT=0;
 function medalPop(k){if(!k||!MEDALS[k])return toast('🎖️ Nouvelle médaille débloquée !');
   const o=document.createElement('div');o.className='medalpop';o.innerHTML=`${medalSVG(k,96)}<b>Médaille débloquée !</b><span>${MEDALS[k][1]}</span>`;
   document.body.appendChild(o);o.addEventListener('click',()=>o.remove());setTimeout(()=>o.remove(),3800);}
+function openGuide(){
+  const tb=(head,rows)=>`<table class="gtab"><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</table>`;
+  const dash=v=>v?v:'—';
+  const sec=(t,body,open)=>`<details class="gsec"${open?' open':''}><summary>${t}</summary>${body}</details>`;
+  $('panel').innerHTML=`<h3>📖 Règlement du jeu</h3>`+
+  sec('🎖️ Commissions d\'avancement (GAV)',`<p>Une commission s'ouvre aux jours <b>${BOARD_EVERY}, ${BOARD_EVERY*2} et ${BOARD_EVERY*3}</b> de la phase GAV, pendant <b>${BOARD_HOURS} h</b>. Un seul grade gagné par commission.</p>`+
+    tb(['Grade visé','Discipline','Motivation','Forme','Révisions','Retards max'],[1,2,3].map(k=>{const c=PROMO[k];return [GRADES[k],c.disc,c.motiv,dash(c.forme),dash(c.comp),c.ret];}))+
+    `<p class="gnote">Retards comptés depuis la commission précédente. Commission manquée : motivation −5.</p>`,true)+
+  sec('📝 Concours sous-officier (fin de GAV)',tb(['Critère','Minimum'],[['Ancienneté',REQ.days+' jours'],['Révisions',REQ.comp],['Condition physique',REQ.forme],['Motivation',REQ.motiv],['Discipline',REQ.disc]]))+
+  sec('🏫 École de sous-officiers',`<p>Durée : <b>${SCHOOL_DAYS} jours</b>. Pour <b>choisir</b> sa subdivision (GD, GM ou GR), tous les critères doivent être atteints à la sortie. Sinon, l'affectation est imposée (souvent la Garde républicaine).</p>`+
+    tb(['Critère','Minimum'],[['Droit & procédure',SCHOOL_REQ.droit],['Tir',SCHOOL_REQ.tir],['Ordre serré',SCHOOL_REQ.ordre],['Condition physique',SCHOOL_REQ.forme],['Discipline',SCHOOL_REQ.disc]]))+
+  sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
+    tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
+    `<p class="gnote">Bon tuteur : 5/5 alors que ton binôme fait 1 ou moins = discipline +3.</p>`)+
+  sec('🏅 Médailles',`<div class="gmed">${Object.keys(MEDALS).map(k=>`<div>${medalSVG(k,34)}<span>${MEDALS[k][1]}</span></div>`).join('')}</div>`)+
+  sec('⏰ Rythme et astuces',`<ul class="gnote" style="padding-left:18px;margin:6px 0">
+    <li>Prise de service à <b>8 h 30</b> en semaine, <b>9 h 30</b> le week-end : les retards pèsent sur l'avancement.</li>
+    <li>Le sport et une tenue impeccable donnent discipline <b>+3</b>.</li>
+    <li>Le fast-food et les nuits blanches font baisser la forme et la santé.</li>
+    <li>Reviens chaque jour pour l'ordre du jour et la question du jour (série de présence).</li></ul>`)+
+  `<button class="cancel" data-o="close">Fermer</button>`;
+  $('sheet').classList.remove('center');$('sheet').classList.add('show');
+}
 function toast(t){const e=$('toast');e.textContent=T(t);e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('show'),2600);}
 function fx(emoji,n=1){const sc=$('scene');for(let i=0;i<n;i++){const f=document.createElement('span');f.className='fx';f.textContent=emoji;f.style.left=(38+Math.random()*22)+'%';f.style.top=(40+Math.random()*18)+'%';f.style.animationDelay=(i*.12)+'s';sc.appendChild(f);setTimeout(()=>f.remove(),1700+i*120);}}
 function jump(){const p=$('pet');p.classList.remove('jump');void p.offsetWidth;p.classList.add('jump');}
@@ -1348,6 +1375,7 @@ function act(a){
       <button class="cancel" data-o="close">Fermer</button>`);}
   case 'menu':
     return sheet(`<h3>Options</h3><p>Ta partie est sauvegardée automatiquement.</p>
+      <button class="opt" data-o="guide"><span class="e">📖</span><span>Règlement du jeu<small>Conditions d'avancement, concours, école, binôme, médailles</small></span></button>
       <button class="opt" data-o="home"><span class="e">🏠</span><span>Accueil Gendargotchi<small>Revenir à l'écran d'accueil</small></span></button>
       <button class="opt" data-o="reset"><span class="e">🥚</span><span>Recommencer de zéro<small>La recrue actuelle sera perdue</small></span></button>
       <button class="cancel" data-o="close">Fermer</button>`);
@@ -1371,6 +1399,7 @@ function option(o){
   }
   if(k==='reset'){return sheet(`<h3>Tout recommencer ?</h3><p>La recrue actuelle sera définitivement perdue.</p><div class="row"><button class="primary ghost" data-o="close">Non</button><button class="primary" style="background:var(--danger)" data-o="resetok">Oui</button></div>`,true);}
   if(k==='home'){closeSheet();showHome();return;}
+  if(k==='guide'){openGuide();return;}
   if(k==='resetok'){closeSheet();S=newGame();lastLook='';actKey='';log(S,'Un nouvel œuf est arrivé à la brigade.');save();render();return;}
   closeSheet();
   if(['eat:popote','eat:salade','talk:career','talk:praise','talk:recadrer','fun:famille'].includes(o)&&refuses())return;
