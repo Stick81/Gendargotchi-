@@ -1190,11 +1190,11 @@ function openGuide(){
   sec('📝 Concours sous-officier (fin de GAV)',tb(['Critère','Minimum'],[['Ancienneté',REQ.days+' jours'],['Révisions',REQ.comp],['Condition physique',REQ.forme],['Motivation',REQ.motiv],['Discipline',REQ.disc]]))+
   sec('🏫 École de sous-officiers',`<p>Durée : <b>${SCHOOL_DAYS} jours</b>. Pour <b>choisir</b> sa subdivision (GD, GM ou GR), tous les critères doivent être atteints à la sortie. Sinon, l'affectation est imposée (souvent la Garde républicaine).</p>`+
     tb(['Critère','Minimum'],[['Droit & procédure',SCHOOL_REQ.droit],['Tir',SCHOOL_REQ.tir],['Ordre serré',SCHOOL_REQ.ordre],['Condition physique',SCHOOL_REQ.forme],['Discipline',SCHOOL_REQ.disc]]))+
-  sec('🎓 Avancement en unité',`<p>Une commission tous les <b>${SBOARD_EVERY} jours</b> après l'affectation, ouverte <b>${SBOARD_HOURS} h</b>. Les instructions (📘) réussies sont comptées au total depuis l'affectation.</p>`+
+  sec('🎓 Avancement en unité',`<p>Une commission tous les <b>${SBOARD_EVERY} jours</b> après l'affectation, ouverte <b>${SBOARD_HOURS} h</b>. Les instructions (📘) réussies sont comptées au total depuis l'affectation. En GD, la qualification <b>OPJ</b> est aussi exigée pour tous les grades à partir de MDL-chef.</p>`+
     tb(['Grade','Exp.','Disc.','Motiv.','Forme','Instr.','Ret.'],[1,2,3].map(k=>{const c=SPROMO[k];return [SGRADES[k],c.exp,c.disc,c.motiv,dash(c.forme),c.instr,c.ret];})))+
   sec('⭐ Spécialités & OPJ',`<p>Depuis 🎓 Carrière. Une seule spécialité par carrière, ${SPEC_DAYS_MIN} jours d'ancienneté minimum. En cas d'échec à une sélection : nouvelle tentative 24 h plus tard.</p>`+
     tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':' rép.'})`).join(' + ')]))+
-    `<p class="gnote">⚖️ <b>OPJ</b> (GD) : ${SGRADES[OPJ_REQ.srank]} minimum, expérience ${OPJ_REQ.exp}, ${OPJ_REQ.instr} instructions réussies. Examen de 10 questions de procédure pénale, 7 bonnes réponses pour réussir (sinon 48 h d'attente). Débloque 🔎 Enquête.</p>`)+
+    `<p class="gnote">⚖️ <b>OPJ</b> (GD) : dès le grade de Gendarme, expérience ${OPJ_REQ.exp}, ${OPJ_REQ.instr} instructions réussies. Examen de 10 questions de procédure pénale, 7 bonnes réponses pour réussir (sinon 48 h d'attente). Débloque 🔎 Enquête. <b>En GD, l'OPJ est obligatoire pour passer MDL-chef.</b></p>`)+
   sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
     tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
     `<p class="gnote">Bon tuteur : 5/5 alors que ton binôme fait 1 ou moins = discipline +3.</p>`)+
@@ -2165,6 +2165,7 @@ function spromoCrit(s,k){const c=SPROMO[k],r=s.retardsSince||0,e=s.exp||0,q=s.in
   ['Motivation',s.motiv>=c.motiv,`${Math.floor(s.motiv)} / ${c.motiv}`],
   ...(c.forme?[['Condition physique',s.forme>=c.forme,`${Math.floor(s.forme)} / ${c.forme}`]]:[]),
   ['Instructions réussies (total)',q>=c.instr,`${q} / ${c.instr}`],
+  ...(s.sub==='GD'?[['Qualification OPJ',!!s.opj,s.opj?'obtenue':'à obtenir (🎓 Carrière)']]:[]),
   ['Retards depuis la dernière commission',r<=c.ret,`${r} (max ${c.ret})`]];}
 function svcStep(s,t,dt){
   if(s.sboard&&t+dt>=s.sboard.until){
@@ -2236,8 +2237,8 @@ function specReqList(s,sp){const r=sp.req,L=[];
   for(const [k,lab] of [['forme','Condition physique'],['disc','Discipline'],['motiv','Motivation'],['moral','Moral'],['exp','Expérience']])if(r[k])L.push([lab,(s[k]||0)>=r[k],`${Math.floor(s[k]||0)} / ${r[k]}`]);
   if(r.srank)L.push(['Grade minimum',(s.srank||0)>=r.srank,SGRADES[r.srank]]);
   const d=Math.floor((s.t-s.serviceStart)/D);L.push(['Ancienneté en unité',d>=SPEC_DAYS_MIN,`${d} / ${SPEC_DAYS_MIN} j`]);return L;}
-const OPJ_REQ={exp:35,instr:8,srank:1};
-function opjReqList(s){return [['Expérience',(s.exp||0)>=OPJ_REQ.exp,`${Math.floor(s.exp||0)} / ${OPJ_REQ.exp}`],['Instructions réussies',(s.instrOk||0)>=OPJ_REQ.instr,`${s.instrOk||0} / ${OPJ_REQ.instr}`],['Grade minimum',(s.srank||0)>=OPJ_REQ.srank,SGRADES[OPJ_REQ.srank]]];}
+const OPJ_REQ={exp:35,instr:8,srank:0};
+function opjReqList(s){return [['Expérience',(s.exp||0)>=OPJ_REQ.exp,`${Math.floor(s.exp||0)} / ${OPJ_REQ.exp}`],['Instructions réussies',(s.instrOk||0)>=OPJ_REQ.instr,`${s.instrOk||0} / ${OPJ_REQ.instr}`]];}
 
 function openCarriere(){
   const s=S;if(s.stage!=='service')return;
