@@ -385,7 +385,7 @@ function step(s,dt){
 
   /* --- besoins --- */
   s.food  =clamp(s.food  -(sl?2.5:busy?10:7)*h);
-  s.energy=clamp(s.energy+(sl?(s.bedByPlayer?15:12):-(busy?9:5)-(s.lateNight?6:0))*h);
+  s.energy=clamp(s.energy+(sl?(s.bedByPlayer?(hourOf(t)>=8&&hourOf(t)<20?25:15):12):-(busy?9:5)-(s.lateNight?6:0))*h);
   s.moral =clamp(s.moral -(sl?0.8:s.phoneMode?1.5:DUTY?4:3)*h-(MIS&&!(t-(s._fam||0)<12*H)?1.2*h:0));
   s.tenue =clamp(s.tenue -(sl?0.5:busy?6:3)*(isRebel(s)?1.5:1)*h);
   s.forme =clamp(s.forme -0.4*h);
@@ -1190,6 +1190,7 @@ function openGuide(){
   sec('🏅 Médailles',`<div class="gmed">${Object.keys(MEDALS).map(k=>`<div>${medalSVG(k,34)}<span>${MEDALS[k][1]}</span></div>`).join('')}</div>`)+
   sec('⏰ Rythme et astuces',`<ul class="gnote" style="padding-left:18px;margin:6px 0">
     <li>Prise de service à <b>8 h 30</b> en semaine, <b>9 h 30</b> le week-end : les retards pèsent sur l'avancement.</li>
+    <li>Énergie en dormant : sieste en journée (8 h – 20 h) <b>+25/h</b>, nuit <b>+15/h</b>, endormi tout seul <b>+12/h</b>. Attention, toucher ⏰ le réveille !</li>
     <li>Le sport et une tenue impeccable donnent discipline <b>+3</b>.</li>
     <li>Le fast-food et les nuits blanches font baisser la forme et la santé.</li>
     <li>Reviens chaque jour pour l'ordre du jour et la question du jour (série de présence).</li></ul>`)+
