@@ -327,7 +327,7 @@ const FEM_RULES=[
 ];
 function femin(t){let x=String(t);for(const [r,v] of FEM_RULES)x=x.replace(r,v);return x;}
 function T(t){return S&&S.stage!=='egg'&&sexOf(S)==='F'?femin(t):t;}
-function nm(s){if(!s.name)return 'Ta recrue';if(s.stage==='autre'||(s.stage==='over'&&['boucle','condamne','range'].includes(s.end)))return 'Ex-GAV '+s.name;if(s.stage==='ecole'||s.stage==='choix')return 'Élève '+s.name;if(s.stage==='affect'||s.stage==='service'||(s.stage==='over'&&s.sub))return 'Gendarme '+s.name;return TITLES[s.rank||0]+' '+s.name;}
+function nm(s){if(!s.name)return 'Ta recrue';if(s.stage==='autre'||(s.stage==='over'&&['boucle','condamne','range'].includes(s.end)))return 'Ex-GAV '+s.name;if(s.stage==='ecole'||s.stage==='choix')return 'Élève '+s.name;if(s.stage==='affect'||s.stage==='service'||(s.stage==='over'&&s.sub))return STITLES[s.srank||0]+' '+s.name;return TITLES[s.rank||0]+' '+s.name;}
 function chevHTML(r){
   const v=(y,c)=>`<path d="M2 ${y} l6 4.4 l6 -4.4" stroke="#0b1024" stroke-width="4.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 ${y} l6 4.4 l6 -4.4" stroke="${c}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
   const B='#3d74ff',W='#ffffff';
@@ -465,6 +465,7 @@ function step(s,dt){
         log(s,`🏠 Retour de déplacement (${mi.n} — ${s.mission.place}). Repos bien mérité !`,'good',s.mission.until);s.lastMissionEnd=s.mission.until;s.missions=(s.missions||0)+1;s.mission=null;s.busyUntil=0;events.push('missionEnd');}
       else if(!s.mission&&t-(s.lastMissionEnd||0)>12*H){const hr=hourOf(t);if(hr>=6&&hr<22&&rnd(s)<h*0.035)startMission(s,t);}
     }
+    svcStep(s,t,dt);
     return;
   }
 
@@ -783,7 +784,7 @@ function outfitKey(s,opt){
   if(opt.gr)return 'gr';if(opt.mo)return 'mo';if(opt.gm)return 'gm';
   return 'polo';
 }
-function imgKeys(s,opt){const sx=sexOf(s)==='F'?'fille':'garcon',o=outfitKey(s,opt),L=[`${sx}_${o}`];if(opt.salute)L.unshift(`${sx}_salut`);if(o==='mo')L.push(`${sx}_gm`);return isRebel(s)?L.flatMap(b=>['rebelle_'+b,b]):L;}
+function imgKeys(s,opt){const sx=sexOf(s)==='F'?'fille':'garcon',o=outfitKey(s,opt),L=[`${sx}_${o}`];if(opt.salute){const sk=o==='polo'?`${sx}_salut`:`${sx}_${o}_salut`;if(SALUTE_OK.has(sk)||SALUTE_OK.has('rebelle_'+sk))L.unshift(sk);}if(s.stage==='service'&&s.spec&&!opt.salute){const pk=`${sx}_spec_${s.spec.toLowerCase()}`;if(SPEC_IMG.has(pk))L.unshift(pk);}if(o==='mo')L.push(`${sx}_gm`);return isRebel(s)?L.flatMap(b=>['rebelle_'+b,b]):L;}
 function charHTML(s,opt){
   const k=imgKeys(s,opt).find(x=>!IMG_MISSING[x]);
   if(!k)return gavSVG(s,opt);
@@ -798,6 +799,7 @@ function charHTML(s,opt){
   else if(sad)ov.push('<span class="ov" style="left:60%;top:4%">💧</span>');
   if(s.phoneMode&&!sl&&!cer)ov.push('<span class="ov" style="left:18%;top:40%">📱</span>');
   if(opt.mo&&/_gm$/.test(k))ov.push('<span class="ov" style="left:2%;top:34%;font-size:46px">🛡️</span><span class="ov" style="left:56%;top:-2%;font-size:30px">🪖</span>');
+  if(s.stage==='service'&&s.spec&&SPECS[s.spec]&&!sl)ov.push(`<span class="ov" style="left:4%;top:62%;font-size:26px">${SPECS[s.spec].e}</span>`);
   if(s.tenue<30&&!cer)ov.push('<span class="ov" style="left:38%;top:44%;font-size:16px;opacity:.85">🟤</span>');
   return `<div class="sprite"><div class="shadow"></div><img alt="" src="${src}" style="transform:scaleX(${(1+fat*.12).toFixed(3)});${f.length?'filter:'+f.join(' ')+' drop-shadow(0 4px 3px rgba(0,0,0,.25))':''}" onerror="window.__imgMiss&&window.__imgMiss('${k}')">${ov.join('')}</div>`;
 }
@@ -1032,11 +1034,11 @@ function render(){
   $('clock').innerHTML=`<b>${DAYS[d.getDay()]} ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</b><br>${slot}`;
 
   // personnage
-  const SAL=st==='gav'&&!s.sleeping&&(s.saluteUntil||0)>s.t;
+  const SAL=(st==='gav'||st==='service')&&!s.sleeping&&(s.saluteUntil||0)>s.t&&!!saluteKey(s);
   const look=[SAL,st,CTX,s.sub,AUT&&s.gavUntil>s.t,s.sleeping,s.sick,busy,s.phoneMode,s.food<25||s.moral<30||s.energy<20||s.motiv<30,s.tenue<30,Math.round(clamp((55-s.forme)/55+s.malbouffe*0.08,0,1)*5),st==='gav'?gradeIdx(s):0,st==='egg'?[Math.floor(s.hatch/33),s.warmth>=50,s.hatch>80,Math.round(s.warmth/10)]:''].join('|');
   if(look!==lastLook){
     lastLook=look;
-    const OPT=(st==='choix'||st==='affect')?{ceremony:true}:st==='service'?{gr:CTX==='grDuty',gm:CTX==='gmHome'||CTX==='gm_mo',mo:CTX==='gm_mo'}:SAL?{salute:true}:{};
+    const OPT=(st==='choix'||st==='affect')?{ceremony:true}:st==='service'?{gr:CTX==='grDuty',gm:CTX==='gmHome'||CTX==='gm_mo',mo:CTX==='gm_mo',salute:SAL}:SAL?{salute:true}:{};
     $('petInner').innerHTML=st==='egg'?eggSVG(s):charHTML(s,OPT);
     $('petInner').className=st==='egg'?'':s.sleeping?'breathe':st==='over'?'':'bob';
   }
@@ -1110,7 +1112,7 @@ function renderActions(){
   const ready=st==='gav'&&criteria(s).every(c=>c[1])&&s.t>=s.concoursCd;
   const boardOpen=st==='gav'&&s.board&&s.board.until>s.t;
   const CTX=ctxOf(s);
-  const key=[st,s.end,s.gavUntil>s.t,(s.casier||0)>=75,s.motiv<50,s.energy<30,(s.discr||0)<30,s.sub,CTX,s.mission&&s.mission.type,z,busy,s.sick,ready,!!boardOpen,s.food<25,s.moral<30,s.tenue<30,s.motiv<30,s.forme<40].join('|');
+  const key=[s.spec,s.opj,s.sboard&&s.sboard.until>s.t,st,s.end,s.gavUntil>s.t,(s.casier||0)>=75,s.motiv<50,s.energy<30,(s.discr||0)<30,s.sub,CTX,s.mission&&s.mission.type,z,busy,s.sick,ready,!!boardOpen,s.food<25,s.moral<30,s.tenue<30,s.motiv<30,s.forme<40].join('|');
   if(key===actKey)return;actKey=key;
   if(st==='egg'){el.className='actions one';el.innerHTML=`<button class="act big" data-a="warm"><span class="e">🔥</span>Couver</button>`;return;}
   if(st==='over'&&s.end==='tuteur'){el.className='actions one';el.innerHTML=`<div class="row"><button class="primary" style="background:#2a2a33" data-a="autreOui">🖤 Oui</button><button class="primary" data-a="restart">🥚 Non, nouvelle partie</button></div>`;return;}
@@ -1128,16 +1130,18 @@ function renderActions(){
     const dis=(c)=>c?'disabled':'';el.className='actions';
     const B=(a,e,l,al,d)=>`<button class="act ${al?'alert':''}" data-a="${a}" ${dis(d)}><span class="e">${e}</span>${l}</button>`;
     const sleepB=B('sleep',z?'⏰':'🛏️',z?'Réveiller':(CTX.startsWith('gm_')?'Repos':'Coucher'),0,busy);
-    const common=[B('talk','💬','Entretien',s.motiv<30,z||busy),B('heal','💊','Infirmerie',s.sick,z||busy),B('dossier','📁','Dossier',0,0)];
+    const SP=s.spec&&SPECS[s.spec],spB=SP?B('specAct',SP.act[0],SP.act[1],0,z||busy||!!s.mission):'',enqB=s.opj&&CTX==='gd'?B('enquete','🔎','Enquête',0,z||busy):'';
+    const common=[B('carriere','🎓','Carrière',!!(s.sboard&&s.sboard.until>s.t),0),B('talk','💬','Entretien',s.motiv<30,z||busy),B('heal','💊','Infirmerie',s.sick,z||busy),B('dossier','📁','Dossier',0,0)];
     let L=[];
     if(CTX==='grDuty')L=[B('impassible','😐','Impassible',0,0),B('rectif','🧍','Rectifier la position',s.tenue<40,0),B('releve','🔁','Demander la relève',s.food<20||s.sick,0),B('dossier','📁','Dossier',0,0)];
-    else if(CTX==='grOff')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,B('wash','✨','Astiquer la tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('fun','🎉','Détente',s.moral<30,z),...common];
-    else if(CTX==='gd')L=[B('eat','🍽️','Manger',s.food<25,z||busy),sleepB,B('wash','🚿','Tenue',s.tenue<30,z||busy),B('sport','🏃','Sport',s.forme<40,z||busy),B('instr','📘','Instruction',0,z||busy),B('patrol','🚓','Patrouille',0,z||busy),B('fun','🎉','Détente',s.moral<30,z||busy),...common];
-    else if(CTX==='gmHome')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,B('wash','🚿','Tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('training','🛡️','Entraînement MO',0,z),B('fun','🎉','Détente',s.moral<30,z),...common];
+    else if(CTX==='grOff')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,B('wash','✨','Astiquer la tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('instr','📘','Instruction',0,z),spB,B('fun','🎉','Détente',s.moral<30,z),...common];
+    else if(CTX==='gd')L=[B('eat','🍽️','Manger',s.food<25,z||busy),sleepB,B('wash','🚿','Tenue',s.tenue<30,z||busy),B('sport','🏃','Sport',s.forme<40,z||busy),B('instr','📘','Instruction',0,z||busy),B('patrol','🚓','Patrouille',0,z||busy),enqB,spB,B('fun','🎉','Détente',s.moral<30,z||busy),...common];
+    else if(CTX==='gmHome')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,B('wash','🚿','Tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('training','🛡️','Entraînement MO',0,z),B('instr','📘','Instruction',0,z),spB,B('fun','🎉','Détente',s.moral<30,z),...common];
     else if(CTX==='gm_mo')L=[B('ligne','🛡️','Tenir la ligne',0,z),B('equip','🪖','Équipement',s.tenue<30,z),B('ration','🥫','Ration',s.food<25,z),sleepB,B('famille','📞','Appeler la famille',s.moral<30,z),...common];
     else if(CTX==='gm_om')L=[B('patrol','🛶','Patrouille',0,z||busy),B('hydrate','💧','S\'hydrater',s.energy<30,z||busy),B('ration','🥫','Ration',s.food<25,z||busy),sleepB,B('famille','📞','Appeler la famille',s.moral<30,z||busy),...common];
     else if(CTX==='gm_rf')L=[B('patrol','🚓','Patrouille',0,z||busy),B('eat','🍽️','Manger',s.food<25,z||busy),B('wash','🚿','Tenue',s.tenue<30,z||busy),sleepB,B('famille','📞','Appeler la famille',s.moral<30,z||busy),...common];
-    el.innerHTML=L.join('');return;
+    const sbo=s.sboard&&s.sboard.until>s.t?`<button class="primary gold" style="grid-column:1/-1" data-a="sboard">🎖️ Commission d'avancement : ${SGRADES[s.sboard.k]}</button>`:'';
+    el.innerHTML=sbo+L.filter(Boolean).join('');return;
   }
   if(st==='ecole'){
     const dis=(c)=>c?'disabled':'';el.className='actions';
@@ -1186,6 +1190,11 @@ function openGuide(){
   sec('📝 Concours sous-officier (fin de GAV)',tb(['Critère','Minimum'],[['Ancienneté',REQ.days+' jours'],['Révisions',REQ.comp],['Condition physique',REQ.forme],['Motivation',REQ.motiv],['Discipline',REQ.disc]]))+
   sec('🏫 École de sous-officiers',`<p>Durée : <b>${SCHOOL_DAYS} jours</b>. Pour <b>choisir</b> sa subdivision (GD, GM ou GR), tous les critères doivent être atteints à la sortie. Sinon, l'affectation est imposée (souvent la Garde républicaine).</p>`+
     tb(['Critère','Minimum'],[['Droit & procédure',SCHOOL_REQ.droit],['Tir',SCHOOL_REQ.tir],['Ordre serré',SCHOOL_REQ.ordre],['Condition physique',SCHOOL_REQ.forme],['Discipline',SCHOOL_REQ.disc]]))+
+  sec('🎓 Avancement en unité',`<p>Une commission tous les <b>${SBOARD_EVERY} jours</b> après l'affectation, ouverte <b>${SBOARD_HOURS} h</b>. Les instructions (📘) réussies sont comptées au total depuis l'affectation.</p>`+
+    tb(['Grade','Exp.','Disc.','Motiv.','Forme','Instr.','Ret.'],[1,2,3].map(k=>{const c=SPROMO[k];return [SGRADES[k],c.exp,c.disc,c.motiv,dash(c.forme),c.instr,c.ret];})))+
+  sec('⭐ Spécialités & OPJ',`<p>Depuis 🎓 Carrière. Une seule spécialité par carrière, ${SPEC_DAYS_MIN} jours d'ancienneté minimum. En cas d'échec à une sélection : nouvelle tentative 24 h plus tard.</p>`+
+    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':' rép.'})`).join(' + ')]))+
+    `<p class="gnote">⚖️ <b>OPJ</b> (GD) : ${SGRADES[OPJ_REQ.srank]} minimum, expérience ${OPJ_REQ.exp}, ${OPJ_REQ.instr} instructions réussies. Examen de 10 questions de procédure pénale, 7 bonnes réponses pour réussir (sinon 48 h d'attente). Débloque 🔎 Enquête.</p>`)+
   sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
     tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
     `<p class="gnote">Bon tuteur : 5/5 alors que ton binôme fait 1 ou moins = discipline +3.</p>`)+
@@ -1261,6 +1270,10 @@ function act(a){
     const day=new Date(s.t).toDateString();
     if(s.releveDay===day)return toast('Une seule relève par jour : il doit tenir son poste jusqu\'à 18 h 30.');
     s.releveDay=day;s.releveUntil=s.t+20*M;log(s,'🔁 Relève exceptionnelle de 20 minutes accordée : vite, manger, boire, souffler !','good');toast('Relève accordée : 20 minutes, pas une de plus !');lastLook='';actKey='';break;}
+  case 'carriere':return openCarriere();
+  case 'sboard':return openSBoard();
+  case 'specAct':return specAction();
+  case 'enquete':return enquete();
   case 'instr':
     if(s.energy<15)return toast('Il est trop fatigué pour l\'instruction.');
     return instrGD();
@@ -1393,6 +1406,9 @@ function act(a){
 function option(o){
   const [k,v]=o.split(':');const s=S;tick();
   if(k==='close'){closeSheet();return;}
+  if(k==='spromote')return doSPromote();
+  if(k==='opjExam')return opjExam();
+  if(k==='specTry')return specTry(v);
   if(k==='daily'){openDaily();return;}
   if(k==='chest'){openChest();return;}
   if(k==='qday'){openQDay();return;}
@@ -1526,7 +1542,7 @@ function instrGD(){
   $('panel').querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>{
     const i=+b.dataset.q,ok=i===q.c;tick();
     $('panel').querySelectorAll('[data-q]').forEach((x,j)=>{x.disabled=true;if(j===q.c)x.classList.add('right');else if(j===i)x.classList.add('wrong');});
-    if(ok)dailyEvent(s,'quizok');s.exp=clamp((s.exp||0)+(ok?6:2));s.energy=clamp(s.energy-6);if(ok){s.disc=clamp(s.disc+1);s.motiv=clamp(s.motiv+1);}
+    if(ok){dailyEvent(s,'quizok');s.instrOk=(s.instrOk||0)+1;}s.exp=clamp((s.exp||0)+(ok?6:2));s.energy=clamp(s.energy-6);if(ok){s.disc=clamp(s.disc+1);s.motiv=clamp(s.motiv+1);}
     log(s,ok?'📘 Instruction : bonne réponse, il maîtrise ses textes.':'📘 Instruction : erreur, il relit ses fiches.',ok?'good':'');save();render();
     setTimeout(()=>{$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:4px">${ok?'✅ Bonne réponse ! Expérience +6':'❌ Raté… Expérience +2'}</p><button class="primary" data-o="close">Continuer</button>`);},250);
   }));
@@ -1652,6 +1668,7 @@ function handleEvents(){
   if(ev.includes('hatch')){fx('✨',5);lastLook='';actKey='';if(!S.name)setTimeout(askName,500);}
   if(ev.includes('grade'))toast(`🎖️ ${nm(S)} est promu ${GRADES[gradeIdx(S)]} !`);
   if(ev.includes('board')){toast("🎖️ Commission d'avancement ouverte : 24 h pour le présenter !");actKey='';}
+  if(ev.includes('sboard')){toast("🎖️ Commission d'avancement en unité : 48 h pour le présenter !");actKey='';}
   if(ev.includes('boardmiss')){toast("📋 Commission d'avancement manquée…");actKey='';}
   if(ev.includes('late'))toast('😬 Il est arrivé en retard au service !');
   if(ev.includes('junk'))toast('🍔 Il s\'est commandé de la malbouffe…');
@@ -1732,6 +1749,7 @@ function medalSVG(k,size=56,locked=false){
   const ink=a.m==='blue'?'#fff':d,t=a.t||'';
   const sym={
    n:`<text x="32" y="${t.length>1?54:55}" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="${t.length>1?17:20}" fill="${ink}">${t}</text>`,
+   txt:`<text x="32" y="${t.length>3?50.5:51.5}" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="${t.length>4?8:t.length>3?9.5:t.length>2?11.5:14}" fill="${ink}">${t}</text>`,
    star:`<path d="M32 36l3.2 6.6 7.2 1-5.2 5 1.3 7.2L32 52.4l-6.5 3.4 1.3-7.2-5.2-5 7.2-1z" fill="${ink}"/>`,
    scroll:`<rect x="24" y="36" width="16" height="20" rx="2" fill="none" stroke="${ink}" stroke-width="2.4"/><path d="M28 42h8M28 46h8M28 50h5" stroke="${ink}" stroke-width="2" stroke-linecap="round"/>`,
    scroll2:`<rect x="24" y="36" width="16" height="20" rx="2" fill="none" stroke="${ink}" stroke-width="2.4"/><path d="M27.5 45l3 3 6-6.5" fill="none" stroke="${ink}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
@@ -1853,12 +1871,12 @@ const errFr=e=>{const m=String(e&&e.message||e);for(const k in ERR_FR)if(m.inclu
 function scoreOf(s){
   if(!s)return 0;const base={egg:0,gav:100,ecole:400,choix:600,affect:650,service:700,autre:300,over:0}[s.stage]||0;
   const days=s.born?Math.min(60,Math.floor((s.t-s.born)/D)):0;
-  return Math.round(base+(s.rank||0)*50+(s.exp||0)*3+days*5+((s.daily&&s.daily.streak)||0)*10);
+  return Math.round(base+(s.rank||0)*50+(s.srank||0)*60+(s.spec?80:0)+(s.opj?60:0)+(s.exp||0)*3+days*5+((s.daily&&s.daily.streak)||0)*10);
 }
 function phaseLabel(s){
   if(!s)return '';if(s.stage==='egg')return 'Œuf';if(s.stage==='gav')return 'GAV · '+GRADES[s.rank||0];
   if(s.stage==='ecole')return `École · jour ${Math.min(SCHOOL_DAYS,Math.floor((s.t-s.schoolStart)/D)+1)}/${SCHOOL_DAYS}`;
-  if(s.stage==='choix')return 'Fin d\'école';if(s.stage==='service')return SUBS[s.sub]?SUBS[s.sub].n:'En unité';
+  if(s.stage==='choix')return 'Fin d\'école';if(s.stage==='service')return (SUBS[s.sub]?s.sub:'Unité')+' · '+SGRADES[s.srank||0]+(s.spec&&SPECS[s.spec]?' · '+SPECS[s.spec].n:'')+(s.opj?' · OPJ':'');
   if(s.stage==='autre')return 'De l\'autre côté';return 'Partie terminée';
 }
 let hbBusy=false,lastHb=0,onlineN=null;
@@ -2136,6 +2154,217 @@ document.addEventListener('click',e=>{
   if(k==='play')return duoPlayId(a1);
   if(k==='decline')return rpc('duo_decline',{p_id:ME.id,p_secret:ME.secret,p_duo:+a1}).then(()=>{duoRefreshCount();loadDuo();}).catch(er=>toast(errFr(er)));
 });
+/* ======================= CARRIÈRE EN UNITÉ ======================= */
+const SGRADES=['Gendarme','Maréchal des logis-chef','Adjudant','Adjudant-chef'];
+const STITLES=['Gendarme','MDL-chef','Adjudant','Adjudant-chef'];
+const SBOARD_EVERY=7, SBOARD_HOURS=48;
+const SPROMO={1:{exp:30,disc:60,motiv:55,forme:0,instr:5,ret:2},2:{exp:60,disc:70,motiv:60,forme:55,instr:12,ret:1},3:{exp:90,disc:80,motiv:70,forme:60,instr:20,ret:0}};
+function spromoCrit(s,k){const c=SPROMO[k],r=s.retardsSince||0,e=s.exp||0,q=s.instrOk||0;return [
+  ['Expérience',e>=c.exp,`${Math.floor(e)} / ${c.exp}`],
+  ['Discipline',s.disc>=c.disc,`${Math.floor(s.disc)} / ${c.disc}`],
+  ['Motivation',s.motiv>=c.motiv,`${Math.floor(s.motiv)} / ${c.motiv}`],
+  ...(c.forme?[['Condition physique',s.forme>=c.forme,`${Math.floor(s.forme)} / ${c.forme}`]]:[]),
+  ['Instructions réussies (total)',q>=c.instr,`${q} / ${c.instr}`],
+  ['Retards depuis la dernière commission',r<=c.ret,`${r} (max ${c.ret})`]];}
+function svcStep(s,t,dt){
+  if(s.sboard&&t+dt>=s.sboard.until){
+    log(s,`📋 Commission d'avancement close : il n'a pas été présenté au grade de ${SGRADES[s.sboard.k]}. Prochaine commission dans une semaine.`,'bad',s.sboard.until);
+    s.sboard=null;s.retardsSince=0;s.motiv=clamp(s.motiv-5);events.push('boardmiss');}
+  const P=SBOARD_EVERY*D,n=Math.floor((t+dt-s.serviceStart)/P),pv=Math.floor((t-s.serviceStart)/P);
+  if(n>pv&&n>=1&&(s.srank||0)<3&&!s.sboard){const nk=(s.srank||0)+1,x=s.serviceStart+n*P;
+    s.sboard={k:nk,until:x+SBOARD_HOURS*H};log(s,`📋 Commission d'avancement en unité ouverte ! 48 h pour le présenter au grade de ${SGRADES[nk]}.`,'good',x);events.push('sboard');}
+}
+function openSBoard(){
+  const s=S;if(!s.sboard||s.sboard.until<=s.t)return toast("Pas de commission d'avancement en cours.");
+  const k=s.sboard.k,c=spromoCrit(s,k),ok=c.every(x=>x[1]);
+  sheet(`<h3>🎖️ Commission d'avancement</h3><p>Présenter ${esc(nm(s))} au grade de <b>${SGRADES[k]}</b>. Il reste ${fmtDur(s.sboard.until-s.t)}.</p>
+    <div>${c.map(x=>`<div class="crit"><span>${x[1]?'✅':'❌'}</span><span>${x[0]}</span><span>${x[2]}</span></div>`).join('')}</div>
+    ${ok?`<button class="primary gold" data-o="spromote">Le présenter à la commission</button>`:`<p>Les conditions ne sont pas encore réunies. Il reste du temps avant la clôture !</p>`}
+    <button class="cancel" data-o="close">Fermer</button>`);
+}
+function doSPromote(){
+  const s=S;if(!s.sboard||s.sboard.until<=s.t||!spromoCrit(s,s.sboard.k).every(x=>x[1])){closeSheet();return toast('Trop tard ou conditions non remplies.');}
+  const k=s.sboard.k;s.srank=k;s.sboard=null;s.retardsSince=0;s.motiv=clamp(s.motiv+10);s.moral=clamp(s.moral+15);s.saluteUntil=s.t+5*M;
+  log(s,`🎖️ Promu ${SGRADES[k]} par la commission d'avancement !`,'good');if(k===3)addMedal(s,'adc');
+  const sk=saluteKey(s);
+  sheet(`<h3>🎖️ Félicitations !</h3>${sk?`<div style="text-align:center"><img src="${IMG_INLINE[sk]||'perso/'+sk+'.png'}" alt="" style="height:210px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));animation:salIn .7s ease"></div>`:''}<p>${esc(s.name||'Ta recrue')} est promu <b>${SGRADES[k]}</b>.${k===3?' Le sommet de la carrière de sous-officier !':''} Motivation et moral en hausse.</p><button class="primary" data-o="close">Bravo !</button>`,true);
+  fx('🎖️',4);lastLook='';actKey='';save();render();
+}
+/* images de salut disponibles (ajouter ici les nouvelles tenues) */
+const SALUTE_OK=new Set(['fille_salut','garcon_salut','rebelle_fille_salut','rebelle_garcon_salut']);
+const SPEC_IMG=new Set([]);
+function saluteKey(s){const C=ctxOf(s),L=imgKeys(s,s.stage==='service'?{gr:C==='grDuty',gm:C==='gmHome'||C==='gm_mo',mo:C==='gm_mo',salute:true}:{salute:true});return L.find(k=>SALUTE_OK.has(k))||null;}
+
+/* ---- spécialités ---- */
+const SPECS={
+ PSIG:{sub:'GD',e:'⚡',n:'PSIG',d:'Peloton de surveillance et d\'intervention : nuits, flagrants délits, interpellations.',req:{forme:65,disc:60,exp:20},
+   tests:[['tap',95,'Parcours d\'obstacles'],['cibles',7,'Tir de précision']],act:['🚨','Intervention PSIG'],
+   lines:[['Cambriolage en cours : les auteurs interpellés en flagrant délit.','great'],['Rodéo urbain stoppé sans casse.','good'],['Patrouille de nuit : RAS, mais présence remarquée.','mid'],['Rixe devant un bar : calme ramené en deux minutes.','good']]},
+ PMO:{sub:'GD',e:'🏍️',n:'Motocycliste (PMO)',d:'Peloton motorisé : sécurité routière, escortes, contrôles sur les grands axes.',req:{disc:60,exp:20},
+   tests:[['quiz',4,'Code de la route','gd'],['tap',80,'Maniabilité moto']],act:['🏍️','Mission moto'],
+   lines:[['Grand excès de vitesse intercepté : permis retenu.','good'],['Escorte d\'un convoi exceptionnel sans incident.','good'],['Contrôle d\'alcoolémie : deux conducteurs positifs.','great'],['Journée pluvieuse en selle… mais aucun accident.','mid']]},
+ K9:{sub:'GD',e:'🐕',n:'Maître-chien',d:'Équipe cynophile : recherche de stupéfiants, pistage, recherche de personnes.',req:{moral:55,disc:55,exp:15},
+   tests:[['tap',75,'Éducation du chien'],['quiz',3,'Connaissances','all']],act:['🐕','Sortie cynophile'],
+   lines:[['Le chien marque un véhicule : 300 g de résine saisis.','great'],['Pistage réussi : un randonneur égaré retrouvé.','great'],['Séance d\'entraînement : le chien progresse.','mid'],['Fouille d\'un hall : rien, mais effet dissuasif.','good']]},
+ CYBER:{sub:'GD',e:'💻',n:'Enquêteur cyber',d:'Enquêtes numériques : escroqueries en ligne, exploitation de téléphones.',req:{exp:30,motiv:55},
+   tests:[['quiz',4,'Procédure pénale','cpp'],['quiz',3,'Organisation & textes','all']],act:['💻','Analyse numérique'],
+   lines:[['Téléphone exploité : le réseau d\'escrocs identifié.','great'],['Faux site de vente démasqué et signalé.','good'],['Longue extraction de données… à suivre demain.','mid'],['Victime d\'arnaque au faux conseiller aidée et conseillée.','good']]},
+ MONT:{sub:'GD',e:'🏔️',n:'Montagne (PGHM)',d:'Secours en montagne : sauvetages, hélitreuillages, enquêtes sur les accidents.',req:{forme:70,moral:55,exp:20},
+   tests:[['tap',105,'Ascension chronométrée'],['quiz',3,'Connaissances','all']],act:['🏔️','Secours en montagne'],
+   lines:[['Alpiniste blessé hélitreuillé à 3 000 m.','great'],['Randonneurs bloqués ramenés avant la nuit.','great'],['Entraînement en paroi par grand froid.','mid'],['Prévention au départ des sentiers.','good']]},
+ GIGN:{sub:'GM',e:'🦅',n:'GIGN',d:'Groupe d\'intervention : la sélection la plus dure de la gendarmerie.',req:{forme:75,disc:75,exp:35,srank:1},
+   tests:[['tap',110,'Épreuves physiques'],['cibles',8,'Tir de combat'],['quiz',4,'Sang-froid & connaissances','all']],act:['🦅','Entraînement GIGN'],
+   lines:[['Exercice de libération d\'otages : chrono record.','great'],['Séance de tir dynamique parfaite.','good'],['Entraînement à la corde sous la pluie.','mid'],['Intervention réelle : forcené maîtrisé sans blessé.','great']]},
+ GRMOTO:{sub:'GR',e:'🏍️',n:'Escadron motocycliste',d:'Escortes présidentielles et officielles à moto.',req:{disc:65,exp:20},
+   tests:[['quiz',4,'Code de la route','gd'],['tap',80,'Maniabilité moto']],act:['🏍️','Escorte officielle'],
+   lines:[['Escorte présidentielle : formation parfaite.','great'],['Cortège d\'un chef d\'État étranger escorté.','good'],['Répétition des figures du 14 Juillet.','mid'],['Escorte d\'un ministre sous la pluie.','good']]},
+ CAV:{sub:'GR',e:'🐎',n:'Cavalerie',d:'Régiment de cavalerie : patrouilles équestres et honneurs.',req:{forme:60,disc:65,exp:15},
+   tests:[['tap',85,'Équitation'],['cibles',6,'Précision au sabre']],act:['🐎','Sortie à cheval'],
+   lines:[['Patrouille équestre dans le bois : les promeneurs ravis.','good'],['Carrousel répété à la perfection.','great'],['Pansage et soins du cheval.','mid'],['Haie d\'honneur à cheval pour une visite officielle.','great']]},
+ MUS:{sub:'GR',e:'🎺',n:'Musique de la Garde',d:'Orchestre et fanfare de la Garde républicaine.',req:{moral:60,disc:60,exp:10},
+   tests:[['cibles',7,'Lecture rythmique'],['quiz',3,'Culture gendarmerie','all']],act:['🎺','Répétition / concert'],
+   lines:[['Concert à l\'Élysée : standing ovation.','great'],['Répétition générale réussie.','good'],['Gammes et partitions toute la journée.','mid'],['Cérémonie d\'hommage : aubade parfaite.','great']]},
+};
+const SPEC_DAYS_MIN=3;
+{const RB={GD:['#1b3a8c','#fff','#1b3a8c'],GM:['#c8102e','#1b3a8c','#c8102e'],GR:['#c8102e','#f3c74b','#c8102e']},TX={PSIG:'PSIG',PMO:'PMO',K9:'K9',CYBER:'CYBER',MONT:'PGHM',GIGN:'GIGN',GRMOTO:'MOTO',CAV:'CAV',MUS:'MUS'};
+ for(const [k,sp] of Object.entries(SPECS)){MEDALS['spec_'+k]=[sp.e,'Spécialité '+sp.n];MEDAL_ART['spec_'+k]={m:k==='GIGN'?'gold':'silver',r:RB[sp.sub],sym:'txt',t:TX[k]};}
+ MEDALS.opj=['⚖️','Officier de police judiciaire'];MEDAL_ART.opj={m:'gold',r:['#1b3a8c','#fff','#1b3a8c'],sym:'txt',t:'OPJ'};
+ MEDALS.affaires10=['🔎','10 affaires résolues'];MEDAL_ART.affaires10={m:'silver',r:['#5b3fa8','#f3c74b','#5b3fa8'],sym:'n',t:'10'};
+ MEDALS.specPro=['⭐','15 missions de spécialité'];MEDAL_ART.specPro={m:'gold',r:['#2e8b57','#fff','#2e8b57'],sym:'star'};
+ MEDALS.adc=['🎖️','Adjudant-chef'];MEDAL_ART.adc={m:'gold',r:['#7a1020','#f3c74b','#7a1020'],sym:'txt',t:'ADC'};}
+function specReqList(s,sp){const r=sp.req,L=[];
+  for(const [k,lab] of [['forme','Condition physique'],['disc','Discipline'],['motiv','Motivation'],['moral','Moral'],['exp','Expérience']])if(r[k])L.push([lab,(s[k]||0)>=r[k],`${Math.floor(s[k]||0)} / ${r[k]}`]);
+  if(r.srank)L.push(['Grade minimum',(s.srank||0)>=r.srank,SGRADES[r.srank]]);
+  const d=Math.floor((s.t-s.serviceStart)/D);L.push(['Ancienneté en unité',d>=SPEC_DAYS_MIN,`${d} / ${SPEC_DAYS_MIN} j`]);return L;}
+const OPJ_REQ={exp:35,instr:8,srank:1};
+function opjReqList(s){return [['Expérience',(s.exp||0)>=OPJ_REQ.exp,`${Math.floor(s.exp||0)} / ${OPJ_REQ.exp}`],['Instructions réussies',(s.instrOk||0)>=OPJ_REQ.instr,`${s.instrOk||0} / ${OPJ_REQ.instr}`],['Grade minimum',(s.srank||0)>=OPJ_REQ.srank,SGRADES[OPJ_REQ.srank]]];}
+
+function openCarriere(){
+  const s=S;if(s.stage!=='service')return;
+  const row=x=>`<div class="crit"><span>${x[1]?'✅':'❌'}</span><span>${x[0]}</span><span>${x[2]}</span></div>`;
+  const nextB=s.sboard&&s.sboard.until>s.t?`<b>ouverte</b> (${SGRADES[s.sboard.k]}) — encore ${fmtDur(s.sboard.until-s.t)}`:(s.srank||0)>=3?'grade maximum atteint':`dans ${fmtDur(SBOARD_EVERY*D-((s.t-s.serviceStart)%(SBOARD_EVERY*D)))}`;
+  let html=`<h3>🎓 Carrière — ${esc(nm(s))}</h3>
+   <div class="crit"><span>🎖️</span><span>Grade</span><span>${SGRADES[s.srank||0]}</span></div>
+   <div class="crit"><span>📋</span><span>Prochaine commission</span><span>${nextB}</span></div>
+   <div class="crit"><span>📘</span><span>Instructions réussies</span><span>${s.instrOk||0}</span></div>`;
+  if(s.sboard&&s.sboard.until>s.t)html+=`<button class="primary gold" data-a="sboard">🎖️ Voir la commission</button>`;
+  if(s.sub==='GD'){
+    html+=`<div class="sub" style="margin-top:10px">⚖️ Qualification OPJ</div>`;
+    if(s.opj)html+=`<p>✅ Officier de police judiciaire. Affaires résolues : <b>${s.affaires||0}</b>. Action « 🔎 Enquête » débloquée.</p>`;
+    else{const L=opjReqList(s),cd=(s.opjCd||0)>s.t;html+=L.map(row).join('')+(cd?`<p class="sub">Nouvelle tentative possible dans ${fmtDur(s.opjCd-s.t)}.</p>`:L.every(x=>x[1])?`<button class="primary" data-o="opjExam">📝 Passer l'examen OPJ (10 questions, 7 pour réussir)</button>`:'');}
+  }
+  html+=`<div class="sub" style="margin-top:10px">⭐ Spécialité</div>`;
+  if(s.spec){const sp=SPECS[s.spec];html+=`<p>${sp.e} <b>${sp.n}</b> — ${sp.d}<br>Action « ${sp.act[0]} ${sp.act[1]} » débloquée. Missions de spécialité : <b>${s.specN||0}</b>.</p>`;}
+  else{
+    html+=`<p style="font-size:13px">Choisis une spécialité et réussis sa sélection. Une seule spécialité par carrière.</p>`;
+    for(const [k,sp] of Object.entries(SPECS).filter(([,v])=>v.sub===s.sub)){
+      const L=specReqList(s,sp),ok=L.every(x=>x[1]),cd=(s.specCd&&s.specCd[k]||0)>s.t;
+      html+=`<details class="gsec"><summary>${sp.e} ${sp.n} ${ok&&!cd?'🟢':''}</summary><p>${sp.d}</p>${L.map(row).join('')}<p style="font-size:12.5px">Sélection : ${sp.tests.map(t=>t[2]).join(' → ')}</p>${cd?`<p class="sub">Nouvelle tentative dans ${fmtDur(s.specCd[k]-s.t)}.</p>`:ok?`<button class="primary" data-o="specTry:${k}">Tenter la sélection</button>`:''}</details>`;
+    }
+  }
+  html+=`<button class="cancel" data-o="close">Fermer</button>`;
+  sheet(html);
+}
+
+/* ---- moteur d'épreuves ---- */
+function runTests(title,tests,onEnd){
+  let i=0,res=[];
+  const next=()=>{if(i>=tests.length)return onEnd(res);const t=tests[i];
+    const done=(score,ok)=>{res.push({name:t[2],score,ok});i++;
+      $('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
+      $('tNext').onclick=next;};
+    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
+  next();
+}
+function testTap(title,t,done){
+  sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : tape le plus vite possible pendant 10 secondes. Objectif : ${t[1]}.</p><button class="tapzone" id="tap"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">10 s</small></button>`,true);
+  let n=0,left=10,run=false,fin=false,tm=0;
+  $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(fin)return;
+    if(!run){run=true;tm=setInterval(()=>{left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(tm);fin=true;$('tap').disabled=true;done(n,n>=t[1]);}},1000);}
+    n++;$('tapN').textContent=n;});
+}
+function testCibles(title,t,done){
+  sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : touche les 10 cibles avant qu'elles disparaissent. Objectif : ${t[1]}/10.</p>
+    <div id="range" style="position:relative;height:230px;border-radius:16px;background:linear-gradient(#41506b,#2a344a);overflow:hidden;touch-action:manipulation"></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="cN">Cible 0/10</span><span id="cH">0 touchée</span></div>`,true);
+  let n=0,hit=0;const R=$('range');
+  const spawn=()=>{if(n>=10){setTimeout(()=>done(hit,hit>=t[1]),300);return;}n++;$('cN').textContent=`Cible ${n}/10`;
+    const c=document.createElement('button'),sz=46;c.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;border-radius:50%;border:4px solid #fff;background:radial-gradient(circle,#e8414f 0 22%,#fff 23% 42%,#e8414f 43% 62%,#fff 63%);left:${8+Math.random()*78}%;top:${8+Math.random()*68}%;transform:translate(-50%,0);padding:0`;
+    let gone=false;const kill=()=>{if(gone)return;gone=true;c.remove();setTimeout(spawn,180);};
+    c.addEventListener('pointerdown',e=>{e.preventDefault();if(gone)return;hit++;$('cH').textContent=hit+' touchée'+(hit>1?'s':'');fx('🎯');kill();});
+    R.appendChild(c);setTimeout(kill,Math.max(650,1050-n*30));};
+  setTimeout(spawn,700);
+}
+function testQuiz(title,t,done){
+  const pool=t[3]==='cpp'?QUIZ_CPP:t[3]==='gd'?QUIZ_GD:QUIZ.concat(QUIZ_GD,QUIZ_CPP);
+  const qs=pool.slice().sort(()=>Math.random()-.5).slice(0,5);let i=0,sc=0;
+  const show=()=>{const q=qs[i];
+    sheet(`<h3>${title}</h3><p><b>${t[2]}</b> — question ${i+1}/5 (objectif ${t[1]}/5)</p><p>${esc(q.q)}</p>${q.a.map((a,j)=>`<button class="opt" data-tq="${j}">${esc(a)}</button>`).join('')}`,true);
+    $('panel').querySelectorAll('[data-tq]').forEach(b=>b.addEventListener('click',()=>{const j=+b.dataset.tq;
+      $('panel').querySelectorAll('[data-tq]').forEach((x,k)=>{x.disabled=true;if(k===q.c)x.classList.add('right');else if(k===j)x.classList.add('wrong');});
+      if(j===q.c)sc++;setTimeout(()=>{i++;if(i<5)show();else done(sc,sc>=t[1]);},800);}));};
+  show();
+}
+function specTry(k){
+  const s=S,sp=SPECS[k];tick();if(!sp||s.spec||s.sub!==sp.sub)return;
+  if(!specReqList(s,sp).every(x=>x[1]))return toast('Prérequis non remplis.');
+  if(s.sleeping||s.busyUntil>s.t||s.mission)return toast('Pas disponible pour le moment.');
+  if(s.energy<30)return toast('Il est trop fatigué pour une sélection.');
+  s.energy=clamp(s.energy-20);s.food=clamp(s.food-8);save();
+  runTests(`${sp.e} Sélection ${sp.n}`,sp.tests,res=>{
+    tick();const ok=res.every(r=>r.ok);
+    if(ok){s.spec=k;s.specN=0;s.motiv=clamp(s.motiv+15);s.moral=clamp(s.moral+15);s.disc=clamp(s.disc+5);addMedal(s,'spec_'+k);
+      log(s,`⭐ Sélection réussie : ${nm(s)} intègre la spécialité ${sp.n} !`,'good');fx(sp.e,4);
+      sheet(`<h3>⭐ Sélection réussie !</h3><div style="text-align:center">${medalSVG('spec_'+k,80)}</div><p>${esc(nm(s))} rejoint : <b>${sp.n}</b>. Nouvelle action : « ${sp.act[0]} ${sp.act[1]} ».</p><button class="primary" data-o="close">Génial !</button>`,true);}
+    else{s.specCd=s.specCd||{};s.specCd[k]=s.t+24*H;s.moral=clamp(s.moral-8);
+      log(s,`😓 Échec à la sélection ${sp.n}. Nouvelle tentative possible dans 24 h.`,'bad');
+      sheet(`<h3>😓 Sélection ratée</h3><p>${res.map(r=>`${r.ok?'✅':'❌'} ${r.name} : ${r.score}`).join('<br>')}</p><p>Il faudra retenter dans 24 h. Entraîne-le d'ici là !</p><button class="primary" data-o="close">Compris</button>`,true);}
+    lastLook='';actKey='';save();render();
+  });
+}
+function opjExam(){
+  const s=S;tick();if(s.opj||s.sub!=='GD')return;if(!opjReqList(s).every(x=>x[1]))return toast('Prérequis non remplis.');
+  if(s.sleeping||s.busyUntil>s.t)return toast('Pas disponible pour le moment.');
+  if(s.energy<25)return toast('Il est trop fatigué pour un examen.');
+  s.energy=clamp(s.energy-15);save();
+  const qs=QUIZ_CPP.slice().sort(()=>Math.random()-.5).slice(0,10);let i=0,sc=0;
+  const show=()=>{const q=qs[i];
+    sheet(`<h3>⚖️ Examen OPJ — ${i+1}/10</h3><p>${esc(q.q)}</p>${q.a.map((a,j)=>`<button class="opt" data-oq="${j}">${esc(a)}</button>`).join('')}<p class="sub">Score : ${sc}/${i} · il faut 7/10</p>`,true);
+    $('panel').querySelectorAll('[data-oq]').forEach(b=>b.addEventListener('click',()=>{const j=+b.dataset.oq;
+      $('panel').querySelectorAll('[data-oq]').forEach((x,k)=>{x.disabled=true;if(k===q.c)x.classList.add('right');else if(k===j)x.classList.add('wrong');});
+      if(j===q.c)sc++;setTimeout(()=>{i++;if(i<10)show();else fin();},800);}));};
+  const fin=()=>{tick();
+    if(sc>=7){s.opj=true;s.affaires=0;s.motiv=clamp(s.motiv+15);s.moral=clamp(s.moral+10);addMedal(s,'opj');log(s,`⚖️ Examen OPJ réussi (${sc}/10) : ${nm(s)} est officier de police judiciaire !`,'good');
+      sheet(`<h3>⚖️ Reçu à l'examen OPJ !</h3><div style="text-align:center">${medalSVG('opj',80)}</div><p>${sc}/10. Nouvelle action débloquée : « 🔎 Enquête ».</p><button class="primary" data-o="close">Bravo !</button>`,true);}
+    else{s.opjCd=s.t+48*H;s.moral=clamp(s.moral-8);log(s,`📕 Examen OPJ raté (${sc}/10). Nouvelle session dans 48 h.`,'bad');
+      sheet(`<h3>📕 Examen raté</h3><p>${sc}/10 (il fallait 7). Prochaine session dans 48 h : révise l'instruction d'ici là !</p><button class="primary" data-o="close">Compris</button>`,true);}
+    lastLook='';actKey='';save();render();};
+  show();
+}
+const AFFAIRES=['Cambriolage d\'une maison isolée','Vol de carburant sur un chantier','Escroquerie au faux placement','Violences lors d\'une soirée','Vol de véhicule retrouvé brûlé','Trafic de stupéfiants dans un village','Abus de confiance au préjudice d\'une personne âgée','Dégradations sur la mairie'];
+function enquete(){
+  const s=S;if(!s.opj)return;if(cool(s._enq||0,2))return toast(`L'enquête précédente est encore en cours (${fmtDur(2*H-(s.t-s._enq))}).`);
+  if(s.energy<15)return toast('Il est trop fatigué pour enquêter.');
+  const af=AFFAIRES[Math.floor(Math.random()*AFFAIRES.length)],q=QUIZ_CPP[Math.floor(Math.random()*QUIZ_CPP.length)];
+  sheet(`<h3>🔎 Enquête : ${af}</h3><p>Pour faire avancer la procédure, réponds juste :</p><p>${esc(q.q)}</p>${q.a.map((a,j)=>`<button class="opt" data-eq="${j}">${esc(a)}</button>`).join('')}`,true);
+  $('panel').querySelectorAll('[data-eq]').forEach(b=>b.addEventListener('click',()=>{const j=+b.dataset.eq,ok=j===q.c;tick();
+    $('panel').querySelectorAll('[data-eq]').forEach((x,k)=>{x.disabled=true;if(k===q.c)x.classList.add('right');else if(k===j)x.classList.add('wrong');});
+    s._enq=s.t;s.energy=clamp(s.energy-10);
+    if(ok){s.affaires=(s.affaires||0)+1;s.exp=clamp((s.exp||0)+8);s.motiv=clamp(s.motiv+4);s.moral=clamp(s.moral+4);log(s,`🔎 Affaire résolue : ${af}. Procédure impeccable, transmise au parquet.`,'good');if(s.affaires>=10)addMedal(s,'affaires10');}
+    else{s.exp=clamp((s.exp||0)+2);s.moral=clamp(s.moral-3);log(s,`🔎 ${af} : vice de procédure évité de justesse, le parquet demande des compléments.`,'');}
+    save();render();
+    setTimeout(()=>$('panel').insertAdjacentHTML('beforeend',`<p>${ok?'✅ Affaire résolue ! Expérience +8':'❌ Procédure à reprendre. Expérience +2'}</p><button class="primary" data-o="close">Continuer</button>`),300);}));
+}
+function specAction(){
+  const s=S,sp=SPECS[s.spec];if(!sp)return;
+  if(cool(s._spec||0,3))return toast(`Prochaine mission de spécialité dans ${fmtDur(3*H-(s.t-s._spec))}.`);
+  if(s.energy<20)return toast('Il est trop fatigué.');if(s.sick)return toast("Il est malade : direction l'infirmerie d'abord.");
+  const l=sp.lines[Math.floor(Math.random()*sp.lines.length)],g={great:[9,6,3],good:[6,4,2],mid:[3,0,1]}[l[1]];
+  s._spec=s.t;s.specN=(s.specN||0)+1;s.energy=clamp(s.energy-14);s.food=clamp(s.food-6);s.tenue=clamp(s.tenue-8);
+  s.exp=clamp((s.exp||0)+g[0]);s.moral=clamp(s.moral+g[1]);s.disc=clamp(s.disc+g[2]);s.motiv=clamp(s.motiv+2);
+  log(s,`${sp.act[0]} ${sp.n} : ${l[0]}`,l[1]==='mid'?'':'good');fx(sp.act[0],3);toast(`${sp.act[0]} ${l[0]} (expérience +${g[0]})`);
+  if(s.specN>=15)addMedal(s,'specPro');save();render();
+}
 function tick(){
   if(!S)return;
   const before=S.stage;simulate(S,Date.now());
