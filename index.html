@@ -161,7 +161,7 @@
     </div>
     <div class="row" style="align-items:center">
       <div class="badge" id="clock">—</div>
-      <button class="menu" data-a="daily" id="dailyBtn" style="position:relative">📅</button><button class="menu" data-a="menu">⚙️</button>
+      <button class="menu" id="casBtn" data-a="caserne" style="position:relative">👥</button><button class="menu" data-a="daily" id="dailyBtn" style="position:relative">📅</button><button class="menu" data-a="menu">⚙️</button>
     </div>
   </header>
   <div class="tri"></div>
@@ -1212,6 +1212,7 @@ function act(a){
   }
   if(CTX==='grDuty'&&!['impassible','rectif','releve','dossier','menu','restart'].includes(a))return toast('Impossible : il est en faction devant le palais. Il ne peut pas quitter son poste !');
   if(a==='daily')return openDaily();
+  if(a==='caserne')return openCaserne();
   switch(a){
   case 'impassible':
     if(s.sick)return toast('Il est malade… demande la relève.');
@@ -1752,6 +1753,124 @@ function openQDay(){
     setTimeout(()=>{$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:4px">${ok?'✅ Bravo ! Motivation +6 · Moral +5':'❌ Raté. Nouvelle question demain !'}</p><button class="primary" data-o="daily">Retour à l'ordre du jour</button>`);},250);
   }));
 }
+/* ======================= CASERNE EN LIGNE (Supabase) ======================= */
+const SB_URL='https://ztmiqzgmlbfqgcshfekh.supabase.co', SB_KEY='sb_publishable_aKa4TzpTYL3C25jzEwdhSQ_hKnOGeuf';
+const ID_KEY='gendargotchi-identite';
+let ME=null;try{ME=JSON.parse(localStorage.getItem(ID_KEY)||'null');}catch(e){}
+function saveMe(){try{localStorage.setItem(ID_KEY,JSON.stringify(ME));}catch(e){}}
+function rndHex(n){const a=new Uint8Array(n);(crypto&&crypto.getRandomValues)?crypto.getRandomValues(a):a.forEach((_,i)=>a[i]=Math.random()*256|0);return [...a].map(x=>x.toString(16).padStart(2,'0')).join('');}
+function newUuid(){if(crypto&&crypto.randomUUID)return crypto.randomUUID();const h=rndHex(16);return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-a${h.slice(17,20)}-${h.slice(20,32)}`;}
+async function sb(path,opt={}){
+  const r=await fetch(SB_URL+path,{method:opt.method||'GET',headers:Object.assign({'apikey':SB_KEY,'Content-Type':'application/json'},opt.headers||{}),body:opt.body?JSON.stringify(opt.body):undefined});
+  const txt=await r.text();let data=null;try{data=txt?JSON.parse(txt):null;}catch(e){data=txt;}
+  if(!r.ok){const m=(data&&data.message)||('Erreur '+r.status);throw new Error(m);}
+  return {data,headers:r.headers};
+}
+const rpc=(fn,args)=>sb('/rest/v1/rpc/'+fn,{method:'POST',body:args});
+const ERR_FR={pseudo_pris:'Ce pseudo est déjà pris.',pseudo_invalide:'Pseudo : 2 à 20 caractères.',trop_rapide:'Doucement ! Attends 10 secondes entre deux messages.',message_trop_long:'Message trop long (280 caractères max).',message_vide:'Message vide.',acces_refuse:'Identité non reconnue sur ce téléphone.'};
+const errFr=e=>{const m=String(e&&e.message||e);for(const k in ERR_FR)if(m.includes(k))return ERR_FR[k];return /fetch|NetworkError|Load failed/i.test(m)?'Connexion impossible (pas de réseau, ou version hors ligne).':m;};
+function scoreOf(s){
+  if(!s)return 0;const base={egg:0,gav:100,ecole:400,choix:600,affect:650,service:700,autre:300,over:0}[s.stage]||0;
+  const days=s.born?Math.min(60,Math.floor((s.t-s.born)/D)):0;
+  return Math.round(base+(s.rank||0)*50+(s.exp||0)*3+days*5+((s.daily&&s.daily.streak)||0)*10);
+}
+function phaseLabel(s){
+  if(!s)return '';if(s.stage==='egg')return 'Œuf';if(s.stage==='gav')return 'GAV · '+GRADES[s.rank||0];
+  if(s.stage==='ecole')return `École · jour ${Math.min(SCHOOL_DAYS,Math.floor((s.t-s.schoolStart)/D)+1)}/${SCHOOL_DAYS}`;
+  if(s.stage==='choix')return 'Fin d\'école';if(s.stage==='service')return SUBS[s.sub]?SUBS[s.sub].n:'En unité';
+  if(s.stage==='autre')return 'De l\'autre côté';return 'Partie terminée';
+}
+let hbBusy=false,lastHb=0,onlineN=null;
+async function heartbeat(force){
+  if(!ME||!ME.pseudo||hbBusy)return;if(!force&&Date.now()-lastHb<110000)return;
+  hbBusy=true;lastHb=Date.now();
+  try{
+    const s=S;await rpc('heartbeat',{p_id:ME.id,p_secret:ME.secret,p_recrue:s&&s.name?nm(s):'(œuf)',p_phase:phaseLabel(s),p_sub:s&&s.sub||null,p_score:scoreOf(s),p_streak:(s&&s.daily&&s.daily.streak)||0,p_best:(s&&s.daily&&s.daily.best)||0});
+    const since=new Date(Date.now()-10*M).toISOString();
+    const r=await sb(`/rest/v1/players?select=id&last_seen=gte.${since}`,{headers:{'Prefer':'count=exact','Range':'0-0'}});
+    const cr=r.headers.get('content-range');onlineN=cr?+cr.split('/')[1]:null;updCasBtn();
+  }catch(e){}
+  hbBusy=false;
+}
+function updCasBtn(){const b=$('casBtn');if(!b)return;b.innerHTML='👥'+(onlineN?`<span style="position:absolute;right:-4px;top:-4px;background:#2e8b57;color:#fff;border-radius:9px;font-size:10px;padding:1px 5px;font-weight:700">${onlineN}</span>`:'');}
+setInterval(()=>{if(!document.hidden)heartbeat();},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});
+
+let casTab='rank',casPoll=0;
+function casShell(inner){
+  $('panel').innerHTML=`<h3>🏰 La caserne</h3>
+    <div class="row">${[['rank','🏆 Classement'],['msg','💬 Messages'],['online','🟢 En ligne']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
+    <div id="casBody">${inner}</div>
+    <p style="font-size:11.5px">Connecté en tant que <b>${esc(ME&&ME.pseudo||'?')}</b> · <a href="#" data-cas="pseudo" style="color:var(--gold)">changer de pseudo</a></p>
+    <button class="cancel" data-cas="close">Fermer</button>`;
+  $('sheet').classList.remove('center');$('sheet').classList.add('show');
+}
+function ago(iso){const s=(Date.now()-new Date(iso).getTime())/1000;if(s<60)return 'à l\'instant';if(s<3600)return `il y a ${Math.floor(s/60)} min`;if(s<86400)return `il y a ${Math.floor(s/3600)} h`;return `il y a ${Math.floor(s/86400)} j`;}
+function openCaserne(tab){
+  if(tab)casTab=tab;clearInterval(casPoll);
+  if(!ME||!ME.pseudo)return askPseudo();
+  heartbeat(true);
+  casShell('<p>Chargement…</p>');
+  if(casTab==='rank')loadRank();else if(casTab==='online')loadOnline();else{loadMsgs();casPoll=setInterval(()=>{if($('sheet').classList.contains('show')&&$('msgList'))loadMsgs(true);else clearInterval(casPoll);},8000);}
+}
+function askPseudo(err){
+  $('panel').innerHTML=`<h3>🏰 La caserne</h3><p>Choisis ton pseudo pour apparaître dans le classement et discuter avec les autres joueurs.</p>
+    <p style="font-size:12.5px">Pseudo visible par tous les joueurs. Tu peux éviter ton vrai nom.</p>
+    <input type="text" id="pseudoIn" maxlength="20" placeholder="Ton pseudo" style="text-transform:none" value="${esc(ME&&ME.pseudo||'')}">
+    ${err?`<p style="color:#ffb3b3">${esc(err)}</p>`:''}
+    <button class="primary" data-cas="savePseudo">Valider</button><button class="cancel" data-cas="close">Plus tard</button>`;
+  $('sheet').classList.add('center');$('sheet').classList.add('show');
+  setTimeout(()=>{const i=$('pseudoIn');i&&i.focus();},100);
+}
+async function savePseudo(){
+  const v=($('pseudoIn').value||'').trim();if(v.length<2||v.length>20)return askPseudo('Pseudo : 2 à 20 caractères.');
+  if(!ME)ME={id:newUuid(),secret:rndHex(24)};
+  try{await rpc('register_player',{p_id:ME.id,p_secret:ME.secret,p_pseudo:v});ME.pseudo=v;saveMe();toast(`Bienvenue à la caserne, ${v} !`);openCaserne('rank');}
+  catch(e){askPseudo(errFr(e));}
+}
+async function loadRank(){
+  try{const {data}=await sb('/rest/v1/players?select=id,pseudo,recrue,phase,score,streak,last_seen&order=score.desc&limit=30');
+    const rows=data.map((p,i)=>`<div class="crit" style="grid-template-columns:28px 1fr auto;${p.id===ME.id?'background:#ffffff10;border-radius:8px':''}"><span>${i<3?['🥇','🥈','🥉'][i]:(i+1)+'.'}</span><span><b>${esc(p.pseudo)}</b><br><span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')} · 🔥${p.streak||0}</span></span><span style="color:var(--gold);font-weight:600">${p.score}</span></div>`).join('');
+    casShell(rows||'<p>Personne pour l\'instant.</p>');
+  }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
+}
+async function loadOnline(){
+  try{const since=new Date(Date.now()-D).toISOString();
+    const {data}=await sb(`/rest/v1/players?select=pseudo,recrue,phase,last_seen&last_seen=gte.${since}&order=last_seen.desc&limit=50`);
+    const on=data.filter(p=>Date.now()-new Date(p.last_seen)<10*M);
+    casShell(`<p>🟢 <b>${on.length}</b> en ligne maintenant · <b>${data.length}</b> joueur(s) actif(s) aujourd'hui</p>`+data.map(p=>`<div class="crit" style="grid-template-columns:20px 1fr auto"><span>${Date.now()-new Date(p.last_seen)<10*M?'🟢':'⚪'}</span><span><b>${esc(p.pseudo)}</b> <span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')}</span></span><span class="sub" style="font-size:12px">${ago(p.last_seen)}</span></div>`).join(''));
+  }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
+}
+let myAdmin=null;
+async function loadMsgs(refresh){
+  try{
+    if(myAdmin===null){try{const {data}=await sb(`/rest/v1/players?select=is_admin&id=eq.${ME.id}`);myAdmin=!!(data[0]&&data[0].is_admin);}catch(e){myAdmin=false;}}
+    const {data}=await sb('/rest/v1/messages?select=id,player_id,pseudo,body,created_at&order=created_at.desc&limit=40');
+    const list=data.slice().reverse().map(m=>`<div style="padding:7px 0;border-bottom:1px solid #ffffff10"><div style="display:flex;justify-content:space-between;gap:6px"><b style="color:${m.player_id===ME.id?'var(--gold)':'#9db4ff'}">${esc(m.pseudo)}</b><span class="sub" style="font-size:11.5px">${ago(m.created_at)}${(m.player_id===ME.id||myAdmin)?` <a href="#" data-del="${m.id}" style="color:#ffb3b3;text-decoration:none">🗑️</a>`:''}</span></div><div style="white-space:pre-wrap;word-break:break-word;font-size:14.5px;line-height:1.4">${esc(m.body)}</div></div>`).join('')||'<p>Aucun message. Lance la discussion !</p>';
+    if(refresh&&$('msgList')){const el=$('msgList'),atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<40;el.innerHTML=list;if(atBottom)el.scrollTop=el.scrollHeight;return;}
+    const draft=$('msgIn')?$('msgIn').value:'';
+    casShell(`<div style="font-size:12px;background:#b03a4833;border-radius:10px;padding:7px 10px">⚠️ Jeu uniquement : aucune information de service, aucun nom réel de victime ou de mis en cause. Reste courtois.</div>
+      <div id="msgList" style="max-height:42vh;overflow:auto;margin-top:6px">${list}</div>
+      <div class="row" style="margin-top:6px"><input type="text" id="msgIn" maxlength="280" placeholder="Ton message…" style="text-transform:none;font-size:16px"><button class="primary" style="width:auto;padding:12px 14px" data-cas="send">➤</button></div>`);
+    $('msgIn').value=draft;const el=$('msgList');el.scrollTop=el.scrollHeight;
+    $('msgIn').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
+  }catch(e){if(!refresh)casShell(`<p>${esc(errFr(e))}</p>`);}
+}
+async function sendMsg(){
+  const i=$('msgIn');if(!i)return;const v=i.value.trim();if(!v)return;
+  try{await rpc('post_message',{p_id:ME.id,p_secret:ME.secret,p_body:v});i.value='';loadMsgs(true);setTimeout(()=>{const el=$('msgList');if(el)el.scrollTop=el.scrollHeight;},300);}
+  catch(e){toast(errFr(e));}
+}
+document.addEventListener('click',e=>{
+  const c=e.target.closest('[data-cas]');const d=e.target.closest('[data-del]');
+  if(d){e.preventDefault();rpc('delete_message',{p_id:ME.id,p_secret:ME.secret,p_msg:+d.dataset.del}).then(()=>loadMsgs(true)).catch(er=>toast(errFr(er)));return;}
+  if(!c)return;e.preventDefault();const k=c.dataset.cas;
+  if(k==='close'){clearInterval(casPoll);closeSheet();return;}
+  if(k==='pseudo')return askPseudo();
+  if(k==='savePseudo')return savePseudo();
+  if(k==='send')return sendMsg();
+  openCaserne(k);
+});
 function tick(){
   if(!S)return;
   const before=S.stage;simulate(S,Date.now());
@@ -1811,6 +1930,7 @@ connect().then(res=>{
   const c=pick(S,remote);
   if(c===remote){start(remote);saveLocal();}else if(JSON.stringify(S)!==JSON.stringify(remote))saveRemote();
 });
+setTimeout(()=>heartbeat(true),3000);
 setInterval(()=>{if(S){tick();render();}},1000);
 })();
 </script>
