@@ -1233,7 +1233,7 @@ function act(a){
     return ligneGame(false);
   case 'equip':
     if(s.tenue>=95)return toast('Casque, bouclier, protections : tout est prêt.');
-    s.tenue=100;s.moral=clamp(s.moral+2);fx('🪖');toast('Équipement vérifié : casque, bouclier, jambières, masque.');break;
+    s.tenue=100;s.moral=clamp(s.moral+2);s.disc=clamp(s.disc+3);fx('🪖');toast('Équipement vérifié : casque, bouclier, jambières, masque (discipline +3).');break;
   case 'ration':
     if(s.food>=90)return toast("Il n'a plus faim !");
     s.food=clamp(s.food+32);s.moral=clamp(s.moral-2);fx('🥫');toast('Ration de combat avalée. Pas un repas étoilé…');break;
@@ -1262,7 +1262,7 @@ function act(a){
   case 'wash':
     if(refuses())return;
     if(s.tenue>=95)return toast('Il est déjà impeccable ✨');
-    dailyEvent(s,'wash');s.tenue=100;s.moral=clamp(s.moral+3);fx('🫧',4);fx('✨',2);toast(ECO?'Douche, treillis repassé, paquetage au carré 👌':'Douche, uniforme repassé, rangers cirées 👌');break;
+    dailyEvent(s,'wash');s.tenue=100;s.moral=clamp(s.moral+3);s.disc=clamp(s.disc+3);fx('🫧',4);fx('✨',2);toast(ECO?'Douche, treillis repassé, paquetage au carré 👌 (discipline +3)':'Douche, uniforme repassé, rangers cirées 👌 (discipline +3)');break;
   case 'sport':
     if(s.sick)return toast("Il est malade : direction l'infirmerie d'abord.");
     if(s.energy<20)return toast('Il est trop fatigué pour le sport.');
@@ -1407,9 +1407,9 @@ function sportGame(){
   function finish(){
     clearInterval(timer);tick();
     const gain=Math.min(22,Math.round(taps/3));
-    dailyEvent(s,'sport');s.forme=clamp(s.forme+gain);s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-25);s.food=clamp(s.food-8);s.moral=clamp(s.moral+5);s.motiv=clamp(s.motiv+2);s.lastSport=s.t;s.malbouffe=Math.max(0,s.malbouffe-.5);
-    log(s,`🏃 Séance de sport : ${taps} répétitions (forme +${gain}).`,'good');
-    sheet(`<h3>${taps>=60?'Performance de commando ! 💪':taps>=35?'Belle séance ! 👍':'Séance un peu molle… 😅'}</h3><p>${taps} répétitions · forme +${gain}. Pense à la douche après !</p><button class="primary" data-o="close">OK</button>`,true);
+    dailyEvent(s,'sport');s.forme=clamp(s.forme+gain);s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-25);s.food=clamp(s.food-8);s.moral=clamp(s.moral+5);s.motiv=clamp(s.motiv+2);s.disc=clamp(s.disc+3);s.lastSport=s.t;s.malbouffe=Math.max(0,s.malbouffe-.5);
+    log(s,`🏃 Séance de sport : ${taps} répétitions (forme +${gain}, discipline +3).`,'good');
+    sheet(`<h3>${taps>=60?'Performance de commando ! 💪':taps>=35?'Belle séance ! 👍':'Séance un peu molle… 😅'}</h3><p>${taps} répétitions · forme +${gain} · discipline +3. Pense à la douche après !</p><button class="primary" data-o="close">OK</button>`,true);
     save();render();
   }
 }
