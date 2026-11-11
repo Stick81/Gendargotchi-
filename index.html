@@ -118,6 +118,7 @@
   .crit span:last-child{color:var(--muted);font-size:13px}
   .tapzone{height:150px;border-radius:20px;background:linear-gradient(135deg,#e8414f,#f3964b);font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px}
   .tapzone:active{transform:scale(.97)}
+  #casBtn{position:relative}
   .tri{height:6px;border-radius:3px;background:linear-gradient(90deg,#2f5bd3 33%,#fff 33% 66%,#e8414f 66%)}
   .help{color:var(--muted);font-size:12.5px;text-align:center;line-height:1.4}
   .row{display:flex;gap:8px}
@@ -1792,14 +1793,14 @@ async function heartbeat(force){
   }catch(e){}
   hbBusy=false;
 }
-function updCasBtn(){const b=$('casBtn');if(!b)return;b.innerHTML='👥'+(onlineN?`<span style="position:absolute;right:-4px;top:-4px;background:#2e8b57;color:#fff;border-radius:9px;font-size:10px;padding:1px 5px;font-weight:700">${onlineN}</span>`:'');}
+let updCasBtn=function(){const b=$('casBtn');if(!b)return;b.innerHTML='👥'+(onlineN?`<span style="position:absolute;right:-4px;top:-4px;background:#2e8b57;color:#fff;border-radius:9px;font-size:10px;padding:1px 5px;font-weight:700">${onlineN}</span>`:'');};
 setInterval(()=>{if(!document.hidden)heartbeat();},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});
 
 let casTab='rank',casPoll=0;
 function casShell(inner){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3>
-    <div class="row">${[['rank','🏆 Classement'],['msg','💬 Messages'],['online','🟢 En ligne']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
+    <div class="row">${[['rank','🏆'],['duo','🤝 Binôme'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
     <div id="casBody">${inner}</div>
     <p style="font-size:11.5px">Connecté en tant que <b>${esc(ME&&ME.pseudo||'?')}</b> · <a href="#" data-cas="pseudo" style="color:var(--gold)">changer de pseudo</a> · <a href="#" data-cas="code" style="color:var(--gold)">🔑 mon code de récupération</a></p>
     <button class="cancel" data-cas="close">Fermer</button>`;
@@ -1811,7 +1812,7 @@ function openCaserne(tab){
   if(!ME||!ME.pseudo)return askPseudo();
   heartbeat(true);
   casShell('<p>Chargement…</p>');
-  if(casTab==='rank')loadRank();else if(casTab==='online')loadOnline();else{loadMsgs();casPoll=setInterval(()=>{if($('sheet').classList.contains('show')&&$('msgList'))loadMsgs(true);else clearInterval(casPoll);},8000);}
+  if(casTab==='rank')loadRank();else if(casTab==='duo')loadDuo();else if(casTab==='online')loadOnline();else{loadMsgs();casPoll=setInterval(()=>{if($('sheet').classList.contains('show')&&$('msgList'))loadMsgs(true);else clearInterval(casPoll);},8000);}
 }
 function askPseudo(err){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3><p>Choisis ton pseudo pour apparaître dans le classement et discuter avec les autres joueurs.</p>
@@ -1904,6 +1905,145 @@ document.addEventListener('click',e=>{
   if(k==='doRecover')return doRecover();
   if(k==='copyCode'){try{navigator.clipboard.writeText(fmtCode(ME.secret)).then(()=>toast('Code copié ✔'),()=>toast('Copie impossible : sélectionne le code et copie-le à la main.'));}catch(er){toast('Copie impossible : sélectionne le code et copie-le à la main.');}return;}
   openCaserne(k);
+});
+/* ======================= BINÔME EN DIFFÉRÉ ======================= */
+const DUO_SPORT_GOAL=220, DUO_SPORT_EXPLOIT=260;
+Object.assign(ERR_FR,{binome_soi_meme:'Tu ne peux pas faire équipe avec toi-même !',deja_fait_aujourdhui:'Vous avez déjà fait cette activité en binôme aujourd\'hui. Rendez-vous demain !',trop_d_invitations:'Trop d\'invitations en attente : attends que tes collègues répondent.',binome_expire:'Cette invitation a expiré (24 h).',binome_termine:'Ce binôme est déjà terminé.',deja_joue:'Tu as déjà fait ta part.',joueur_introuvable:'Joueur introuvable.'});
+MEDALS.duo10=['🤝','Binôme d\'enfer (10/10 à deux)'];MEDALS.duoSport=['💪','Binôme de choc (260 rép. à deux)'];
+DAILY_POOL.duo={l:'Faire une activité en binôme (👥)',g:1,ok:s=>!!(ME&&ME.pseudo)&&['gav','ecole','service'].includes(s.stage)};
+const duoOK=s=>s&&['gav','ecole','service'].includes(s.stage);
+let duoPendingN=0,lastDuoN=0;
+function duoQuestions(seed){
+  const pool=QUIZ.concat(QUIZ_GD,QUIZ_CPP),out=[];let x=seed>>>0;
+  while(out.length<5){x=(Math.imul(x,1664525)+1013904223)>>>0;const q=pool[x%pool.length];if(!out.includes(q))out.push(q);}
+  return out;
+}
+async function duoRefreshCount(){
+  if(!ME||!ME.pseudo)return;
+  try{const now=new Date().toISOString();
+    const {data}=await sb(`/rest/v1/duos?select=id&to_id=eq.${ME.id}&status=eq.pending&to_score=is.null&expires_at=gt.${now}`);
+    duoPendingN=data.length;
+    if(duoPendingN>lastDuoN)toast(`🤝 ${duoPendingN} invitation${duoPendingN>1?'s':''} en binôme t'attend${duoPendingN>1?'ent':''} dans la caserne !`);
+    lastDuoN=duoPendingN;updCasBtn();
+    duoApplyResults(true);
+  }catch(e){}
+}
+const _updCasBtn=updCasBtn;
+updCasBtn=function(){_updCasBtn();const b=$('casBtn');if(b&&duoPendingN)b.insertAdjacentHTML('beforeend','<span style="position:absolute;left:-4px;top:-4px;background:#f3c74b;color:#1b2547;border-radius:9px;font-size:10px;padding:1px 5px;font-weight:700">🤝</span>');};
+setInterval(()=>{if(!document.hidden)duoRefreshCount();},60000);
+setTimeout(duoRefreshCount,4000);
+
+/* applique une seule fois les résultats des binômes terminés */
+async function duoApplyResults(silent){
+  if(!ME||!ME.pseudo||!S||!duoOK(S))return;
+  try{
+    const since=new Date(Date.now()-7*D).toISOString();
+    const {data}=await sb(`/rest/v1/duos?select=*&status=eq.done&or=(from_id.eq.${ME.id},to_id.eq.${ME.id})&created_at=gte.${since}&order=created_at.desc`);
+    const s=S;s.duoDone=s.duoDone||[];if(!s.duoSince)s.duoSince=Date.now()-60000;let msgs=[];
+    for(const d of data){
+      if(s.duoDone.includes(d.id)||new Date(d.created_at).getTime()<s.duoSince)continue;s.duoDone.push(d.id);if(s.duoDone.length>80)s.duoDone.splice(0,s.duoDone.length-80);
+      const mine=d.from_id===ME.id?d.from_score:d.to_score,his=d.from_id===ME.id?d.to_score:d.from_score,mate=d.from_id===ME.id?d.to_pseudo:d.from_pseudo;
+      let txt='';
+      if(d.kind==='revision'){
+        const tot=mine+his;
+        if(tot>=6){s.motiv=clamp(s.motiv+12);s.moral=clamp(s.moral+6);
+          if(s.stage==='gav')s.comp=clamp(s.comp+8);else if(s.stage==='ecole')s.droit=clamp((s.droit||0)+6);else s.exp=clamp((s.exp||0)+6);
+          txt=`🤝 Révision en binôme avec ${mate} : ${tot}/10, la moyenne est atteinte ! Motivation +12.`;
+          if(tot===10){s.motiv=clamp(s.motiv+5);addMedal(s,'duo10');txt+=' Sans faute à deux !';}}
+        else{s.moral=clamp(s.moral-8);s.motiv=clamp(s.motiv-5);txt=`😬 Révision en binôme avec ${mate} : ${tot}/10… le chef vous a vus traîner au foyer au lieu de réviser.`;}
+        if(mine===5&&his<=1){s.disc=clamp(s.disc+3);txt+=' Tu as porté ton binôme : discipline +3 (bon tuteur).';}
+      } else {
+        const tot=mine+his;
+        if(tot>=DUO_SPORT_GOAL){s.forme=clamp(s.forme+10);s.disc=clamp(s.disc+4);s.moral=clamp(s.moral+5);txt=`💪 Sport en binôme avec ${mate} : ${tot} répétitions, objectif atteint ! Forme +10.`;
+          if(tot>=DUO_SPORT_EXPLOIT){s.forme=clamp(s.forme+5);addMedal(s,'duoSport');txt+=' Exploit !';}}
+        else{s.energy=clamp(s.energy-10);s.moral=clamp(s.moral-6);txt=`😓 Sport en binôme avec ${mate} : ${tot}/${DUO_SPORT_GOAL} répétitions… séance ratée, il faudra recommencer.`;}
+      }
+      log(s,txt,txt.startsWith('😬')||txt.startsWith('😓')?'bad':'good');msgs.push(txt);
+    }
+    if(msgs.length){save();render();if(!silent||!$('sheet').classList.contains('show'))toast(msgs[0]);}
+  }catch(e){}
+}
+async function loadDuo(){
+  if(!duoOK(S))return casShell('<p>Le binôme est disponible en phase GAV, à l\'école et en unité.</p>');
+  try{
+    await duoApplyResults(true);
+    const now=Date.now(),since=new Date(now-3*D).toISOString();
+    const {data}=await sb(`/rest/v1/duos?select=*&or=(from_id.eq.${ME.id},to_id.eq.${ME.id})&created_at=gte.${since}&order=created_at.desc&limit=30`);
+    const K=d=>d.kind==='revision'?'📚 Révision':'🏃 Sport';
+    const exp=d=>new Date(d.expires_at).getTime()<now;
+    const todo=data.filter(d=>d.status==='pending'&&!exp(d)&&((d.to_id===ME.id&&d.to_score==null)||(d.from_id===ME.id&&d.from_score==null)));
+    const wait=data.filter(d=>d.status==='pending'&&!exp(d)&&!todo.includes(d));
+    const done=data.filter(d=>d.status==='done').slice(0,8);
+    const row=(d,right)=>`<div class="crit" style="grid-template-columns:1fr auto"><span>${K(d)} avec <b>${esc(d.from_id===ME.id?d.to_pseudo:d.from_pseudo)}</b><br><span class="sub" style="font-size:12px">${right}</span></span><span>${''}</span></div>`;
+    let html=`<button class="primary gold" style="animation:none" data-duo="invite">🤝 Inviter un collègue en binôme</button>
+      <p style="font-size:12px">Chacun fait sa part quand il veut, sous 24 h. Révision : 5 questions identiques, moyenne du binôme à 6/10 ou plus = bonus pour les deux, sinon malus. Sport : ${DUO_SPORT_GOAL} répétitions à deux.</p>`;
+    html+=`<div class="sub" style="margin-top:6px">À faire</div>`+(todo.map(d=>`<div class="crit" style="grid-template-columns:1fr auto auto;gap:6px"><span>${K(d)} avec <b>${esc(d.from_id===ME.id?d.to_pseudo:d.from_pseudo)}</b><br><span class="sub" style="font-size:12px">expire ${ago(d.expires_at).replace('il y a','dans')}</span></span><button class="primary" style="width:auto;padding:8px 12px;font-size:14px" data-duo="play:${d.id}">Jouer</button>${d.to_id===ME.id?`<button class="cancel" style="padding:4px" data-duo="decline:${d.id}">✖</button>`:''}</div>`).join('')||'<p class="sub">Rien à faire pour l\'instant.</p>');
+    html+=`<div class="sub" style="margin-top:6px">En attente de ton binôme</div>`+(wait.map(d=>row(d,`ta part : ${d.kind==='revision'?(d.from_id===ME.id?d.from_score:d.to_score)+'/5':(d.from_id===ME.id?d.from_score:d.to_score)+' rép.'} · expire dans ${Math.max(1,Math.round((new Date(d.expires_at)-now)/H))} h`)).join('')||'<p class="sub">Aucun.</p>');
+    html+=`<div class="sub" style="margin-top:6px">Résultats récents</div>`+(done.map(d=>{const t=d.from_score+d.to_score,ok=d.kind==='revision'?t>=6:t>=DUO_SPORT_GOAL;return row(d,`${ok?'✅':'❌'} ${d.kind==='revision'?t+'/10':t+'/'+DUO_SPORT_GOAL+' rép.'} (${esc(d.from_pseudo)} ${d.from_score} · ${esc(d.to_pseudo)} ${d.to_score})`);}).join('')||'<p class="sub">Aucun pour l\'instant.</p>');
+    casShell(html);
+  }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
+}
+async function duoInvitePick(){
+  if(!duoOK(S))return toast('Le binôme est disponible en phase GAV, à l\'école et en unité.');
+  try{const since=new Date(Date.now()-14*D).toISOString();
+    const {data}=await sb(`/rest/v1/players?select=id,pseudo,recrue,phase,last_seen&last_seen=gte.${since}&order=last_seen.desc&limit=40`);
+    const others=data.filter(p=>p.id!==ME.id);
+    casShell(`<p><b>Avec qui ?</b></p>`+(others.map(p=>`<div class="crit" style="grid-template-columns:1fr auto auto;gap:6px"><span><b>${esc(p.pseudo)}</b><br><span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${ago(p.last_seen)}</span></span><button class="primary" style="width:auto;padding:8px 10px;font-size:13px" data-duo="new:${p.id}:revision">📚</button><button class="primary" style="width:auto;padding:8px 10px;font-size:13px;background:linear-gradient(135deg,#e8414f,#f3964b)" data-duo="new:${p.id}:sport">🏃</button></div>`).join('')||'<p>Aucun autre joueur actif pour l\'instant. Partage le lien du jeu à tes collègues !</p>')+`<button class="cancel" data-cas="duo">Retour</button>`);
+  }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
+}
+async function duoCreate(to,kind){
+  try{const {data}=await rpc('duo_invite',{p_id:ME.id,p_secret:ME.secret,p_to:to,p_kind:kind});toast(`Invitation envoyée à ${data.to_pseudo} ! À toi de faire ta part.`);duoPlay(data);}
+  catch(e){toast(errFr(e));loadDuo();}
+}
+async function duoPlayId(id){
+  try{const {data}=await sb(`/rest/v1/duos?select=*&id=eq.${id}`);if(!data[0])return toast('Binôme introuvable.');duoPlay(data[0]);}catch(e){toast(errFr(e));}
+}
+function duoPlay(d){
+  const s=S;tick();
+  if(s.sleeping)return toast('Il dort ! Réveille-le d\'abord.');
+  if(d.kind==='sport'&&s.energy<20)return toast('Il est trop fatigué pour le sport.');
+  if(d.kind==='revision'&&s.energy<10)return toast('Il est trop fatigué pour réviser.');
+  clearInterval(casPoll);
+  const mate=d.from_id===ME.id?d.to_pseudo:d.from_pseudo;
+  if(d.kind==='revision'){
+    const qs=duoQuestions(d.seed);let i=0,score=0;
+    const show=()=>{const q=qs[i];
+      $('panel').innerHTML=`<h3>🤝 Révision avec ${esc(mate)} — ${i+1}/5</h3><p>${esc(q.q)}</p>${q.a.map((a,j)=>`<button class="opt" data-dq="${j}">${esc(a)}</button>`).join('')}`;
+      $('sheet').classList.add('center');$('sheet').classList.add('show');
+      $('panel').querySelectorAll('[data-dq]').forEach(b=>b.addEventListener('click',()=>{
+        const j=+b.dataset.dq;$('panel').querySelectorAll('[data-dq]').forEach((x,k)=>{x.disabled=true;if(k===q.c)x.classList.add('right');else if(k===j)x.classList.add('wrong');});
+        if(j===q.c)score++;setTimeout(()=>{i++;i<5?show():finish(score);},700);
+      }));};
+    show();
+  } else {
+    let taps=0,left=10,running=false,timer=0,done=false;
+    $('panel').innerHTML=`<h3>🤝 Sport avec ${esc(mate)}</h3><p>Objectif commun : ${DUO_SPORT_GOAL} répétitions à deux. Tape le plus vite possible pendant 10 secondes !</p>
+      <button class="tapzone" id="tap"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">10 s</small></button>`;
+    $('sheet').classList.add('center');$('sheet').classList.add('show');
+    $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(done)return;
+      if(!running){running=true;timer=setInterval(()=>{left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(timer);done=true;finish(Math.min(200,taps));}},1000);}
+      taps++;$('tapN').textContent=taps;});
+  }
+  async function finish(score){
+    tick();
+    if(d.kind==='revision'){s.energy=clamp(s.energy-8);}else{s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-20);s.food=clamp(s.food-6);s.lastSport=s.t;}
+    dailyEvent(s,'duo');save();render();
+    $('panel').innerHTML=`<h3>Envoi de ta part…</h3>`;
+    try{const {data}=await rpc('duo_submit',{p_id:ME.id,p_secret:ME.secret,p_duo:d.id,p_score:score});
+      log(s,`🤝 ${d.kind==='revision'?'Révision':'Sport'} en binôme avec ${mate} : ta part est faite (${d.kind==='revision'?score+'/5':score+' répétitions'}).`);
+      if(data.status==='done'){await duoApplyResults(true);const t=data.from_score+data.to_score;const ok=d.kind==='revision'?t>=6:t>=DUO_SPORT_GOAL;
+        $('panel').innerHTML=`<h3>${ok?'🎉 Binôme réussi !':'😬 Binôme raté…'}</h3><p>${d.kind==='revision'?`${t}/10 à deux (toi ${score}/5)`:`${t} répétitions à deux (toi ${score})`}. ${ok?'Bonus pour vous deux !':'Malus pour vous deux… revanche demain !'}</p><button class="primary" data-cas="duo">OK</button>`;}
+      else $('panel').innerHTML=`<h3>✅ Ta part est faite !</h3><p>${d.kind==='revision'?score+'/5':score+' répétitions'}. Le résultat tombera quand ${esc(mate)} aura fait la sienne (24 h max).</p><button class="primary" data-cas="duo">OK</button>`;
+    }catch(e){$('panel').innerHTML=`<h3>Oups</h3><p>${esc(errFr(e))}</p><button class="primary" data-cas="duo">OK</button>`;}
+    save();render();
+  }
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-duo]');if(!b)return;e.preventDefault();const [k,a1,a2]=b.dataset.duo.split(':');
+  if(k==='invite')return duoInvitePick();
+  if(k==='new')return duoCreate(a1,a2);
+  if(k==='play')return duoPlayId(a1);
+  if(k==='decline')return rpc('duo_decline',{p_id:ME.id,p_secret:ME.secret,p_duo:+a1}).then(()=>{duoRefreshCount();loadDuo();}).catch(er=>toast(errFr(er)));
 });
 function tick(){
   if(!S)return;
