@@ -2001,7 +2001,18 @@ async function duoRefreshCount(){
 }
 const _updCasBtn=updCasBtn;
 updCasBtn=function(){_updCasBtn();const b=$('casBtn');if(b&&duoPendingN)b.insertAdjacentHTML('beforeend','<span style="position:absolute;left:-4px;top:-4px;background:#f3c74b;color:#1b2547;border-radius:9px;font-size:10px;padding:1px 5px;font-weight:700">🤝</span>');};
-setInterval(()=>{if(!document.hidden)duoRefreshCount();},60000);
+async function claimGifts(){
+  if(!ME||!ME.pseudo||!S||['egg','over'].includes(S.stage))return;
+  try{const {data}=await rpc('claim_gifts',{p_id:ME.id,p_secret:ME.secret});
+    if(!Array.isArray(data)||!data.length)return;
+    const NM={energy:'énergie',food:'faim',moral:'moral',motiv:'motivation',health:'santé',tenue:'tenue',forme:'forme',disc:'discipline'};
+    for(const g of data){S[g.field]=clamp((S[g.field]||0)+g.amount);
+      const txt=`🎁 ${g.reason||'Cadeau du commandement'} : ${g.amount>0?'+':''}${g.amount} ${NM[g.field]||g.field}.`;log(S,txt,'good');toast(txt);}
+    save();render();
+  }catch(e){}
+}
+setInterval(()=>{if(!document.hidden){duoRefreshCount();claimGifts();}},60000);
+setTimeout(claimGifts,5000);
 setTimeout(duoRefreshCount,4000);
 
 /* applique une seule fois les résultats des binômes terminés */
