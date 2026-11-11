@@ -119,6 +119,12 @@
   .tapzone{height:150px;border-radius:20px;background:linear-gradient(135deg,#e8414f,#f3964b);font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px}
   .tapzone:active{transform:scale(.97)}
   #casBtn{position:relative}
+  .annb{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:98;width:min(92vw,420px);box-sizing:border-box;background:linear-gradient(135deg,#f3c74b,#ffdf7e);color:#1b2547;border-radius:16px;padding:12px 14px;font-size:14.5px;line-height:1.35;box-shadow:0 8px 28px rgba(0,0,0,.45);animation:annIn .45s ease}
+  .annb.out{transition:.35s;opacity:0;transform:translate(-50%,-30px)}
+  @keyframes annIn{from{opacity:0;transform:translate(-50%,-40px)}to{opacity:1;transform:translate(-50%,0)}}
+  #homeNews{width:min(92vw,400px);margin:14px auto 0;position:relative;z-index:2}
+  .hnTitle{font-weight:700;color:#f3c74b;font-size:14px;margin-bottom:6px;text-align:center}
+  .hnItem{background:#ffffff14;border-radius:12px;padding:8px 10px;margin:5px 0;font-size:13px;line-height:1.35;color:#fff}.hnItem span{display:block;font-size:11px;opacity:.6;margin-top:2px}
   @keyframes salIn{0%{opacity:0;transform:translateY(20px) scale(.9)}100%{opacity:1;transform:none}}
   .gsec{box-sizing:border-box;max-width:100%;overflow:hidden;background:#ffffff0d;border-radius:12px;padding:8px 10px;margin:8px 0}.gsec summary{font-weight:700;cursor:pointer;font-size:15px}
   .gsec p{font-size:13.5px;margin:6px 0}.gnote{font-size:12.5px!important;opacity:.85}
@@ -132,7 +138,7 @@
   .row{display:flex;gap:8px}
   .menu{background:var(--card);border-radius:12px;width:38px;height:38px;font-size:18px;flex:none}
   /* ----- accueil ----- */
-  #home{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
+  #home{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;gap:16px;padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
     background:radial-gradient(circle at 50% 28%,#3550a8 0%,#1b2a66 38%,#0f1730 75%);overflow:hidden;transition:opacity .35s}
   #home.hide{opacity:0;pointer-events:none}
   #home .stars{position:absolute;inset:0;opacity:.6}
@@ -161,6 +167,7 @@
   <div class="device"><div class="screen" id="homeScreen"></div><div class="dbtns"><i></i><i></i><i></i></div></div>
   <div class="tagline">Couve, élève et motive ta recrue : de l'œuf au gendarme… ou pas !</div>
   <div class="homebtns" id="homeBtns"></div>
+  <div id="homeNews"></div>
 </div>
 <div class="app">
   <header>
@@ -508,7 +515,7 @@ function schoolCrit(s){return [
   ['Condition physique',s.forme>=SCHOOL_REQ.forme,`${Math.floor(s.forme)} / ${SCHOOL_REQ.forme}`],
   ['Discipline',s.disc>=SCHOOL_REQ.disc,`${Math.floor(s.disc)} / ${SCHOOL_REQ.disc}`]];}
 function startSchool(s){
-  s.stage='ecole';s.schoolStart=s.t;s.endedAt=s.t;s.busyUntil=0;s.sleeping=false;s.phoneMode=false;s.board=null;
+  announce(s,'ecole');s.stage='ecole';s.schoolStart=s.t;s.endedAt=s.t;s.busyUntil=0;s.sleeping=false;s.phoneMode=false;s.board=null;
   s.droit=Math.round(clamp(s.comp*0.25));s.tir=0;s.ordre=0;s.retardsSince=0;
 }
 function finishSchool(s,at){
@@ -571,7 +578,7 @@ function ctxOf(s){
   return 'gd';
 }
 function startService(s,at){
-  s.stage='service';s.serviceStart=at||s.t;s.exp=s.exp||0;s.mission=null;s.lastMissionEnd=s.serviceStart;s.sleeping=false;s.phoneMode=false;s.busyUntil=0;s.retardsSince=0;s.releveDay='';s.releveUntil=0;
+  announce(s,'affect',s.sub);s.stage='service';s.serviceStart=at||s.t;s.exp=s.exp||0;s.mission=null;s.lastMissionEnd=s.serviceStart;s.sleeping=false;s.phoneMode=false;s.busyUntil=0;s.retardsSince=0;s.releveDay='';s.releveUntil=0;
   if(s.sub==='GR'){s.palace=PALACES[Math.floor(rnd(s)*PALACES.length)];log(s,`🐎 Affectation à la Garde républicaine : faction devant le ${s.palace}, en grande tenue.`,'good',s.serviceStart);}
   else if(s.sub==='GM')log(s,'🛡️ Affectation en escadron de gendarmerie mobile. Le sac est toujours prêt : un départ peut tomber à tout moment !','good',s.serviceStart);
   else log(s,'🚓 Affectation en brigade territoriale : retour sur le terrain, au contact de la population.','good',s.serviceStart);
@@ -1416,7 +1423,7 @@ function option(o){
     if(!s.board||s.board.until<=s.t||!promoCrit(s,s.board.k).every(x=>x[1])){closeSheet();return toast('Trop tard ou conditions non remplies.');}
     if(isRebel(s)&&Math.random()<.5){closeSheet();return refuses(1);}
     const k=s.board.k;s.rank=k;s.board=null;s.retardsSince=0;s.motiv=clamp(s.motiv+10);s.moral=clamp(s.moral+15);
-    log(s,`🎖️ Promu ${GRADES[k]} par la commission d'avancement !`,'good');
+    log(s,`🎖️ Promu ${GRADES[k]} par la commission d'avancement !`,'good');announce(s,'grade',GRADES[k]);
     s.saluteUntil=s.t+5*M;
     const salK=imgKeys(s,{salute:true})[0],salSrc=IMG_INLINE[salK]||`perso/${salK}.png`;
     sheet(`<h3>🎖️ Félicitations !</h3>${IMG_MISSING[salK]?'':`<div style="text-align:center"><img src="${salSrc}" alt="" style="height:210px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));animation:salIn .7s ease"></div>`}<p>${esc(nm(s))} est promu <b>${GRADES[k]}</b>. Il est fier comme jamais : motivation et moral en hausse.</p><button class="primary" data-o="close">Bravo !</button>`,true);
@@ -2186,7 +2193,7 @@ function openSBoard(){
 function doSPromote(){
   const s=S;if(!s.sboard||s.sboard.until<=s.t||!spromoCrit(s,s.sboard.k).every(x=>x[1])){closeSheet();return toast('Trop tard ou conditions non remplies.');}
   const k=s.sboard.k;s.srank=k;s.sboard=null;s.retardsSince=0;s.motiv=clamp(s.motiv+10);s.moral=clamp(s.moral+15);s.saluteUntil=s.t+5*M;
-  log(s,`🎖️ Promu ${SGRADES[k]} par la commission d'avancement !`,'good');if(k===3)addMedal(s,'adc');
+  log(s,`🎖️ Promu ${SGRADES[k]} par la commission d'avancement !`,'good');announce(s,'grade',SGRADES[k]);if(k===3)addMedal(s,'adc');
   const sk=saluteKey(s);
   sheet(`<h3>🎖️ Félicitations !</h3>${sk?`<div style="text-align:center"><img src="${IMG_INLINE[sk]||'perso/'+sk+'.png'}" alt="" style="height:210px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));animation:salIn .7s ease"></div>`:''}<p>${esc(s.name||'Ta recrue')} est promu <b>${SGRADES[k]}</b>.${k===3?' Le sommet de la carrière de sous-officier !':''} Motivation et moral en hausse.</p><button class="primary" data-o="close">Bravo !</button>`,true);
   fx('🎖️',4);lastLook='';actKey='';save();render();
@@ -2315,7 +2322,7 @@ function specTry(k){
   runTests(`${sp.e} Sélection ${sp.n}`,sp.tests,res=>{
     tick();const ok=res.every(r=>r.ok);
     if(ok){s.spec=k;s.specN=0;s.motiv=clamp(s.motiv+15);s.moral=clamp(s.moral+15);s.disc=clamp(s.disc+5);addMedal(s,'spec_'+k);
-      log(s,`⭐ Sélection réussie : ${nm(s)} intègre la spécialité ${sp.n} !`,'good');fx(sp.e,4);
+      log(s,`⭐ Sélection réussie : ${nm(s)} intègre la spécialité ${sp.n} !`,'good');announce(s,'spec',sp.n);fx(sp.e,4);
       sheet(`<h3>⭐ Sélection réussie !</h3><div style="text-align:center">${medalSVG('spec_'+k,80)}</div><p>${esc(nm(s))} rejoint : <b>${sp.n}</b>. Nouvelle action : « ${sp.act[0]} ${sp.act[1]} ».</p><button class="primary" data-o="close">Génial !</button>`,true);}
     else{s.specCd=s.specCd||{};s.specCd[k]=s.t+24*H;s.moral=clamp(s.moral-8);
       log(s,`😓 Échec à la sélection ${sp.n}. Nouvelle tentative possible dans 24 h.`,'bad');
@@ -2335,7 +2342,7 @@ function opjExam(){
       $('panel').querySelectorAll('[data-oq]').forEach((x,k)=>{x.disabled=true;if(k===q.c)x.classList.add('right');else if(k===j)x.classList.add('wrong');});
       if(j===q.c)sc++;setTimeout(()=>{i++;if(i<10)show();else fin();},800);}));};
   const fin=()=>{tick();
-    if(sc>=7){s.opj=true;s.affaires=0;s.motiv=clamp(s.motiv+15);s.moral=clamp(s.moral+10);addMedal(s,'opj');log(s,`⚖️ Examen OPJ réussi (${sc}/10) : ${nm(s)} est officier de police judiciaire !`,'good');
+    if(sc>=7){s.opj=true;s.affaires=0;s.motiv=clamp(s.motiv+15);s.moral=clamp(s.moral+10);addMedal(s,'opj');announce(s,'opj');log(s,`⚖️ Examen OPJ réussi (${sc}/10) : ${nm(s)} est officier de police judiciaire !`,'good');
       sheet(`<h3>⚖️ Reçu à l'examen OPJ !</h3><div style="text-align:center">${medalSVG('opj',80)}</div><p>${sc}/10. Nouvelle action débloquée : « 🔎 Enquête ».</p><button class="primary" data-o="close">Bravo !</button>`,true);}
     else{s.opjCd=s.t+48*H;s.moral=clamp(s.moral-8);log(s,`📕 Examen OPJ raté (${sc}/10). Nouvelle session dans 48 h.`,'bad');
       sheet(`<h3>📕 Examen raté</h3><p>${sc}/10 (il fallait 7). Prochaine session dans 48 h : révise l'instruction d'ici là !</p><button class="primary" data-o="close">Compris</button>`,true);}
@@ -2366,6 +2373,52 @@ function specAction(){
   log(s,`${sp.act[0]} ${sp.n} : ${l[0]}`,l[1]==='mid'?'':'good');fx(sp.act[0],3);toast(`${sp.act[0]} ${l[0]} (expérience +${g[0]})`);
   if(s.specN>=15)addMedal(s,'specPro');save();render();
 }
+/* ======================= ANNONCES DE LA CASERNE ======================= */
+const ANN_SEEN='gendargotchi-annonces-vues';
+const SUBN={GD:'la Gendarmerie départementale',GM:'la Gendarmerie mobile',GR:'la Garde républicaine'};
+function annText(a){const e=a.fem?'e':'',p=`<b>${esc(a.pseudo)}</b>`;
+  switch(a.kind){
+    case 'grade':return `🎖️ Félicitations à ${p} qui est passé${e} au grade de ${esc(a.detail)} !`;
+    case 'ecole':return `🏫 Félicitations à ${p} qui est entré${e} en école de sous-officiers !`;
+    case 'affect':return `🚓 Félicitations à ${p} qui a été affecté${e} à ${SUBN[a.detail]||esc(a.detail)} !`;
+    case 'spec':return `⭐ Félicitations à ${p} qui a intégré la spécialité ${esc(a.detail)} !`;
+    case 'opj':return `⚖️ Félicitations à ${p} qui est devenu${e} officier de police judiciaire !`;}
+  return '';}
+function announce(s,kind,detail){if(!s)return;s.annQ=s.annQ||[];s.annQ.push([kind,detail||'']);setTimeout(flushAnn,500);}
+let annBusy=false;
+async function flushAnn(){
+  if(annBusy||typeof ME==='undefined'||!ME||!ME.pseudo||!S||!S.annQ||!S.annQ.length)return;annBusy=true;
+  try{while(S.annQ.length){const [k,d]=S.annQ[0];
+      try{await rpc('post_announce',{p_id:ME.id,p_secret:ME.secret,p_kind:k,p_detail:d,p_fem:sexOf(S)==='F'});}
+      catch(e){if(!/annonce_invalide|trop_rapide|joueur_introuvable/.test(String(e&&e.message||e)))break;}
+      S.annQ.shift();saveLocal();}}
+  finally{annBusy=false;}
+}
+let annList=[],annQueue=[],annShowing=false;
+async function loadAnn(){
+  try{const since=new Date(Date.now()-3*D).toISOString();
+    const {data}=await sb(`/rest/v1/announcements?select=*&created_at=gt.${since}&order=id.desc&limit=12`);
+    annList=data||[];renderHomeNews();
+    let seen=0;try{seen=+localStorage.getItem(ANN_SEEN)||0;}catch(e){}
+    const me=ME&&ME.id,dayAgo=Date.now()-D;
+    const fresh=annList.filter(a=>a.id>seen&&a.player_id!==me&&(seen||new Date(a.created_at).getTime()>dayAgo)).slice(0,4).reverse();
+    if(annList.length){try{localStorage.setItem(ANN_SEEN,String(Math.max(seen,annList[0].id)));}catch(e){}}
+    for(const a of fresh)annQueue.push(a);showNextAnn();
+  }catch(e){}
+}
+function showNextAnn(){
+  if(annShowing||!annQueue.length)return;annShowing=true;const a=annQueue.shift();
+  const el=document.createElement('div');el.className='annb';el.innerHTML=annText(a);document.body.appendChild(el);
+  const kill=()=>{if(!el.parentNode)return;el.classList.add('out');setTimeout(()=>{el.remove();annShowing=false;showNextAnn();},350);};
+  el.addEventListener('click',kill);setTimeout(kill,6500);
+}
+function renderHomeNews(){
+  const box=$('homeNews');if(!box)return;
+  const L=annList.slice(0,5);
+  box.innerHTML=L.length?`<div class="hnTitle">📣 Nouvelles de la caserne</div>`+L.map(a=>`<div class="hnItem">${annText(a)}<span>${ago(a.created_at)}</span></div>`).join(''):'';
+}
+setTimeout(()=>{loadAnn();flushAnn();},3500);
+setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 function tick(){
   if(!S)return;
   const before=S.stage;simulate(S,Date.now());
@@ -2386,6 +2439,7 @@ function showHome(confirmNew){
        <div class="row"><button class="primary ghost" data-h="back">Non</button><button class="primary" style="background:var(--danger)" data-h="newok">Oui, nouvelle partie</button></div>`
     :(has?`<button class="primary gold" style="animation:none" data-h="cont">▶ Continuer<small>${homeLabel(S)}</small></button>`:'')
      +`<button class="primary" data-h="new">✨ Nouvelle partie</button>`;
+  renderHomeNews();
 }
 function hideHome(){$('home').classList.add('hide');render();if(S&&S.stage==='gav'&&!S.name)askName();}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;const k=b.dataset.h;
