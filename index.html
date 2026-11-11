@@ -1295,9 +1295,13 @@ function act(a){
       <button class="cancel" data-o="close">Annuler</button>`);
   case 'sleep':
     if(CTX==='grDuty')return toast('Il est en faction !');
-    if(s.sleeping){s.sleeping=false;s.bedByPlayer=false;if(s.energy<50){s.moral=clamp(s.moral-8);toast('Il est grognon d\'être réveillé…');}else toast('Debout ! ☀️');}
-    else{if(s.energy>85&&hourOf(s.t)>6&&hourOf(s.t)<21)return toast("Il n'a pas sommeil !");if(refuses(.6))return;s.sleeping=true;s.bedByPlayer=true;s.sleepStart=s.t;s.lateNight=false;s.phoneMode=false;if(hourOf(s.t)>=20&&hourOf(s.t)<23.5)dailyEvent(s,'bed');
+    if(s.sleeping){if(s.t-(s.sleepStart||0)<4000)return;
+      return sheet(`<h3>⏰ Le réveiller ?</h3><p>Il dort depuis ${Math.max(1,Math.round((s.t-(s.sleepStart||s.t))/M))} min. Énergie : <b>${Math.round(s.energy)}</b>/100.</p><p style="font-size:13px">S'il est réveillé, il arrête de récupérer${s.energy<50?' et sera grognon':''}.</p><div class="row"><button class="cancel" data-o="close">Le laisser dormir</button><button class="primary" data-a="wakeYes">Réveiller</button></div>`,true);}
+    {if(s.energy>85&&hourOf(s.t)>6&&hourOf(s.t)<21)return toast("Il n'a pas sommeil !");if(refuses(.6))return;s.sleeping=true;s.bedByPlayer=true;s.sleepStart=s.t;s.lateNight=false;s.phoneMode=false;if(hourOf(s.t)>=20&&hourOf(s.t)<23.5)dailyEvent(s,'bed');
       toast(hourOf(s.t)>=19||hourOf(s.t)<5?`Bonne nuit 🌙 Réveil programmé à ${isWeekday(s.t+12*H)?'7 h 45':'8 h 45'}`:'Petite sieste 😴');log(s,'🛏️ Tu l\'as envoyé se coucher.','good');}
+    break;
+  case 'wakeYes':closeSheet();
+    if(s.sleeping){s.sleeping=false;s.bedByPlayer=false;if(s.energy<50){s.moral=clamp(s.moral-8);toast('Il est grognon d\'être réveillé…');}else toast('Debout ! ☀️');}
     break;
   case 'wash':
     if(refuses())return;
