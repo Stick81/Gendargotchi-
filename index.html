@@ -1767,7 +1767,7 @@ async function sb(path,opt={}){
   return {data,headers:r.headers};
 }
 const rpc=(fn,args)=>sb('/rest/v1/rpc/'+fn,{method:'POST',body:args});
-const ERR_FR={pseudo_pris:'Ce pseudo est déjà pris.',pseudo_invalide:'Pseudo : 2 à 20 caractères.',trop_rapide:'Doucement ! Attends 10 secondes entre deux messages.',message_trop_long:'Message trop long (280 caractères max).',message_vide:'Message vide.',acces_refuse:'Identité non reconnue sur ce téléphone.'};
+const ERR_FR={code_invalide:'Pseudo ou code de récupération incorrect.',pseudo_pris:'Ce pseudo est déjà pris. Si c\'est le tien (autre téléphone ou raccourci), utilise « J\'ai déjà un pseudo ».',pseudo_invalide:'Pseudo : 2 à 20 caractères.',trop_rapide:'Doucement ! Attends 10 secondes entre deux messages.',message_trop_long:'Message trop long (280 caractères max).',message_vide:'Message vide.',acces_refuse:'Identité non reconnue sur ce téléphone.'};
 const errFr=e=>{const m=String(e&&e.message||e);for(const k in ERR_FR)if(m.includes(k))return ERR_FR[k];return /fetch|NetworkError|Load failed/i.test(m)?'Connexion impossible (pas de réseau, ou version hors ligne).':m;};
 function scoreOf(s){
   if(!s)return 0;const base={egg:0,gav:100,ecole:400,choix:600,affect:650,service:700,autre:300,over:0}[s.stage]||0;
@@ -1801,7 +1801,7 @@ function casShell(inner){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3>
     <div class="row">${[['rank','🏆 Classement'],['msg','💬 Messages'],['online','🟢 En ligne']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
     <div id="casBody">${inner}</div>
-    <p style="font-size:11.5px">Connecté en tant que <b>${esc(ME&&ME.pseudo||'?')}</b> · <a href="#" data-cas="pseudo" style="color:var(--gold)">changer de pseudo</a></p>
+    <p style="font-size:11.5px">Connecté en tant que <b>${esc(ME&&ME.pseudo||'?')}</b> · <a href="#" data-cas="pseudo" style="color:var(--gold)">changer de pseudo</a> · <a href="#" data-cas="code" style="color:var(--gold)">🔑 mon code de récupération</a></p>
     <button class="cancel" data-cas="close">Fermer</button>`;
   $('sheet').classList.remove('center');$('sheet').classList.add('show');
 }
@@ -1818,9 +1818,39 @@ function askPseudo(err){
     <p style="font-size:12.5px">Pseudo visible par tous les joueurs. Tu peux éviter ton vrai nom.</p>
     <input type="text" id="pseudoIn" maxlength="20" placeholder="Ton pseudo" style="text-transform:none" value="${esc(ME&&ME.pseudo||'')}">
     ${err?`<p style="color:#ffb3b3">${esc(err)}</p>`:''}
-    <button class="primary" data-cas="savePseudo">Valider</button><button class="cancel" data-cas="close">Plus tard</button>`;
+    <button class="primary" data-cas="savePseudo">Valider</button>
+    <button class="primary ghost" data-cas="recover">🔑 J'ai déjà un pseudo (autre appareil)</button>
+    <button class="cancel" data-cas="close">Plus tard</button>`;
   $('sheet').classList.add('center');$('sheet').classList.add('show');
   setTimeout(()=>{const i=$('pseudoIn');i&&i.focus();},100);
+}
+function fmtCode(c){return (c||'').match(/.{1,6}/g).join('-');}
+function showCode(){
+  if(!ME||!ME.secret)return askPseudo();
+  $('panel').innerHTML=`<h3>🔑 Ton code de récupération</h3>
+    <p>Garde-le précieusement (capture d'écran, note…). Il te permet de retrouver le pseudo <b>${esc(ME.pseudo||'')}</b> sur un autre téléphone, dans le raccourci d'écran d'accueil, ou après avoir effacé les données du navigateur.</p>
+    <div class="card" style="font-family:ui-monospace,Menlo,monospace;font-size:15px;letter-spacing:.5px;word-break:break-all;text-align:center;user-select:all;-webkit-user-select:all">${fmtCode(ME.secret)}</div>
+    <button class="primary" data-cas="copyCode">📋 Copier le code</button>
+    <p style="font-size:12px;color:#ffb3b3">Ne le partage avec personne : il donne accès à ton pseudo.</p>
+    <button class="cancel" data-cas="rank">Retour</button>`;
+  $('sheet').classList.add('center');$('sheet').classList.add('show');
+}
+function askRecover(err){
+  $('panel').innerHTML=`<h3>🔑 Retrouver mon pseudo</h3>
+    <p>Sur l'appareil où ton pseudo fonctionne encore, ouvre 👥 puis « mon code de récupération » et copie-le. Puis colle-le ici.</p>
+    <input type="text" id="recPseudo" maxlength="20" placeholder="Ton pseudo" style="text-transform:none">
+    <input type="text" id="recCode" placeholder="Code de récupération" style="text-transform:none;font-family:ui-monospace,Menlo,monospace;font-size:14px" autocomplete="off" autocapitalize="off" spellcheck="false">
+    ${err?`<p style="color:#ffb3b3">${esc(err)}</p>`:''}
+    <button class="primary" data-cas="doRecover">Récupérer</button>
+    <p style="font-size:12px">Code perdu ? Demande à l'administrateur du jeu de libérer ton pseudo.</p>
+    <button class="cancel" data-cas="pseudo">Retour</button>`;
+  $('sheet').classList.add('center');$('sheet').classList.add('show');
+}
+async function doRecover(){
+  const p=($('recPseudo').value||'').trim(),c=($('recCode').value||'').toLowerCase().replace(/[^0-9a-f]/g,'');
+  if(!p||c.length<20)return askRecover('Indique ton pseudo et le code complet.');
+  try{const {data}=await rpc('recover_player',{p_pseudo:p,p_secret:c});ME={id:data.id,secret:c,pseudo:data.pseudo};myAdmin=null;saveMe();toast(`Content de te revoir, ${data.pseudo} !`);openCaserne('rank');}
+  catch(e){askRecover(errFr(e));}
 }
 async function savePseudo(){
   const v=($('pseudoIn').value||'').trim();if(v.length<2||v.length>20)return askPseudo('Pseudo : 2 à 20 caractères.');
@@ -1869,6 +1899,10 @@ document.addEventListener('click',e=>{
   if(k==='pseudo')return askPseudo();
   if(k==='savePseudo')return savePseudo();
   if(k==='send')return sendMsg();
+  if(k==='code')return showCode();
+  if(k==='recover')return askRecover();
+  if(k==='doRecover')return doRecover();
+  if(k==='copyCode'){try{navigator.clipboard.writeText(fmtCode(ME.secret)).then(()=>toast('Code copié ✔'),()=>toast('Copie impossible : sélectionne le code et copie-le à la main.'));}catch(er){toast('Copie impossible : sélectionne le code et copie-le à la main.');}return;}
   openCaserne(k);
 });
 function tick(){
