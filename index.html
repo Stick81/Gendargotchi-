@@ -394,7 +394,7 @@ function step(s,dt){
 
   /* --- besoins --- */
   s.food  =clamp(s.food  -(sl?2.5:busy?10:7)*h);
-  s.energy=clamp(s.energy+(sl?(s.bedByPlayer?(hourOf(t)>=8&&hourOf(t)<20?25:15):12):-(busy?9:5)-(s.lateNight?6:0))*h);
+  s.energy=clamp(s.energy+(sl&&(s.recupUntil||0)>t?40:sl?(s.bedByPlayer?(hourOf(t)>=8&&hourOf(t)<20?25:15):12):-(busy?9:5)-(s.lateNight?6:0))*h);
   s.moral =clamp(s.moral -(sl?0.8:s.phoneMode?1.5:DUTY?4:3)*h-(MIS&&!(t-(s._fam||0)<12*H)?1.2*h:0));
   s.tenue =clamp(s.tenue -(sl?0.5:busy?6:3)*(isRebel(s)?1.5:1)*h);
   s.forme =clamp(s.forme -0.4*h);
@@ -430,6 +430,7 @@ function step(s,dt){
   else if(!sl&&!busy&&crosses(t,dt,23,30)){s.lateNight=true;log(s,'🌙 23 h 30 et il n\'est toujours pas couché : il traîne sur les jeux vidéo.','bad');}
   if(!sl&&crosses(t,dt,1,30)){s.sleeping=true;s.bedByPlayer=false;s.sleepStart=t;s.lateNight=false;log(s,'Il a fini par s\'endormir tout habillé à 1 h 30.','bad');}
   else if(!sl&&!busy&&s.energy<=0){s.sleeping=true;s.bedByPlayer=false;s.sleepStart=t;s.lateNight=false;log(s,ECO?'Épuisé, il s\'est effondré sur son lit de chambrée.':'Épuisé, il s\'est effondré sur le canapé.','bad');events.push('faint');}
+  if(s.sleeping&&s.recupUntil&&t+dt>=s.recupUntil){s.sleeping=false;s.bedByPlayer=false;s.recupUntil=0;log(s,'⏳ Fin de l\'heure de récup\' : il est requinqué et reprend le service !','good',t+dt);events.push('recupEnd');}
   if(s.sleeping){
     const hr=hourOf(t);
     if(s.bedByPlayer&&(isWeekday(t)?crosses(t,dt,7,45):crosses(t,dt,8,45))){s.sleeping=false;s.bedByPlayer=false;log(s,`⏰ Réveil à ${isWeekday(t)?'7 h 45':'8 h 45'}, comme tu l'avais programmé.`,'good');}
@@ -1120,7 +1121,7 @@ function renderActions(){
   const ready=st==='gav'&&criteria(s).every(c=>c[1])&&s.t>=s.concoursCd;
   const boardOpen=st==='gav'&&s.board&&s.board.until>s.t;
   const CTX=ctxOf(s);
-  const key=[s.spec,s.opj,s.sboard&&s.sboard.until>s.t,st,s.end,s.gavUntil>s.t,(s.casier||0)>=75,s.motiv<50,s.energy<30,(s.discr||0)<30,s.sub,CTX,s.mission&&s.mission.type,z,busy,s.sick,ready,!!boardOpen,s.food<25,s.moral<30,s.tenue<30,s.motiv<30,s.forme<40].join('|');
+  const key=[s.recupDay,(s.recupUntil||0)>s.t,s.spec,s.opj,s.sboard&&s.sboard.until>s.t,st,s.end,s.gavUntil>s.t,(s.casier||0)>=75,s.motiv<50,s.energy<30,(s.discr||0)<30,s.sub,CTX,s.mission&&s.mission.type,z,busy,s.sick,ready,!!boardOpen,s.food<25,s.moral<30,s.tenue<30,s.motiv<30,s.forme<40].join('|');
   if(key===actKey)return;actKey=key;
   if(st==='egg'){el.className='actions one';el.innerHTML=`<button class="act big" data-a="warm"><span class="e">🔥</span>Couver</button>`;return;}
   if(st==='over'&&s.end==='tuteur'){el.className='actions one';el.innerHTML=`<div class="row"><button class="primary" style="background:#2a2a33" data-a="autreOui">🖤 Oui</button><button class="primary" data-a="restart">🥚 Non, nouvelle partie</button></div>`;return;}
@@ -1137,14 +1138,14 @@ function renderActions(){
   if(st==='service'){
     const dis=(c)=>c?'disabled':'';el.className='actions';
     const B=(a,e,l,al,d)=>`<button class="act ${al?'alert':''}" data-a="${a}" ${dis(d)}><span class="e">${e}</span>${l}</button>`;
-    const sleepB=B('sleep',z?'⏰':'🛏️',z?'Réveiller':(CTX.startsWith('gm_')?'Repos':'Coucher'),0,busy);
+    const sleepB=B('sleep',z?'⏰':'🛏️',z?'Réveiller':(CTX.startsWith('gm_')?'Repos':'Coucher'),0,busy),recB=['grOff','gd','gmHome'].includes(CTX)?recupBtn(s,z,busy):'';
     const SP=s.spec&&SPECS[s.spec],spB=SP?B('specAct',SP.act[0],SP.act[1],0,z||busy||!!s.mission):'',enqB=s.opj&&CTX==='gd'?B('enquete','🔎','Enquête',0,z||busy):'';
     const common=[B('carriere','🎓','Carrière',!!(s.sboard&&s.sboard.until>s.t),0),B('talk','💬','Entretien',s.motiv<30,z||busy),B('heal','💊','Infirmerie',s.sick,z||busy),B('dossier','📁','Dossier',0,0)];
     let L=[];
     if(CTX==='grDuty')L=[B('impassible','😐','Impassible',0,0),B('rectif','🧍','Rectifier la position',s.tenue<40,0),B('releve','🔁','Demander la relève',s.food<20||s.sick,0),B('dossier','📁','Dossier',0,0)];
-    else if(CTX==='grOff')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,B('wash','✨','Astiquer la tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('instr','📘','Instruction',0,z),spB,B('fun','🎉','Détente',s.moral<30,z),...common];
-    else if(CTX==='gd')L=[B('eat','🍽️','Manger',s.food<25,z||busy),sleepB,B('wash','🚿','Tenue',s.tenue<30,z||busy),B('sport','🏃','Sport',s.forme<40,z||busy),B('instr','📘','Instruction',0,z||busy),B('patrol','🚓','Patrouille',0,z||busy),enqB,spB,B('fun','🎉','Détente',s.moral<30,z||busy),...common];
-    else if(CTX==='gmHome')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,B('wash','🚿','Tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('training','🛡️','Entraînement MO',0,z),B('instr','📘','Instruction',0,z),spB,B('fun','🎉','Détente',s.moral<30,z),...common];
+    else if(CTX==='grOff')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,recB,B('wash','✨','Astiquer la tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('instr','📘','Instruction',0,z),spB,B('fun','🎉','Détente',s.moral<30,z),...common];
+    else if(CTX==='gd')L=[B('eat','🍽️','Manger',s.food<25,z||busy),sleepB,recB,B('wash','🚿','Tenue',s.tenue<30,z||busy),B('sport','🏃','Sport',s.forme<40,z||busy),B('instr','📘','Instruction',0,z||busy),B('patrol','🚓','Patrouille',0,z||busy),enqB,spB,B('fun','🎉','Détente',s.moral<30,z||busy),...common];
+    else if(CTX==='gmHome')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,recB,B('wash','🚿','Tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('training','🛡️','Entraînement MO',0,z),B('instr','📘','Instruction',0,z),spB,B('fun','🎉','Détente',s.moral<30,z),...common];
     else if(CTX==='gm_mo')L=[B('ligne','🛡️','Tenir la ligne',0,z),B('equip','🪖','Équipement',s.tenue<30,z),B('ration','🥫','Ration',s.food<25,z),sleepB,B('famille','📞','Appeler la famille',s.moral<30,z),...common];
     else if(CTX==='gm_om')L=[B('patrol','🛶','Patrouille',0,z||busy),B('hydrate','💧','S\'hydrater',s.energy<30,z||busy),B('ration','🥫','Ration',s.food<25,z||busy),sleepB,B('famille','📞','Appeler la famille',s.moral<30,z||busy),...common];
     else if(CTX==='gm_rf')L=[B('patrol','🚓','Patrouille',0,z||busy),B('eat','🍽️','Manger',s.food<25,z||busy),B('wash','🚿','Tenue',s.tenue<30,z||busy),sleepB,B('famille','📞','Appeler la famille',s.moral<30,z||busy),...common];
@@ -1156,6 +1157,7 @@ function renderActions(){
     el.innerHTML=`
    <button class="act ${s.food<25?'alert':''}" data-a="eat" ${dis(z)}><span class="e">🍽️</span>Manger</button>
    <button class="act" data-a="sleep"><span class="e">${z?'⏰':'🛏️'}</span>${z?'Réveiller':'Coucher'}</button>
+   ${recupBtn(s,z,false)}
    <button class="act ${s.tenue<30?'alert':''}" data-a="wash" ${dis(z)}><span class="e">🎽</span>Paquetage</button>
    <button class="act ${s.forme<40?'alert':''}" data-a="sport" ${dis(z)}><span class="e">🏃</span>Sport</button>
    <button class="act" data-a="study" ${dis(z)}><span class="e">📚</span>Cours</button>
@@ -1173,6 +1175,7 @@ function renderActions(){
    +(boardOpen?`<button class="primary gold" style="grid-column:1/-1" data-a="board">🎖️ Commission d'avancement : ${GRADES[s.board.k]}</button>`:'')+`
    <button class="act ${s.food<25?'alert':''}" data-a="eat" ${dis(z||busy)}><span class="e">🍽️</span>Manger</button>
    <button class="act" data-a="sleep" ${dis(busy)}><span class="e">${z?'⏰':'🛏️'}</span>${z?'Réveiller':'Coucher'}</button>
+   ${recupBtn(s,z,busy)}
    <button class="act ${s.tenue<30?'alert':''}" data-a="wash" ${dis(z||busy)}><span class="e">🚿</span>Tenue</button>
    <button class="act ${s.forme<40?'alert':''}" data-a="sport" ${dis(z||busy)}><span class="e">🏃</span>Sport</button>
    <button class="act" data-a="study" ${dis(z||busy)}><span class="e">📚</span>Réviser</button>
@@ -1210,6 +1213,7 @@ function openGuide(){
   sec('⏰ Rythme et astuces',`<ul class="gnote" style="padding-left:18px;margin:6px 0">
     <li>Prise de service à <b>8 h 30</b> en semaine, <b>9 h 30</b> le week-end : les retards pèsent sur l'avancement.</li>
     <li>Énergie en dormant : sieste en journée (8 h – 20 h) <b>+25/h</b>, nuit <b>+15/h</b>, endormi tout seul <b>+12/h</b>. Attention, toucher ⏰ le réveille !</li>
+    <li>⏳ <b>Récup' 1 h</b> : +40 d'énergie en une heure, une fois par jour (pas en faction ni en déplacement).</li>
     <li>Le sport et une tenue impeccable donnent discipline <b>+3</b>.</li>
     <li>Le fast-food et les nuits blanches font baisser la forme et la santé.</li>
     <li>Reviens chaque jour pour l'ordre du jour et la question du jour (série de présence).</li></ul>`)+
@@ -1316,9 +1320,20 @@ function act(a){
       <button class="opt" data-o="eat:salade"><span class="e">🥗</span><span>Salade et fruit<small>Léger : forme ++, mais moral −</small></span></button>
       <button class="opt" data-o="eat:fast"><span class="e">${ECO?'🍫':'🍔'}</span><span>${ECO?'Distributeur du foyer':'Fast-food'}<small>Il adore… mais attention à la ligne et à la santé</small></span></button>
       <button class="cancel" data-o="close">Annuler</button>`);
+  case 'recup':{
+    if((s.recupUntil||0)>s.t)return toast(`En récup' jusqu'à ${new Date(s.recupUntil).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}. Laisse-le récupérer !`);
+    if(s.recupDay===dayKey(s.t))return toast('Récup\' déjà prise aujourd\'hui. Prochaine possible demain.');
+    if(CTX==='grDuty'||(s.stage==='service'&&s.mission))return toast('Pas de récup\' en faction ni en déplacement !');
+    if(s.sleeping||s.busyUntil>s.t)return toast('Pas disponible pour le moment.');
+    return sheet(`<h3>⏳ Poser une heure de récup' ?</h3><p>Pendant 1 h, il se repose et récupère environ <b>+40 d'énergie</b> (énergie actuelle : ${Math.round(s.energy)}). Il ne pourra rien faire d'autre pendant ce temps.</p><p style="font-size:13px">Une seule récup' par jour.</p><div class="row"><button class="cancel" data-o="close">Annuler</button><button class="primary" data-a="recupYes">Poser la récup'</button></div>`,true);}
+  case 'recupYes':closeSheet();
+    if(s.recupDay===dayKey(s.t)||s.sleeping)break;
+    s.recupDay=dayKey(s.t);s.recupUntil=s.t+H;s.sleeping=true;s.bedByPlayer=true;s.sleepStart=s.t;s.lateNight=false;
+    log(s,'⏳ Heure de récup\' validée par le commandant d\'unité.','good');toast('⏳ Récup\' posée : retour dans 1 h, en pleine forme !');break;
   case 'sleep':
     if(CTX==='grDuty')return toast('Il est en faction !');
     if(s.sleeping){if(s.t-(s.sleepStart||0)<4000)return;
+      if((s.recupUntil||0)>s.t)return toast(`En récup' jusqu'à ${new Date(s.recupUntil).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} : on ne le dérange pas !`);
       return sheet(`<h3>⏰ Le réveiller ?</h3><p>Il dort depuis ${Math.max(1,Math.round((s.t-(s.sleepStart||s.t))/M))} min. Énergie : <b>${Math.round(s.energy)}</b>/100.</p><p style="font-size:13px">S'il est réveillé, il arrête de récupérer${s.energy<50?' et sera grognon':''}.</p><div class="row"><button class="cancel" data-o="close">Le laisser dormir</button><button class="primary" data-a="wakeYes">Réveiller</button></div>`,true);}
     {if(s.energy>85&&hourOf(s.t)>6&&hourOf(s.t)<21)return toast("Il n'a pas sommeil !");if(refuses(.6))return;s.sleeping=true;s.bedByPlayer=true;s.sleepStart=s.t;s.lateNight=false;s.phoneMode=false;if(hourOf(s.t)>=20&&hourOf(s.t)<23.5)dailyEvent(s,'bed');
       toast(hourOf(s.t)>=19||hourOf(s.t)<5?`Bonne nuit 🌙 Réveil programmé à ${isWeekday(s.t+12*H)?'7 h 45':'8 h 45'}`:'Petite sieste 😴');log(s,'🛏️ Tu l\'as envoyé se coucher.','good');}
@@ -1676,6 +1691,7 @@ function handleEvents(){
   if(ev.includes('hatch')){fx('✨',5);lastLook='';actKey='';if(!S.name)setTimeout(askName,500);}
   if(ev.includes('grade'))toast(`🎖️ ${nm(S)} est promu ${GRADES[gradeIdx(S)]} !`);
   if(ev.includes('board')){toast("🎖️ Commission d'avancement ouverte : 24 h pour le présenter !");actKey='';}
+  if(ev.includes('recupEnd')){toast('⏳ Fin de la récup\' : il est requinqué !');actKey='';}
   if(ev.includes('sboard')){toast("🎖️ Commission d'avancement en unité : 48 h pour le présenter !");actKey='';}
   if(ev.includes('boardmiss')){toast("📋 Commission d'avancement manquée…");actKey='';}
   if(ev.includes('late'))toast('😬 Il est arrivé en retard au service !');
@@ -1715,6 +1731,8 @@ function askName(){
   $('nameOk').addEventListener('click',go);$('nameIn').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
 }
 /* ======================= PACK QUOTIDIEN ======================= */
+function recupBtn(s,z,busy){const on=(s.recupUntil||0)>s.t,used=s.recupDay===dayKey(s.t);
+  return `<button class="act" data-a="recup" ${(z||busy||used)&&!on?'disabled':''}><span class="e">⏳</span>${on?'En récup\'':used?'Récup\' prise':'Récup\' 1 h'}</button>`;}
 function dayKey(t){const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function keyNoon(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d,12).getTime();}
 function dayGap(a,b){return Math.round((keyNoon(b)-keyNoon(a))/D);}
