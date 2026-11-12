@@ -2017,6 +2017,7 @@ async function heartbeat(force){
   hbBusy=true;lastHb=Date.now();
   try{
     const s=S;await rpc('heartbeat',{p_id:ME.id,p_secret:ME.secret,p_recrue:s&&s.name?nm(s):'(œuf)',p_phase:phaseLabel(s),p_sub:s&&s.sub||null,p_score:scoreOf(s),p_streak:(s&&s.daily&&s.daily.streak)||0,p_best:(s&&s.daily&&s.daily.best)||0});
+    try{await rpc('save_stats',{p_id:ME.id,p_secret:ME.secret,p_stats:myStats(s)});}catch(e){}
     const since=new Date(Date.now()-10*M).toISOString();
     const r=await sb(`/rest/v1/players?select=id&last_seen=gte.${since}`,{headers:{'Prefer':'count=exact','Range':'0-0'}});
     const cr=r.headers.get('content-range');onlineN=cr?+cr.split('/')[1]:null;updCasBtn();
@@ -2028,6 +2029,42 @@ setInterval(()=>{if(!document.hidden)heartbeat();},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});
 
 let casTab='rank',casPoll=0;
+function myStats(s){if(!s)return {};const d=s.daily||{};
+  return {stage:s.stage,sub:s.sub||null,sex:sexOf(s),grade:s.stage==='gav'?GRADES[s.rank||0]:s.stage==='service'?SGRADES[s.srank||0]:'',
+    spec:s.spec||null,opj:!!s.opj,affaires:s.affaires||0,specN:s.specN||0,days:s.born?Math.floor((s.t-s.born)/D):0,
+    medals:(d.medals||[]).filter(k=>!k.startsWith('r_')).length};}
+let profBack='rank';
+async function openProfile(id){
+  profBack=casTab;casShell('<p>Chargement…</p>');
+  try{
+    const {data}=await sb(`/rest/v1/players?select=id,pseudo,recrue,phase,score,streak,best_streak,last_seen,created_at,stats&id=eq.${id}`);
+    const p=data[0];if(!p)return casShell('<p>Joueur introuvable.</p><button class="cancel" data-cas="'+profBack+'">Retour</button>');
+    const st=p.stats||{};
+    let pos='—';try{const r=await sb(`/rest/v1/players?select=id&score=gt.${+p.score||0}`);pos=(r.data.length+1)+'ᵉ';}catch(e){}
+    let duos=0;try{const r=await sb(`/rest/v1/duos?select=id&status=eq.done&or=(from_id.eq.${p.id},to_id.eq.${p.id})`);duos=r.data.length;}catch(e){}
+    const on=Date.now()-new Date(p.last_seen)<10*M,me=p.id===ME.id;
+    const sp=st.spec&&SPECS[st.spec],ins=st.spec&&MEDAL_IMG['spec_'+st.spec];
+    const line=(i,l,v)=>`<div class="crit" style="grid-template-columns:24px 1fr auto"><span>${i}</span><span>${l}</span><span><b>${v}</b></span></div>`;
+    casShell(`<div style="text-align:center;margin:4px 0 10px">
+        <div style="font-size:20px;font-weight:800">${esc(p.pseudo)}${me?' <span class="sub" style="font-size:12px">(toi)</span>':''}</div>
+        <div class="sub" style="font-size:12px">${on?'🟢 en ligne':'⚪ vu '+ago(p.last_seen)}</div>
+        ${ins||st.opj||st.sub==='GM'?`<div style="margin-top:8px;display:flex;gap:10px;justify-content:center;align-items:center">${ins?insImg(ins,42):''}${st.opj?insImg('insigne_opj',42):''}${!ins&&st.sub==='GM'?insImg('insigne_gm',42):''}</div>`:''}
+      </div>
+      ${line('👮','Recrue',esc(p.recrue||'—'))}
+      ${line('📍','Phase',esc((p.phase||'—').split(' · ')[0]))}
+      ${st.grade?line('🎖️','Grade',esc(st.grade)):''}
+      ${sp?line(sp.e,'Spécialité',esc(sp.n)):''}
+      ${st.opj?line('⚖️','OPJ',`oui · ${+st.affaires||0} affaire(s)`):''}
+      ${line('🏆','Score',`${p.score||0} (${pos})`)}
+      ${line('🔥','Série de présence',`${p.streak||0} j (record ${p.best_streak||0})`)}
+      ${line('🏅','Médailles',+st.medals||0)}
+      ${line('🤝','Binômes réalisés',duos)}
+      ${st.days?line('📅','Âge de la recrue',`${+st.days} j`):''}
+      ${!me&&duoOK(S)?`<div class="row" style="margin-top:10px"><button class="primary" style="font-size:14px" data-duo="new:${p.id}:revision">📚 Réviser ensemble</button><button class="primary" style="font-size:14px;background:linear-gradient(135deg,#e8414f,#f3964b)" data-duo="new:${p.id}:sport">🏃 Sport ensemble</button></div>`:''}
+      <button class="cancel" data-cas="${profBack}">Retour</button>`);
+  }catch(e){casShell(`<p>${esc(errFr(e))}</p><button class="cancel" data-cas="${profBack}">Retour</button>`);}
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-prof]');if(b){e.preventDefault();openProfile(b.dataset.prof);}});
 function casShell(inner){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3>
     <div class="row">${[['rank','🏆'],['duo','🤝 Binôme'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
@@ -2091,15 +2128,15 @@ async function savePseudo(){
 }
 async function loadRank(){
   try{const {data}=await sb('/rest/v1/players?select=id,pseudo,recrue,phase,score,streak,last_seen&order=score.desc&limit=30');
-    const rows=data.map((p,i)=>`<div class="crit" style="grid-template-columns:28px 1fr auto;${p.id===ME.id?'background:#ffffff10;border-radius:8px':''}"><span>${i<3?['🥇','🥈','🥉'][i]:(i+1)+'.'}</span><span><b>${esc(p.pseudo)}</b><br><span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')} · 🔥${p.streak||0}</span></span><span style="color:var(--gold);font-weight:600">${p.score}</span></div>`).join('');
+    const rows=data.map((p,i)=>`<div class="crit" data-prof="${p.id}" style="cursor:pointer;grid-template-columns:28px 1fr auto;${p.id===ME.id?'background:#ffffff10;border-radius:8px':''}"><span>${i<3?['🥇','🥈','🥉'][i]:(i+1)+'.'}</span><span><b>${esc(p.pseudo)}</b><br><span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')} · 🔥${p.streak||0}</span></span><span style="color:var(--gold);font-weight:600">${p.score}</span></div>`).join('');
     casShell(rows||'<p>Personne pour l\'instant.</p>');
   }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
 }
 async function loadOnline(){
   try{const since=new Date(Date.now()-D).toISOString();
-    const {data}=await sb(`/rest/v1/players?select=pseudo,recrue,phase,last_seen&last_seen=gte.${since}&order=last_seen.desc&limit=50`);
+    const {data}=await sb(`/rest/v1/players?select=id,pseudo,recrue,phase,last_seen&last_seen=gte.${since}&order=last_seen.desc&limit=50`);
     const on=data.filter(p=>Date.now()-new Date(p.last_seen)<10*M);
-    casShell(`<p>🟢 <b>${on.length}</b> en ligne maintenant · <b>${data.length}</b> joueur(s) actif(s) aujourd'hui</p>`+data.map(p=>`<div class="crit" style="grid-template-columns:20px 1fr auto"><span>${Date.now()-new Date(p.last_seen)<10*M?'🟢':'⚪'}</span><span><b>${esc(p.pseudo)}</b> <span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')}</span></span><span class="sub" style="font-size:12px">${ago(p.last_seen)}</span></div>`).join(''));
+    casShell(`<p>🟢 <b>${on.length}</b> en ligne maintenant · <b>${data.length}</b> joueur(s) actif(s) aujourd'hui</p>`+data.map(p=>`<div class="crit" data-prof="${p.id}" style="cursor:pointer;grid-template-columns:20px 1fr auto"><span>${Date.now()-new Date(p.last_seen)<10*M?'🟢':'⚪'}</span><span><b>${esc(p.pseudo)}</b> <span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')}</span></span><span class="sub" style="font-size:12px">${ago(p.last_seen)}</span></div>`).join(''));
   }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
 }
 let myAdmin=null;
@@ -2546,7 +2583,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794518143';
+const BUILD_ID='1794518725';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2560,8 +2597,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.11', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.12', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.12',d:'12 novembre',items:[['👤','Fiche profil','Touche un joueur dans le classement ou « En ligne » pour voir ses stats : grade, spécialité, score, série, médailles… et l\'inviter en binôme.'],['🔄','Mises à jour automatiques','Le jeu se recharge tout seul quand une nouvelle version sort.']]},
  {v:'1.11',d:'12 novembre',items:[['🚤','Patrouille en mer','En outre-mer, la GM patrouille en semi-rigide, sur une mer qui défile.'],['🏍️','Motocycliste','Les spécialistes moto (PMO, escadron GR) partent en patrouille à moto.']]},
  {v:'1.10',d:'12 novembre',items:[['🚓','Patrouille animée','Le véhicule de la brigade part en patrouille : roues qui tournent, gyrophare et décor qui défile !']]},
  {v:'1.9.2',d:'12 novembre',items:[['🎖️','Nouveaux insignes','Vrais insignes pour les spécialités Enquêteur cyber (N\'Tech), Motocycliste, Montagne (PGHM), Cavalerie et Musique de la Garde.']]},
