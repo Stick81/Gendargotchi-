@@ -2546,6 +2546,20 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
+const BUILD_ID='1794518081';
+/* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
+let lastUpdCheck=0;
+async function checkUpdate(){
+  if(BUILD_ID==='dev'||Date.now()-lastUpdCheck<5*60000)return;lastUpdCheck=Date.now();
+  try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+    if(!j.build||j.build===BUILD_ID||+j.build<+BUILD_ID)return;
+    const k='gg-reload-'+j.build;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');
+    try{saveLocal();}catch(e){}
+    location.replace(location.pathname+'?v='+j.build);
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
+setTimeout(checkUpdate,600);
 const APP_VERSION='1.11', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.11',d:'12 novembre',items:[['🚤','Patrouille en mer','En outre-mer, la GM patrouille en semi-rigide, sur une mer qui défile.'],['🏍️','Motocycliste','Les spécialistes moto (PMO, escadron GR) partent en patrouille à moto.']]},
