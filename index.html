@@ -2546,7 +2546,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794518081';
+const BUILD_ID='1794518143';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2554,7 +2554,7 @@ async function checkUpdate(){
   try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
     if(!j.build||j.build===BUILD_ID||+j.build<+BUILD_ID)return;
     const k='gg-reload-'+j.build;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');
-    try{saveLocal();}catch(e){}
+    try{if(S)saveLocal();}catch(e){}
     location.replace(location.pathname+'?v='+j.build);
   }catch(e){}
 }
