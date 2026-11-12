@@ -345,7 +345,7 @@ const FEM_RULES=[
  [FW('grognon'),'grognonne'],[/-le(?![\p{L}])/gu,'-la'],[FW('le (présenter|recadrer|féliciter|motiver)'),m=>'la'+m.slice(2)],[FW('Le (présenter|recadrer|féliciter)'),m=>'La'+m.slice(2)],
  [FW('Le GAV'),'La GAV'],[FW('au GAV'),'à la GAV'],[FW('du GAV'),'de la GAV'],
 ];
-function femin(t){let x=String(t);for(const [r,v] of FEM_RULES)x=x.replace(r,v);return x;}
+function femin(t){const keep=[];let x=String(t).replace(/data:[a-z/+]+;base64,[A-Za-z0-9+/=]+/g,m=>{keep.push(m);return '\u0001'+(keep.length-1)+'\u0002';});for(const [r,v] of FEM_RULES)x=x.replace(r,v);return x.replace(/\u0001(\d+)\u0002/g,(_,i)=>keep[+i]);}
 function T(t){return S&&S.stage!=='egg'&&sexOf(S)==='F'?femin(t):t;}
 function nm(s){if(!s.name)return 'Ta recrue';if(s.stage==='autre'||(s.stage==='over'&&['boucle','condamne','range'].includes(s.end)))return 'Ex-GAV '+s.name;if(s.stage==='ecole'||s.stage==='choix')return 'Élève '+s.name;if(s.stage==='affect'||s.stage==='service'||(s.stage==='over'&&s.sub))return STITLES[s.srank||0]+' '+s.name;return TITLES[s.rank||0]+' '+s.name;}
 function chevHTML(r){
