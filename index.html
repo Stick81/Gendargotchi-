@@ -475,7 +475,7 @@ function step(s,dt){
 
   if(s.health<=0)return endGame(s,'sante');
   if(s.motiv<=0)return endGame(s,ECO?'demission':AUT?'range':'reconv');
-  if(AUT){if((s.rep||0)>=100)return endGame(s,'boucle');return;}
+  if(AUT){rebelCheck(s);if((s.rep||0)>=100){addMedal(s,'r_boucle');return endGame(s,'boucle');}return;}
   if(s.disc<=0)return endGame(s,ECO?'renvoi':SVC?'radie':'disc');
   if(SVC){
     if(s.sub==='GR'&&s.releveUntil&&t+dt>=s.releveUntil&&t<s.releveUntil){log(s,'⏱️ Fin de la relève : retour au poste.','',s.releveUntil);events.push('back');}
@@ -612,11 +612,13 @@ const ARRESTERS=[
 const HAPPY_AUTRE=['Le système, c\'est pas pour moi.','Moi, au moins, je fais ce que je veux.','Ce soir, soirée au squat !','Mon ancien chef doit halluciner…','Tout en noir, c\'est plus classe.'];
 function startAutre(s){
   s.stage='autre';s.end=null;s.autreStart=s.t;s.motiv=65;s.disc=50;s.rep=0;s.discr=70;s.casier=0;s.arrests=0;s.gavUntil=0;s.busyUntil=0;s.sleeping=false;s.phoneMode=false;s.board=null;s.sub=null;s.mission=null;
+  {const d=ensureDaily(s);d.autreSeen=true;}addMedal(s,'r_first');
   log(s,'🖤 Il a choisi l\'autre côté : sweat noir, foulard et un squat en guise de caserne. Objectif : devenir le casseur le plus connu du coin.','');
 }
 function arrest(s,t){
   const [who,line]=ARRESTERS[Math.floor(rnd(s)*ARRESTERS.length)];
   s.arrests=(s.arrests||0)+1;s.casier=clamp((s.casier||0)+25);s.gavUntil=t+30*M;s.busyUntil=0;s.discr=50;s.rep=clamp((s.rep||0)+4);s.moral=clamp(s.moral-12);s.motiv=clamp(s.motiv-6);
+  addMedal(s,'r_gav');
   log(s,`🚔 Interpellé par ${who} ! ${line} Direction la garde à vue (30 min).`,'bad',t);events.push('arrest');
   if(s.casier>=100)endGame(s,'condamne');
 }
@@ -632,7 +634,7 @@ function fuiteGame(){
   function finish(){
     if(done)return;done=true;clearInterval(timer);tick();
     s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-15);s._musc=s.t;
-    if(n>=need){s.rep=clamp((s.rep||0)+15);s.motiv=clamp(s.motiv+10);s.discr=clamp((s.discr||0)-15);s.moral=clamp(s.moral+6);
+    if(n>=need){addMedal(s,'r_fuite');s.rep=clamp((s.rep||0)+15);s.motiv=clamp(s.motiv+10);s.discr=clamp((s.discr||0)-15);s.moral=clamp(s.moral+6);
       log(s,'🔥 Action musclée : il s\'est échappé de justesse. Sa réputation grimpe dans le groupe.','');
       sheet(`<h3>Échappé de justesse ! 🏃</h3><p>Réputation +15, mais discrétion −15. Les gendarmes ont sûrement pris des photos…</p><button class="primary" data-o="close">Se faire oublier</button>`,true);}
     else{arrest(s,s.t);sheet(`<h3>Rattrapé ! 🚔</h3><p>${esc(s.log[s.log.length-1].txt)}</p><button class="primary" data-o="close">…</button>`,true);}
@@ -1207,12 +1209,13 @@ function medalHow(k){
     duoSport:'Atteindre 260 répétitions à deux lors d\'un sport en binôme.',opj:'En GD : réussir l\'examen OPJ (7/10) depuis 🎓 Carrière.',
     affaires10:'Résoudre 10 affaires avec l\'action 🔎 Enquête (OPJ).',specPro:'Réaliser 15 missions de spécialité.',adc:'Être promu Adjudant-chef en commission d\'avancement.'};
   if(F[k])return F[k];
+  if(REBEL_T[k])return REBEL_T[k][2];
   if(k.startsWith('spec_')){const sp=SPECS[k.slice(5)];if(sp)return `En ${sp.sub} : réussir la sélection ${sp.n} depuis 🎓 Carrière (${sp.tests.map(t=>t[2]).join(' + ')}).`;}
   return 'Continue à jouer pour la découvrir !';}
 function openMedal(k,fresh){
   const has=S&&S.daily&&(S.daily.medals||[]).includes(k);
   const el=document.createElement('div');el.className='medalView';
-  el.innerHTML=`<div class="mvCard">${fresh?'<div class="mvTag">🎉 Médaille débloquée !</div>':''}
+  el.innerHTML=`<div class="mvCard">${fresh?`<div class="mvTag">${isRT(k)?'🖤 Trophée débloqué !':'🎉 Médaille débloquée !'}</div>`:''}
     <div class="m3d"><div class="m3dIn">${medalSVG(k,150,!has)}<div class="m3dShine"></div></div></div>
     <h3>${MEDALS[k][1]}</h3>
     <p class="mvHow">${has?'✅ Obtenue':'🔒 Pas encore obtenue'}<br><span>${medalHow(k)}</span></p>
@@ -1252,7 +1255,7 @@ function openGuide(){
   sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
     tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
     `<p class="gnote">Bon tuteur : 5/5 alors que ton binôme fait 1 ou moins = discipline +3.</p>`)+
-  sec('🏅 Médailles',`<div class="gmed">${Object.keys(MEDALS).map(k=>`<div>${medalSVG(k,34)}<span>${MEDALS[k][1]}</span></div>`).join('')}</div>`)+
+  sec('🏅 Médailles',`<div class="gmed">${Object.keys(MEDALS).filter(k=>!isRT(k)).map(k=>`<div>${medalSVG(k,34)}<span>${MEDALS[k][1]}</span></div>`).join('')}</div>`)+
   sec('⏰ Rythme et astuces',`<ul class="gnote" style="padding-left:18px;margin:6px 0">
     <li>Prise de service à <b>8 h 30</b> en semaine, <b>9 h 30</b> le week-end : les retards pèsent sur l'avancement.</li>
     <li>Énergie en dormant : sieste en journée (8 h – 20 h) <b>+25/h</b>, nuit <b>+15/h</b>, endormi tout seul <b>+12/h</b>. Attention, toucher ⏰ le réveille !</li>
@@ -1293,8 +1296,8 @@ function act(a){
     const cdA=(k,hh)=>{if(cool(s['_'+k]||0,hh)){toast('Il l\'a déjà fait récemment. Laisse retomber la pression.');return true;}s['_'+k]=s.t;return false;};
     const risky=(base,what)=>{if(riskRoll(s,base)){arrest(s,s.t);sheet(`<h3>Pris sur le fait ! 🚔</h3><p>${esc(s.log[s.log.length-1].txt)}</p><button class="primary" data-o="close">…</button>`,true);save();render();return true;}return false;};
     switch(a){
-    case 'manif':if(s.energy<20)return toast('Trop fatigué pour défiler.');dailyEvent(s,'manif');s.busyUntil=s.t+20*M;s.energy=clamp(s.energy-10);log(s,'📢 Il part manifester avec le groupe (20 min).');toast('En route pour la manif ! 📢');lastLook='';lastBg=null;save();render();return;
-    case 'tag':if(cdA('tagc',1))return;if(risky(.14))return;s.rep=clamp((s.rep||0)+5);s.discr=clamp((s.discr||0)-10);s.tenue=clamp(s.tenue-6);fx('🎨',2);log(s,'🎨 Un tag de plus sur un mur du quartier. Réputation +5.');toast('Tag réalisé… discrétion en baisse.');break;
+    case 'manif':if(s.energy<20)return toast('Trop fatigué pour défiler.');dailyEvent(s,'manif');s.nManif=(s.nManif||0)+1;if(s.nManif>=5)addMedal(s,'r_manif5');s.busyUntil=s.t+20*M;s.energy=clamp(s.energy-10);log(s,'📢 Il part manifester avec le groupe (20 min).');toast('En route pour la manif ! 📢');lastLook='';lastBg=null;save();render();return;
+    case 'tag':if(cdA('tagc',1))return;if(risky(.14))return;s.nTag=(s.nTag||0)+1;if(s.nTag>=10)addMedal(s,'r_tag10');s.rep=clamp((s.rep||0)+5);s.discr=clamp((s.discr||0)-10);s.tenue=clamp(s.tenue-6);fx('🎨',2);log(s,'🎨 Un tag de plus sur un mur du quartier. Réputation +5.');toast('Tag réalisé… discrétion en baisse.');break;
     case 'banderole':if(cdA('banc',1))return;dailyEvent(s,'banderole');s.rep=clamp((s.rep||0)+3);s.motiv=clamp(s.motiv+4);s.energy=clamp(s.energy-6);fx('🏳️');toast('Banderoles prêtes pour la prochaine manif.');break;
     case 'reseaux':if(cdA('resc',2))return;if(risky(.06))return;s.rep=clamp((s.rep||0)+4);s.discr=clamp((s.discr||0)-6);fx('📱');log(s,'📱 Il poste des vidéos de manif : nouveaux abonnés, mais il se fait remarquer.');toast('Réputation +4… et pas que chez ses amis.');break;
     case 'cacher':if(cdA('cachc',3))return;s.discr=clamp((s.discr||0)+25);s.motiv=clamp(s.motiv-4);fx('🕶️');toast('Nouveau look, téléphone éteint : il se fait oublier.');break;
@@ -1822,7 +1825,7 @@ const insImg=(k,h=28)=>`<img class="ins" src="${imgSrc(k)}" alt="" style="height
 function medalSVG(k,size=56,locked=false){
   if(MEDAL_IMG[k])return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${Math.round(size*1.35)}px;height:${Math.round(size*72/64)}px"><img src="${imgSrc(MEDAL_IMG[k])}" alt="" style="max-width:100%;max-height:85%;${locked?'filter:grayscale(1) opacity(.35)':'filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))'}"></span>`;
   const a=MEDAL_ART[k]||{m:'gold',r:['#1b3a8c','#fff','#c8102e'],sym:'star'},[l,mid,d]=METALS[a.m],id='md'+k+(locked?'L':'')+size;
-  const ink=a.m==='blue'?'#fff':d,t=a.t||'';
+  const ink=a.m==='blue'?'#fff':a.m==='black'?'#ff4d5e':d,t=a.t||'';
   const sym={
    n:`<text x="32" y="${t.length>1?54:55}" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="${t.length>1?17:20}" fill="${ink}">${t}</text>`,
    txt:`<text x="32" y="${t.length>3?50.5:51.5}" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="${t.length>4?8:t.length>3?9.5:t.length>2?11.5:14}" fill="${ink}">${t}</text>`,
@@ -1845,6 +1848,21 @@ function medalSVG(k,size=56,locked=false){
   ${sym}</svg>`;
 }
 function addMedal(s,k){const d=ensureDaily(s);if(d.medals.includes(k))return;d.medals.push(k);log(s,`${MEDALS[k][0]} Médaille débloquée : ${MEDALS[k][1]} !`,'good');events.push('medal');window._lastMedal=k;}
+/* --- trophées de l'autre côté (cachés tant qu'on n'y est jamais passé) --- */
+const REBEL_T={
+ r_first:['🖤','Changement de camp','Passer de l\'autre côté.',{sym:'star'}],
+ r_manif5:['📢','Pilier des cortèges','Participer à 5 manifs.',{sym:'n',t:'5'}],
+ r_tag10:['🎨','Artiste de rue','Réaliser 10 tags.',{sym:'n',t:'10'}],
+ r_fuite:['🔥','Insaisissable','Réussir une action musclée et s\'enfuir.',{sym:'txt',t:'RUN'}],
+ r_gav:['🚔','Première garde à vue','Se faire interpeller une première fois.',{sym:'txt',t:'GAV'}],
+ r_rep50:['📣','Connu des services','Atteindre 50 de réputation.',{sym:'n',t:'50'}],
+ r_ghost:['🕶️','Fantôme','Atteindre 50 de réputation sans aucune interpellation.',{sym:'txt',t:'0'}],
+ r_boucle:['♾️','La boucle est bouclée','Terminer le parcours de l\'autre côté.',{sym:'txt',t:'FIN'}]};
+METALS.black=['#9aa0aa','#3b3f47','#101216'];
+for(const [k,v] of Object.entries(REBEL_T)){MEDALS[k]=[v[0],v[1]];MEDAL_ART[k]=Object.assign({m:'black',r:['#111','#c8102e','#111']},v[3]);}
+const isRT=k=>k.startsWith('r_');
+const rebelSeen=s=>{const d=s&&s.daily;return !!(d&&(d.autreSeen||(d.medals||[]).some(isRT)));};
+function rebelCheck(s){if(s.stage!=='autre')return;const r=s.rep||0;if(r>=50){addMedal(s,'r_rep50');if(!(s.arrests||0))addMedal(s,'r_ghost');}}
 function genMissions(s,day){
   const ids=Object.keys(DAILY_POOL).filter(k=>DAILY_POOL[k].ok(s));let seed=hashStr(day+s.gid),out=[];
   while(out.length<Math.min(3,ids.length)){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const k=ids[seed%ids.length];if(!out.includes(k))out.push(k);}
@@ -1900,7 +1918,10 @@ function openDaily(){
     <div>${d.missions.map(m=>{const P=DAILY_POOL[m.id];return `<div class="crit"><span>${m.done?'✅':'⬜'}</span><span>${P.l}</span><span>${Math.min(m.p,P.g)}/${P.g}</span></div>`;}).join('')||'<p>Aucune mission aujourd\'hui.</p>'}</div>
     ${all&&!d.chest?`<button class="primary gold" data-o="chest">🎁 Ouvrir le coffre du jour</button>`:d.chest?`<p>🎁 Coffre du jour déjà ouvert. Nouvelles missions demain !</p>`:`<p>Termine les 3 missions pour ouvrir le coffre du jour 🎁</p>`}
     ${qDone?`<p>❓ Question du jour : déjà faite ${d.qLast?'✅':'❌'}. Rendez-vous demain !</p>`:`<button class="primary" data-o="qday">❓ Question du jour</button>`}
-    <div><div class="sub" style="margin:4px 0">Médailles (${d.medals.length}/${Object.keys(MEDALS).length})</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 4px;text-align:center">${Object.keys(MEDALS).map(k=>{const has=d.medals.includes(k);return `<div data-medal="${k}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;font-size:10.5px;line-height:1.2;color:${has?'var(--ink)':'rgba(255,255,255,.4)'}">${medalSVG(k,44,!has)}<span style="margin-top:3px">${MEDALS[k][1]}</span></div>`;}).join('')}</div></div>
+    ${(()=>{const cell=k=>{const has=d.medals.includes(k);return `<div data-medal="${k}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;font-size:10.5px;line-height:1.2;color:${has?'var(--ink)':'rgba(255,255,255,.4)'}">${medalSVG(k,44,!has)}<span style="margin-top:3px">${MEDALS[k][1]}</span></div>`;};
+      const N=Object.keys(MEDALS).filter(k=>!isRT(k)),RT=Object.keys(MEDALS).filter(isRT);
+      return `<div><div class="sub" style="margin:4px 0">Médailles (${d.medals.filter(k=>!isRT(k)).length}/${N.length})</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 4px;text-align:center">${N.map(cell).join('')}</div></div>`+
+       (rebelSeen(S)?`<div style="margin-top:10px;padding:8px;border-radius:14px;background:#0b0c10;border:1px solid #c8102e55"><div class="sub" style="margin:4px 0;color:#ff6b7d">🖤 Trophées de l'autre côté (${d.medals.filter(isRT).length}/${RT.length})</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 4px;text-align:center">${RT.map(cell).join('')}</div></div>`:'');})()}
     <button class="cancel" data-o="close">Fermer</button>`);
 }
 function openChest(){
