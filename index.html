@@ -2129,8 +2129,9 @@ async function savePseudo(){
   catch(e){askPseudo(errFr(e));}
 }
 async function loadRank(){
-  try{const {data}=await sb('/rest/v1/players?select=id,pseudo,recrue,phase,score,streak,last_seen&order=score.desc&limit=30');
-    const rows=data.map((p,i)=>`<div class="crit" data-prof="${p.id}" style="cursor:pointer;grid-template-columns:28px 1fr auto;${p.id===ME.id?'background:#ffffff10;border-radius:8px':''}"><span>${i<3?['🥇','🥈','🥉'][i]:(i+1)+'.'}</span><span><b>${esc(p.pseudo)}</b><br><span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')} · 🔥${p.streak||0}</span></span><span style="color:var(--gold);font-weight:600">${p.score}</span></div>`).join('');
+  try{const {data}=await sb('/rest/v1/players?select=id,pseudo,recrue,phase,score,streak,last_seen&order=score.desc,streak.desc,created_at.asc&limit=30');
+    let rk=0;const ranks=data.map((p,i)=>(i&&p.score===data[i-1].score&&p.streak===data[i-1].streak)?rk:(rk=i+1));
+    const rows=data.map((p,i)=>`<div class="crit" data-prof="${p.id}" style="cursor:pointer;grid-template-columns:28px 1fr auto;${p.id===ME.id?'background:#ffffff10;border-radius:8px':''}"><span>${ranks[i]<=3?['🥇','🥈','🥉'][ranks[i]-1]:ranks[i]+'.'}</span><span><b>${esc(p.pseudo)}</b><br><span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${esc(p.phase||'')} · 🔥${p.streak||0}</span></span><span style="color:var(--gold);font-weight:600">${p.score}</span></div>`).join('');
     casShell(rows||'<p>Personne pour l\'instant.</p>');
   }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
 }
@@ -2585,7 +2586,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794519257';
+const BUILD_ID='1794519367';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
