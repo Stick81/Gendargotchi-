@@ -120,6 +120,9 @@
   .tapzone{height:150px;border-radius:20px;background:linear-gradient(135deg,#e8414f,#f3964b);font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px}
   .tapzone:active{transform:scale(.97)}
   #casBtn{position:relative}
+  .newsBox{position:fixed;inset:0;z-index:97;background:rgba(8,12,30,.72);display:flex;align-items:center;justify-content:center;padding:16px;animation:annIn .3s ease}
+  .newsCard{background:#1e2a52;color:#fff;border:2px solid #f3c74b;border-radius:20px;padding:18px;width:min(92vw,420px);max-height:82vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .newsCard h3{margin:0 0 4px;color:#f3c74b}.newsIt{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.35;margin:8px 0}.newsIt .e{font-size:24px}
   .annb{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:98;width:min(92vw,420px);box-sizing:border-box;background:linear-gradient(135deg,#f3c74b,#ffdf7e);color:#1b2547;border-radius:16px;padding:12px 14px;font-size:14.5px;line-height:1.35;box-shadow:0 8px 28px rgba(0,0,0,.45);animation:annIn .45s ease}
   .annb.out{transition:.35s;opacity:0;transform:translate(-50%,-30px)}
   @keyframes annIn{from{opacity:0;transform:translate(-50%,-40px)}to{opacity:1;transform:translate(-50%,0)}}
@@ -169,6 +172,7 @@
   <div class="tagline">Couve, élève et motive ta recrue : de l'œuf au gendarme… ou pas !</div>
   <div class="homebtns" id="homeBtns"></div>
   <div id="homeNews"></div>
+  <div id="homeVer" style="margin-top:14px;font-size:11px;opacity:.45;color:#fff;position:relative;z-index:2"></div>
 </div>
 <div class="app">
   <header>
@@ -1418,6 +1422,7 @@ function act(a){
       <button class="cancel" data-o="close">Fermer</button>`);}
   case 'menu':
     return sheet(`<h3>Options</h3><p>Ta partie est sauvegardée automatiquement.</p>
+      <button class="opt" data-o="news"><span class="e">🆕</span><span>Quoi de neuf ?<small>Les dernières nouveautés du jeu (version ${APP_VERSION})</small></span></button>
       <button class="opt" data-o="guide"><span class="e">📖</span><span>Règlement du jeu<small>Conditions d'avancement, concours, école, binôme, médailles</small></span></button>
       <button class="opt" data-o="home"><span class="e">🏠</span><span>Accueil Gendargotchi<small>Revenir à l'écran d'accueil</small></span></button>
       <button class="opt" data-o="reset"><span class="e">🥚</span><span>Recommencer de zéro<small>La recrue actuelle sera perdue</small></span></button>
@@ -1448,6 +1453,7 @@ function option(o){
   if(k==='reset'){return sheet(`<h3>Tout recommencer ?</h3><p>La recrue actuelle sera définitivement perdue.</p><div class="row"><button class="primary ghost" data-o="close">Non</button><button class="primary" style="background:var(--danger)" data-o="resetok">Oui</button></div>`,true);}
   if(k==='home'){closeSheet();showHome();return;}
   if(k==='guide'){openGuide();return;}
+  if(k==='news'){closeSheet();openNews(true);return;}
   if(k==='resetok'){closeSheet();S=newGame();lastLook='';actKey='';log(S,'Un nouvel œuf est arrivé à la brigade.');save();render();return;}
   closeSheet();
   if(['eat:popote','eat:salade','talk:career','talk:praise','talk:recadrer','fun:famille'].includes(o)&&refuses())return;
@@ -2444,6 +2450,33 @@ function renderHomeNews(){
 }
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
+/* ======================= QUOI DE NEUF ======================= */
+const APP_VERSION='1.8', NEWS_KEY='gendargotchi-version-vue';
+const CHANGELOG=[
+ {v:'1.8',d:'12 novembre',items:[
+  ['⏳','Récup\' 1 h','+40 d\'énergie en une heure, une fois par jour.'],
+  ['🎓','Carrière en unité','Commissions jusqu\'à Adjudant-chef, spécialités (PSIG, maître-chien, GIGN, cavalerie…) et examen OPJ.'],
+  ['📣','Annonces de la caserne','Félicite tes collègues quand ils prennent un grade, entrent en école ou sont affectés.'],
+  ['🫡','Salut à la promotion','Ta recrue salue après une commission réussie. Et de vrais insignes pour les spécialités !']]},
+ {v:'1.7',d:'11 novembre',items:[
+  ['🤝','Binôme','Révise ou fais du sport à deux avec un collègue, en différé (onglet 🤝 de la caserne).'],
+  ['🏅','Médailles','Nouvelles médailles dessinées, avec animation au déblocage.'],
+  ['📖','Règlement du jeu','Toutes les conditions d\'avancement dans ⚙️.'],
+  ['😴','Sieste','+25/h en journée et confirmation avant de réveiller la recrue (fini les réveils par erreur).']]}
+];
+function newsHTML(list){return list.map(n=>`<div class="sub" style="margin:10px 0 4px">Version ${n.v} — ${n.d}</div>`+n.items.map(i=>`<div class="newsIt"><span class="e">${i[0]}</span><span><b>${i[1]}</b><br>${i[2]}</span></div>`).join('')).join('');}
+function openNews(all){
+  const el=document.createElement('div');el.className='newsBox';
+  el.innerHTML=`<div class="newsCard"><h3>🆕 Quoi de neuf ?</h3>${newsHTML(all?CHANGELOG:CHANGELOG.slice(0,1))}
+    <div class="row" style="margin-top:12px">${all?'':`<button class="cancel" data-news="all">Historique</button>`}<button class="primary" data-news="ok">C'est parti !</button></div></div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-news]');if(!b&&e.target!==el)return;
+    try{localStorage.setItem(NEWS_KEY,APP_VERSION);}catch(_){}el.remove();if(b&&b.dataset.news==='all')openNews(true);});
+}
+function checkNews(){let seen=null;try{seen=localStorage.getItem(NEWS_KEY);}catch(e){}
+  if(seen===APP_VERSION)return;
+  if(!seen&&!loadLocal()){try{localStorage.setItem(NEWS_KEY,APP_VERSION);}catch(e){}return;}
+  setTimeout(()=>openNews(false),1200);}
 function tick(){
   if(!S)return;
   const before=S.stage;simulate(S,Date.now());
@@ -2493,6 +2526,8 @@ document.addEventListener('visibilitychange',()=>{tick();if(document.hidden)save
 window.addEventListener('pagehide',()=>{tick();saveRemote();});
 
 showHome();
+try{$('homeVer').textContent='Gendargotchi v'+APP_VERSION;}catch(e){}
+checkNews();
 const local=loadLocal();
 if(local)start(local);else $('cards').innerHTML='<div class="card sub" style="text-align:center">Chargement…</div>';
 let booted=!!local;
