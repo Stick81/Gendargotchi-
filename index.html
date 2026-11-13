@@ -155,6 +155,10 @@
   .tapzone,#range,#range *{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   .panel,#panel{overscroll-behavior:contain}
   #casBtn{position:relative}
+  .leaveScn{position:absolute;inset:0;z-index:6;border-radius:inherit;overflow:hidden;background:linear-gradient(#ffd27a 0%,#ffb36b 38%,#5fc3e4 60%,#2b8cc4 100%)}
+  .lvSun{position:absolute;left:50%;top:22%;width:90px;height:90px;margin-left:-45px;border-radius:50%;background:radial-gradient(#fff6c4,#ffcf4a);box-shadow:0 0 60px #ffd84d}
+  .lvSea{position:absolute;left:0;right:0;bottom:0;height:22%;background:#f1dfa8}
+  .lvTxt{position:absolute;left:0;right:0;top:58%;text-align:center;font-size:26px;font-weight:800;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.4)}.lvTxt small{display:block;font-size:14px;font-weight:600;margin-top:4px}
   .medalView{position:fixed;inset:0;z-index:98;background:rgba(8,12,30,.78);display:flex;align-items:center;justify-content:center;padding:16px;animation:annIn .3s ease}
   .mvCard{background:radial-gradient(circle at 50% 30%,#2e3d72,#1b2547 70%);border:2px solid #f3c74b;border-radius:22px;padding:18px 20px;width:min(90vw,360px);text-align:center;color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.5)}
   .mvTag{color:#f3c74b;font-weight:800;font-size:17px;margin-bottom:4px}
@@ -416,6 +420,7 @@ function hourOf(t){const d=new Date(t);return d.getHours()+d.getMinutes()/60;}
 
 /* ======================= SIMULATION (pas ≤ 1 min) ======================= */
 function step(s,dt){
+  if(s.leave){if(s.t+dt<s.leave.until)return;endLeave(s,s.leave.until);}
   if(s.stage==='over'||s.stage==='choix'||s.stage==='affect') return;
   const m=dt/M,h=dt/H,t=s.t, AUT=s.stage==='autre', ECO=s.stage==='ecole', SVC=s.stage==='service', CTX=ctxOf(s), DUTY=CTX==='grDuty', MIS=SVC&&s.mission;
   if(s.stage==='egg'){
@@ -665,6 +670,41 @@ function finishDerive(s,at){
   s.derive=null;s.autreStart=at;s.rep=clamp(Math.round(avg*0.3));s.discr=clamp(45+Math.round((v.ombre||0)*0.45));s.motiv=clamp(Math.max(s.motiv,55)+Math.round((v.coll||0)*0.15));
   s.dvAvg=Math.round(avg);addMedal(s,'r_bapteme');
   log(s,`🔥 Première vraie manif : baptême du feu ! Formé à ${Math.round(avg)} %, il démarre avec ${s.rep} de réputation et ${s.discr} de discrétion.`,'good',at);events.push('deriveEnd');
+}
+/* ======================= PERMISSION ======================= */
+const LEAVE_MAX=3, LEAVE_CD=4;
+function leaveCovers(s,from,to){const L=s.leaveDays||[];if(!L.length)return false;const a=new Date(from+'T12:00:00'),b=new Date(to+'T12:00:00');
+  for(let x=new Date(a.getTime()+D);x<b;x=new Date(x.getTime()+D)){if(!L.includes(dayKey(x.getTime())))return false;}return true;}
+function leaveShift(s,dur){
+  const sh=o=>{if(!o)return;for(const k of Object.keys(o)){const v=o[k];if(typeof v==='number'&&v>1.6e12&&k!=='t'&&k!=='created'&&k!=='endedAt')o[k]=v+dur;}};
+  sh(s);for(const k of ['board','sboard','derive','mission','specCd'])sh(s[k]);
+}
+function startLeave(s,days){
+  s.leave={start:s.t,until:s.t+days*D,days};s.sleeping=false;s.recupUntil=0;s.busyUntil=0;
+  s.leaveDays=[];for(let i=0;i<=days;i++)s.leaveDays.push(dayKey(s.t+i*D));
+  log(s,`🏖️ Part en permission pour ${days} jour${days>1?'s':''}. Retour prévu le ${new Date(s.leave.until).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} à ${new Date(s.leave.until).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}.`,'good');
+}
+function endLeave(s,at){
+  const L=s.leave;if(!L)return;const dur=Math.max(0,at-L.start);s.leave=null;
+  leaveShift(s,dur);s.leaveCd=at+LEAVE_CD*D;
+  s.energy=clamp(Math.max(s.energy,95));s.moral=clamp(s.moral+15);s.food=clamp(Math.max(s.food,70));s.tenue=clamp(Math.max(s.tenue,75));s.sick=false;
+  log(s,`🧳 De retour de permission, ${s.stage==='autre'?'reposé et remonté à bloc':'reposé et prêt à reprendre le service'} !`,'good',at);events.push('leaveEnd');
+}
+function leaveBlock(s){
+  if(['egg','over','choix','affect'].includes(s.stage))return 'Pas de permission à ce stade.';
+  if(s.leave)return 'Déjà en permission.';
+  if((s.leaveCd||0)>s.t)return `Prochaine permission possible dans ${fmtDur(s.leaveCd-s.t)}.`;
+  if(s.stage==='service'&&s.mission)return 'Pas de permission pendant un déplacement !';
+  if(s.gavUntil>s.t)return 'Difficile de partir en permission depuis une cellule…';
+  if(s.busyUntil>s.t)return 'Il est occupé, attends son retour.';
+  return '';
+}
+function openLeave(){
+  const s=S;tick();const b=leaveBlock(s);if(b)return toast(b);
+  sheet(`<h3>🏖️ Poser une permission</h3><p>Pendant la permission, ${esc(nm(s))} est en congé : <b>le jeu est en pause</b>. Ses jauges, sa phase, ses commissions et sa série de présence sont figées.</p>
+    <p style="font-size:13px">Il revient reposé (énergie au max, moral +15). Tu peux le faire revenir plus tôt. Ensuite, ${LEAVE_CD} jours avant la prochaine permission.</p>
+    ${[1,2,3].map(n=>`<button class="opt" data-a="leave${n}"><span class="e">${['🌙','🏕️','🏖️'][n-1]}</span><span>${n} jour${n>1?'s':''}<small>Retour ${new Date(s.t+n*D).toLocaleDateString('fr-FR',{weekday:'long'})} à ${new Date(s.t+n*D).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</small></span></button>`).join('')}
+    <button class="cancel" data-o="close">Annuler</button>`);
 }
 function arrest(s,t){
   const [who,line]=ARRESTERS[Math.floor(rnd(s)*ARRESTERS.length)];
@@ -1105,7 +1145,7 @@ function render(){
   const d=new Date(now),hr=d.getHours()+d.getMinutes()/60,we=!isWeekday(now);
   const SV=SCHOOLBG?'En cours':st==='service'&&s.sub==='GR'?'En faction':'En service';
   const slot=hr<(we?9.5:8.5)?(we?`Week-end · ${SCHOOLBG?'rassemblement':'service'} 9 h 30`:(SCHOOLBG?'Avant le rassemblement':'Avant le service')):hr<12?SV:hr<14?'Pause déjeuner':hr<18.5?SV:'Repos';
-  $('clock').innerHTML=`<b>${DAYS[d.getDay()]} ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</b><br>${slot}`;
+  $('clock').innerHTML=`<b>${DAYS[d.getDay()]} ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</b><br>${s.leave?'En permission':slot}`;
 
   // personnage
   const SAL=(st==='gav'||st==='service')&&!s.sleeping&&(s.saluteUntil||0)>s.t&&!!saluteKey(s);
@@ -1117,7 +1157,7 @@ function render(){
     $('petInner').className=st==='egg'?'':s.sleeping?'breathe':st==='over'?'':'bob';
   }
   $('pet').classList.toggle('away',busy||(AUT&&s.gavUntil>s.t));
-  {const exH=(s.sleeping?'<span class="zzz">Z</span><span class="zzz">z</span><span class="zzz">z</span>':'')+(AUT&&s.gavUntil>s.t?'<div class="car">🚔</div>':busy?(!AUT&&CTX==='gm_om'?patrolHTML('boat'):!AUT&&CTX!=='grDuty'?patrolHTML(['PMO','GRMOTO'].includes(s.spec)?'moto':'car'):`<div class="car">${AUT?'📢':CTX==='gm_om'?'🛶':'🚓'}</div>`):'');if(exH!==window._exH){window._exH=exH;$('extras').innerHTML=exH;}}
+  {const exH=s.leave?`<div class="leaveScn"><div class="lvSun"></div><div class="lvSea"></div><div class="lvTxt">🏖️ En permission<small>Retour ${new Date(s.leave.until).toLocaleDateString('fr-FR',{weekday:'long'})} ${new Date(s.leave.until).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</small></div></div>`:(s.sleeping?'<span class="zzz">Z</span><span class="zzz">z</span><span class="zzz">z</span>':'')+(AUT&&s.gavUntil>s.t?'<div class="car">🚔</div>':busy?(!AUT&&CTX==='gm_om'?patrolHTML('boat'):!AUT&&CTX!=='grDuty'?patrolHTML(['PMO','GRMOTO'].includes(s.spec)?'moto':'car'):`<div class="car">${AUT?'📢':CTX==='gm_om'?'🛶':'🚓'}</div>`):'');if(exH!==window._exH){window._exH=exH;$('extras').innerHTML=exH;}}
 
   // bulle
   let b='';
@@ -1190,8 +1230,9 @@ function renderActions(){
   const ready=st==='gav'&&criteria(s).every(c=>c[1])&&s.t>=s.concoursCd;
   const boardOpen=st==='gav'&&s.board&&s.board.until>s.t;
   const CTX=ctxOf(s);
-  const key=[s.recupDay,(s.recupUntil||0)>s.t,s.spec,s.opj,s.sboard&&s.sboard.until>s.t,st,s.end,s.gavUntil>s.t,(s.casier||0)>=75,s.motiv<50,s.energy<30,(s.discr||0)<30,s.sub,CTX,s.mission&&s.mission.type,z,busy,s.sick,ready,!!boardOpen,s.food<25,s.moral<30,s.tenue<30,s.motiv<30,s.forme<40].join('|');
+  const key=[!!s.leave,s.recupDay,(s.recupUntil||0)>s.t,s.spec,s.opj,s.sboard&&s.sboard.until>s.t,st,s.end,s.gavUntil>s.t,(s.casier||0)>=75,s.motiv<50,s.energy<30,(s.discr||0)<30,s.sub,CTX,s.mission&&s.mission.type,z,busy,s.sick,ready,!!boardOpen,s.food<25,s.moral<30,s.tenue<30,s.motiv<30,s.forme<40].join('|');
   if(key===actKey)return;actKey=key;
+  if(s.leave){el.className='actions one';el.innerHTML=`<button class="primary" data-a="leaveBack">🧳 Le faire revenir plus tôt</button>`;return;}
   if(st==='egg'){el.className='actions one';el.innerHTML=`<button class="act big" data-a="warm"><span class="e">🔥</span>Couver</button>`;return;}
   if(st==='over'&&s.end==='tuteur'){el.className='actions one';el.innerHTML=`<div class="row"><button class="primary" style="background:#2a2a33" data-a="autreOui">🖤 Oui</button><button class="primary" data-a="restart">🥚 Non, nouvelle partie</button></div>`;return;}
   if(st==='over'||st==='affect'){el.className='actions one';el.innerHTML=st==='over'?`<button class="primary" data-a="restart">🥚 Couver un nouvel œuf</button>`:'';return;}
@@ -1320,6 +1361,7 @@ function openGuide(){
   sec('⏰ Rythme et astuces',`<ul class="gnote" style="padding-left:18px;margin:6px 0">
     <li>Prise de service à <b>8 h 30</b> en semaine, <b>9 h 30</b> le week-end : les retards pèsent sur l'avancement.</li>
     <li>Énergie en dormant : sieste en journée (8 h – 20 h) <b>+25/h</b>, nuit <b>+15/h</b>, endormi tout seul <b>+12/h</b>. Attention, toucher ⏰ le réveille !</li>
+    <li>🏖️ <b>Permission</b> (⚙️) : 1 à 3 jours de pause, tout est figé, série de présence conservée. 4 jours d'attente avant la suivante.</li>
     <li>⏳ <b>Récup' 1 h</b> : +40 d'énergie en une heure, une fois par jour (pas en faction ni en déplacement).</li>
     <li>Le sport et une tenue impeccable donnent discipline <b>+3</b>.</li>
     <li>Le fast-food et les nuits blanches font baisser la forme et la santé.</li>
@@ -1440,6 +1482,9 @@ function act(a){
       <button class="opt" data-o="eat:salade"><span class="e">🥗</span><span>Salade et fruit<small>Léger : forme ++, mais moral −</small></span></button>
       <button class="opt" data-o="eat:fast"><span class="e">${ECO?'🍫':'🍔'}</span><span>${ECO?'Distributeur du foyer':'Fast-food'}<small>Il adore… mais attention à la ligne et à la santé</small></span></button>
       <button class="cancel" data-o="close">Annuler</button>`);
+  case 'leave':return openLeave();
+  case 'leave1':case 'leave2':case 'leave3':{closeSheet();const b=leaveBlock(s);if(b)return toast(b);startLeave(s,+a.slice(5));lastLook='';actKey='';break;}
+  case 'leaveBack':if(s.leave){endLeave(s,s.t);lastLook='';actKey='';}break;
   case 'recup':{
     if((s.recupUntil||0)>s.t)return toast(`En récup' jusqu'à ${new Date(s.recupUntil).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}. Laisse-le récupérer !`);
     if(s.recupDay===dayKey(s.t))return toast('Récup\' déjà prise aujourd\'hui. Prochaine possible demain.');
@@ -1538,6 +1583,7 @@ function act(a){
       <button class="cancel" data-o="close">Fermer</button>`);}
   case 'menu':
     return sheet(`<h3>Options</h3><p>Ta partie est sauvegardée automatiquement.</p>
+      ${S&&!['egg','over','choix','affect'].includes(S.stage)?`<button class="opt" data-o="leave"><span class="e">🏖️</span><span>${S.leave?'En permission':'Poser une permission'}<small>${S.leave?'Le jeu est en pause jusqu\'à son retour':'1 à 3 jours de pause : jauges et progression figées'}</small></span></button>`:''}
       <button class="opt" data-o="feedback"><span class="e">💡</span><span>Boîte à idées / signaler un bug<small>Envoyé uniquement au créateur du jeu</small></span></button>
       ${IS_ADMIN?`<button class="opt" data-o="fbadmin"><span class="e">📥</span><span>Retours des joueurs${fbNew?` <b style="color:#f3c74b">(${fbNew} nouveau${fbNew>1?'x':''})</b>`:''}<small>Visible par toi seul (admin)</small></span></button>`:''}
       <button class="opt" data-o="news"><span class="e">🆕</span><span>Quoi de neuf ?<small>Les dernières nouveautés du jeu (version ${APP_VERSION})</small></span></button>
@@ -1573,6 +1619,7 @@ function option(o){
   if(k==='guide'){openGuide();return;}
   if(k==='news'){closeSheet();openNews(true);return;}
   if(k==='feedback')return openFeedback();
+  if(k==='leave'){closeSheet();return S.leave?toast('Il est déjà en permission 🏖️'):openLeave();}
   if(k==='fbadmin')return openFbAdmin();
   if(k==='resetok'){closeSheet();S=newGame();lastLook='';actKey='';log(S,'Un nouvel œuf est arrivé à la brigade.');save();render();return;}
   closeSheet();
@@ -2023,7 +2070,8 @@ function checkDaily(s){
     if(!d.lastDay)d.streak=1;
     else{const g=dayGap(d.lastDay,today);
       if(g===1)d.streak++;
-      else if(g===2&&d.perm>0){d.perm--;d.streak++;log(s,'🎟️ Une permission a protégé ta série de présence (un jour manqué).','good');}
+      else if(g>1&&leaveCovers(s,d.lastDay,today)){d.streak++;log(s,'🏖️ Ta série de présence a été conservée pendant la permission.','good');}
+      else if(g===2&&d.perm>0){d.perm--;d.streak++;log(s,'🎟️ Ton joker de la semaine a protégé ta série de présence (un jour manqué).','good');}
       else if(g>1){log(s,`💔 Série de présence perdue après ${d.streak} jour(s). On repart !`,'bad');d.streak=1;}}
     d.lastDay=today;d.best=Math.max(d.best,d.streak);d.days.push(today);if(d.days.length>30)d.days.splice(0,d.days.length-30);
     if(d.streak===3){s.moral=clamp(s.moral+15);addMedal(s,'s3');}
@@ -2051,9 +2099,9 @@ function openDaily(){
   const all=d.missions.length&&d.missions.every(m=>m.done);
   const qDone=d.qDay===today;
   sheet(`<h3>📅 Ordre du jour</h3>
-    <div class="card" style="background:var(--card2)"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">🔥 ${d.streak} jour${d.streak>1?'s':''} de présence</b><span class="sub">record : ${d.best} · 🎟️ ${d.perm} permission</span></div>
+    <div class="card" style="background:var(--card2)"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">🔥 ${d.streak} jour${d.streak>1?'s':''} de présence</b><span class="sub">record : ${d.best} · 🎟️ ${d.perm} joker</span></div>
       <div style="display:flex;margin-top:8px">${cal}</div>
-      <p style="margin-top:6px;font-size:12.5px">Paliers : 3 j moral +15 · 7 j motivation +10 · 14 j bonus · 30 j médaille. La permission (1 par semaine) protège la série si tu manques un jour.</p></div>
+      <p style="margin-top:6px;font-size:12.5px">Paliers : 3 j moral +15 · 7 j motivation +10 · 14 j bonus · 30 j médaille. Le joker (1 par semaine) protège la série si tu manques un jour.</p></div>
     <div>${d.missions.map(m=>{const P=DAILY_POOL[m.id];return `<div class="crit"><span>${m.done?'✅':'⬜'}</span><span>${P.l}</span><span>${Math.min(m.p,P.g)}/${P.g}</span></div>`;}).join('')||'<p>Aucune mission aujourd\'hui.</p>'}</div>
     ${all&&!d.chest?`<button class="primary gold" data-o="chest">🎁 Ouvrir le coffre du jour</button>`:d.chest?`<p>🎁 Coffre du jour déjà ouvert. Nouvelles missions demain !</p>`:`<p>Termine les 3 missions pour ouvrir le coffre du jour 🎁</p>`}
     ${qDone?`<p>❓ Question du jour : déjà faite ${d.qLast?'✅':'❌'}. Rendez-vous demain !</p>`:`<button class="primary" data-o="qday">❓ Question du jour</button>`}
@@ -2110,7 +2158,7 @@ function scoreOf(s){
   return Math.round(base+(s.rank||0)*50+(s.srank||0)*60+(s.spec?80:0)+(s.opj?60:0)+(s.exp||0)*3+days*5+((s.daily&&s.daily.streak)||0)*10);
 }
 function phaseLabel(s){
-  if(!s)return '';if(s.stage==='egg')return 'Œuf';if(s.stage==='gav')return 'GAV · '+GRADES[s.rank||0];
+  if(!s)return '';if(s.leave)return 'En permission 🏖️';if(s.stage==='egg')return 'Œuf';if(s.stage==='gav')return 'GAV · '+GRADES[s.rank||0];
   if(s.stage==='ecole')return `École · jour ${Math.min(SCHOOL_DAYS,Math.floor((s.t-s.schoolStart)/D)+1)}/${SCHOOL_DAYS}`;
   if(s.stage==='choix')return 'Fin d\'école';if(s.stage==='service')return (SUBS[s.sub]?s.sub:'Unité')+' · '+SGRADES[s.srank||0]+(s.spec&&SPECS[s.spec]?' · '+SPECS[s.spec].n:'')+(s.opj?' · OPJ':'');
   if(s.stage==='autre')return s.derive?`La dérive · jour ${Math.min(DERIVE_DAYS,Math.floor((s.t-s.derive.start)/D)+1)}/${DERIVE_DAYS}`:'De l\'autre côté';return 'Partie terminée';
@@ -2721,7 +2769,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794588858';
+const BUILD_ID='1794589594';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2735,8 +2783,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.16.1', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.16.2', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.16.2',d:'13 novembre',items:[['🏖️','Permission','Absent quelques jours ? Pose une permission depuis ⚙️ : 1 à 3 jours de pause, jauges et progression figées, série de présence conservée.']]},
  {v:'1.16',d:'13 novembre',items:[['💪','Nouveau sport : les pompes','Au choix avec le sprint : tape quand la jauge est en haut, seules les pompes propres comptent.'],['🧗','Parcours d\'obstacles','À l\'école : saute les haies et rampe sous les filets ! Nouvelle médaille à la clé.']]},
  {v:'1.15',d:'13 novembre',items:[['💡','Boîte à idées','Une idée ou un bug ? Envoie-le depuis ⚙️ : seul le créateur du jeu le lira.']]},
  {v:'1.14',d:'13 novembre',items:[['🌀','La dérive','Avant de passer vraiment de l\'autre côté, 10 jours pour apprendre les codes du groupe : tag, banderoles, collectif, endurance, discrétion.',1]]},
