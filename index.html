@@ -453,7 +453,7 @@ function step(s,dt){
   if(s.moral>=60&&s.forme>=60)dm+=1;
   s.motiv=clamp(s.motiv+dm*h);
   s.disc=clamp(s.disc-(isRebel(s)?0.6:0.3)*h);
-  if(isRebel(s)&&!AUT)s.motiv=Math.min(s.motiv,55);
+  if(isRebel(s)&&!AUT){if(s.motiv>55.5&&t-(s._capHint||0)>12*H){s._capHint=t;log(s,'🤔 Il traîne des pieds… on dirait qu\'il a d\'autres projets en tête.','',t);events.push('capHint');}s.motiv=Math.min(s.motiv,55);}
   if(AUT)s.discr=clamp((s.discr||0)+(sl?1.2:0.4)*h);
 
   /* --- comportements autonomes --- */
@@ -1242,7 +1242,7 @@ function medalHow(k){
     c5:'Accomplir toutes les missions de l\'ordre du jour 5 fois (ouvrir le coffre 📅).',c20:'Accomplir toutes les missions de l\'ordre du jour 20 fois.',
     q10:'Réussir 10 questions du jour.',duo10:'Faire 10/10 à deux lors d\'une révision en binôme (🤝 dans la caserne).',
     duoSport:'Atteindre 260 répétitions à deux lors d\'un sport en binôme.',opj:'En GD : réussir l\'examen OPJ (7/10) depuis 🎓 Carrière.',
-    affaires10:'Résoudre 10 affaires avec l\'action 🔎 Enquête (OPJ).',specPro:'Réaliser 15 missions de spécialité.',adc:'Être promu Adjudant-chef en commission d\'avancement.'};
+    affaires10:'Résoudre 10 affaires avec l\'action 🔎 Enquête (OPJ).',specPro:'Réaliser 15 missions de spécialité.',adc:'Être promu Adjudant-chef en commission d\'avancement.',ligne5:'En GD ou GM : remporter 5 face-à-face de maintien de l\'ordre (🤝 dans la caserne).'};
   if(F[k])return F[k];
   if(REBEL_T[k])return REBEL_T[k][2];
   if(k.startsWith('spec_')){const sp=SPECS[k.slice(5)];if(sp)return `En ${sp.sub} : réussir la sélection ${sp.n} depuis 🎓 Carrière (${sp.tests.map(t=>t[2]).join(' + ')}).`;}
@@ -1774,6 +1774,7 @@ function handleEvents(){
   if(ev.includes('hatch')){fx('✨',5);lastLook='';actKey='';if(!S.name)setTimeout(askName,500);}
   if(ev.includes('grade'))toast(`🎖️ ${nm(S)} est promu ${GRADES[gradeIdx(S)]} !`);
   if(ev.includes('board')){toast("🎖️ Commission d'avancement ouverte : 24 h pour le présenter !");actKey='';}
+  if(ev.includes('capHint'))toast('🤔 Il traîne des pieds… on dirait qu\'il a d\'autres projets en tête.');
   if(ev.includes('recupEnd')){toast('⏳ Fin de la récup\' : il est requinqué !');actKey='';}
   if(ev.includes('sboard')){toast("🎖️ Commission d'avancement en unité : 48 h pour le présenter !");actKey='';}
   if(ev.includes('boardmiss')){toast("📋 Commission d'avancement manquée…");actKey='';}
@@ -1894,6 +1895,7 @@ const REBEL_T={
  r_ghost:['🕶️','Fantôme','Atteindre 50 de réputation sans aucune interpellation.',{sym:'txt',t:'0'}],
  r_boucle:['♾️','La boucle est bouclée','Terminer le parcours de l\'autre côté.',{sym:'txt',t:'FIN'}]};
 METALS.black=['#9aa0aa','#3b3f47','#101216'];
+REBEL_T.r_ligne=['💥','Percée','Gagner 3 face-à-face contre des gendarmes.',{sym:'txt',t:'3'}];
 for(const [k,v] of Object.entries(REBEL_T)){MEDALS[k]=[v[0],v[1]];MEDAL_ART[k]=Object.assign({m:'black',r:['#111','#c8102e','#111']},v[3]);}
 const isRT=k=>k.startsWith('r_');
 const rebelSeen=s=>{const d=s&&s.daily;return !!(d&&(d.autreSeen||(d.medals||[]).some(isRT)));};
@@ -2182,6 +2184,8 @@ Object.assign(ERR_FR,{binome_soi_meme:'Tu ne peux pas faire équipe avec toi-mê
 MEDALS.duo10=['🤝','Binôme d\'enfer (10/10 à deux)'];MEDALS.duoSport=['💪','Binôme de choc (260 rép. à deux)'];
 DAILY_POOL.duo={l:'Faire une activité en binôme (👥)',g:1,ok:s=>!!(ME&&ME.pseudo)&&['gav','ecole','service'].includes(s.stage)};
 const duoOK=s=>s&&['gav','ecole','service'].includes(s.stage);
+const manifOK=s=>s&&(s.stage==='autre'||(s.stage==='service'&&['GD','GM'].includes(s.sub)));
+const MANIF_K=d=>d.kind==='manif';
 let duoPendingN=0,lastDuoN=0;
 function duoQuestions(seed){
   const pool=QUIZ.concat(QUIZ_GD,QUIZ_CPP),out=[];let x=seed>>>0;
@@ -2216,7 +2220,7 @@ setTimeout(duoRefreshCount,4000);
 
 /* applique une seule fois les résultats des binômes terminés */
 async function duoApplyResults(silent){
-  if(!ME||!ME.pseudo||!S||!duoOK(S))return;
+  if(!ME||!ME.pseudo||!S||!(duoOK(S)||manifOK(S)))return;
   try{
     const since=new Date(Date.now()-7*D).toISOString();
     const {data}=await sb(`/rest/v1/duos?select=*&status=eq.done&or=(from_id.eq.${ME.id},to_id.eq.${ME.id})&created_at=gte.${since}&order=created_at.desc`);
@@ -2225,6 +2229,18 @@ async function duoApplyResults(silent){
       if(s.duoDone.includes(d.id)||new Date(d.created_at).getTime()<s.duoSince)continue;s.duoDone.push(d.id);if(s.duoDone.length>80)s.duoDone.splice(0,s.duoDone.length-80);
       const mine=d.from_id===ME.id?d.from_score:d.to_score,his=d.from_id===ME.id?d.to_score:d.from_score,mate=d.from_id===ME.id?d.to_pseudo:d.from_pseudo;
       let txt='';
+      if(MANIF_K(d)){
+        const reb=s.stage==='autre',win=mine>his,draw=mine===his;
+        if(draw){s.moral=clamp(s.moral+2);txt=`⚔️ Face-à-face avec ${mate} : ${mine} contre ${his}, égalité ! Personne ne recule.`;}
+        else if(reb){
+          if(win){s.rep=clamp((s.rep||0)+10);s.moral=clamp(s.moral+6);s.nManifWin=(s.nManifWin||0)+1;txt=`📢 Face-à-face contre ${mate} : ${mine} contre ${his}, le cortège a percé la ligne ! Réputation +10.`;if(s.nManifWin>=3)addMedal(s,'r_ligne');}
+          else{s.moral=clamp(s.moral-6);s.rep=clamp((s.rep||0)-3);txt=`🛡️ Face-à-face contre ${mate} : ${mine} contre ${his}, la ligne a tenu… repli !`;if(rnd(s)<.25&&s.stage==='autre'&&!(s.gavUntil>s.t)){arrest(s,s.t);txt+=' Et en plus, il se fait interpeller.';}}
+        } else {
+          if(win){s.disc=clamp(s.disc+5);s.moral=clamp(s.moral+6);s.exp=clamp((s.exp||0)+5);s.nLigne=(s.nLigne||0)+1;txt=`🛡️ Maintien de l'ordre face à ${mate} : ${mine} contre ${his}, la ligne a tenu ! Discipline +5, expérience +5.`;if(s.nLigne>=5)addMedal(s,'ligne5');}
+          else{s.moral=clamp(s.moral-6);s.tenue=clamp(s.tenue-10);txt=`😤 Maintien de l'ordre face à ${mate} : ${mine} contre ${his}, la ligne a reculé… débriefing difficile.`;}
+        }
+        log(s,txt,win||draw?'good':'bad');msgs.push(txt);continue;
+      }
       if(d.kind==='revision'){
         const tot=mine+his;
         if(tot>=6){s.motiv=clamp(s.motiv+12);s.moral=clamp(s.moral+6);
@@ -2245,26 +2261,29 @@ async function duoApplyResults(silent){
   }catch(e){}
 }
 async function loadDuo(){
-  if(!duoOK(S))return casShell('<p>Le binôme est disponible en phase GAV, à l\'école et en unité.</p>');
+  if(!duoOK(S)&&!manifOK(S))return casShell('<p>Le binôme est disponible en phase GAV, à l\'école et en unité.</p>');
+  const REB=S.stage==='autre';
   try{
     await duoApplyResults(true);
     const now=Date.now(),since=new Date(now-3*D).toISOString();
     const {data}=await sb(`/rest/v1/duos?select=*&or=(from_id.eq.${ME.id},to_id.eq.${ME.id})&created_at=gte.${since}&order=created_at.desc&limit=30`);
-    const K=d=>d.kind==='revision'?'📚 Révision':'🏃 Sport';
+    const K=d=>d.kind==='revision'?'📚 Révision':d.kind==='manif'?'⚔️ Face-à-face':'🏃 Sport';
     const exp=d=>new Date(d.expires_at).getTime()<now;
     const todo=data.filter(d=>d.status==='pending'&&!exp(d)&&((d.to_id===ME.id&&d.to_score==null)||(d.from_id===ME.id&&d.from_score==null)));
     const wait=data.filter(d=>d.status==='pending'&&!exp(d)&&!todo.includes(d));
     const done=data.filter(d=>d.status==='done').slice(0,8);
     const row=(d,right)=>`<div class="crit" style="grid-template-columns:1fr auto"><span>${K(d)} avec <b>${esc(d.from_id===ME.id?d.to_pseudo:d.from_pseudo)}</b><br><span class="sub" style="font-size:12px">${right}</span></span><span>${''}</span></div>`;
-    let html=`<button class="primary gold" style="animation:none" data-duo="invite">🤝 Inviter un collègue en binôme</button>
-      <p style="font-size:12px">Chacun fait sa part quand il veut, sous 24 h. Révision : 5 questions identiques, moyenne du binôme à 6/10 ou plus = bonus pour les deux, sinon malus. Sport : ${DUO_SPORT_GOAL} répétitions à deux.</p>`;
+    let html=REB?`<button class="primary" style="animation:none;background:linear-gradient(135deg,#111,#c8102e)" data-duo="invitem">📢 Défier un gendarme (manif)</button>
+      <p style="font-size:12px">Chacun pousse 10 secondes de son côté, sous 24 h. Celui qui tape le plus gagne : réputation pour le cortège… ou repli, voire interpellation.</p>`:`<button class="primary gold" style="animation:none" data-duo="invite">🤝 Inviter un collègue en binôme</button>${manifOK(S)?`<button class="primary" style="animation:none;margin-top:6px;background:linear-gradient(135deg,#1b3a8c,#c8102e)" data-duo="invitem">🛡️ Maintien de l'ordre : face-à-face</button>`:''}
+      ${REB?'':`<p style="font-size:12px">Chacun fait sa part quand il veut, sous 24 h. Révision : 5 questions identiques, moyenne du binôme à 6/10 ou plus = bonus pour les deux, sinon malus. Sport : ${DUO_SPORT_GOAL} répétitions à deux.${manifOK(S)?' Face-à-face : chacun pousse 10 s, le plus fort l\'emporte.':''}</p>`}`;
     html+=`<div class="sub" style="margin-top:6px">À faire</div>`+(todo.map(d=>`<div class="crit" style="grid-template-columns:1fr auto auto;gap:6px"><span>${K(d)} avec <b>${esc(d.from_id===ME.id?d.to_pseudo:d.from_pseudo)}</b><br><span class="sub" style="font-size:12px">expire ${ago(d.expires_at).replace('il y a','dans')}</span></span><button class="primary" style="width:auto;padding:8px 12px;font-size:14px" data-duo="play:${d.id}">Jouer</button>${d.to_id===ME.id?`<button class="cancel" style="padding:4px" data-duo="decline:${d.id}">✖</button>`:''}</div>`).join('')||'<p class="sub">Rien à faire pour l\'instant.</p>');
-    html+=`<div class="sub" style="margin-top:6px">En attente de ton binôme</div>`+(wait.map(d=>row(d,`ta part : ${d.kind==='revision'?(d.from_id===ME.id?d.from_score:d.to_score)+'/5':(d.from_id===ME.id?d.from_score:d.to_score)+' rép.'} · expire dans ${Math.max(1,Math.round((new Date(d.expires_at)-now)/H))} h`)).join('')||'<p class="sub">Aucun.</p>');
-    html+=`<div class="sub" style="margin-top:6px">Résultats récents</div>`+(done.map(d=>{const t=d.from_score+d.to_score,ok=d.kind==='revision'?t>=6:t>=DUO_SPORT_GOAL;return row(d,`${ok?'✅':'❌'} ${d.kind==='revision'?t+'/10':t+'/'+DUO_SPORT_GOAL+' rép.'} (${esc(d.from_pseudo)} ${d.from_score} · ${esc(d.to_pseudo)} ${d.to_score})`);}).join('')||'<p class="sub">Aucun pour l\'instant.</p>');
+    html+=`<div class="sub" style="margin-top:6px">${REB?'En attente de l\'adversaire':'En attente de ton binôme ou adversaire'}</div>`+(wait.map(d=>row(d,`ta part : ${d.kind==='revision'?(d.from_id===ME.id?d.from_score:d.to_score)+'/5':(d.from_id===ME.id?d.from_score:d.to_score)+(d.kind==='manif'?' poussées':' rép.')} · expire dans ${Math.max(1,Math.round((new Date(d.expires_at)-now)/H))} h`)).join('')||'<p class="sub">Aucun.</p>');
+    html+=`<div class="sub" style="margin-top:6px">Résultats récents</div>`+(done.map(d=>{const t=d.from_score+d.to_score,mi=d.from_id===ME.id?d.from_score:d.to_score,hi=d.from_id===ME.id?d.to_score:d.from_score,ok=d.kind==='manif'?mi>=hi:d.kind==='revision'?t>=6:t>=DUO_SPORT_GOAL;return row(d,`${ok?'✅':'❌'} ${d.kind==='manif'?(mi>hi?'Victoire':mi<hi?'Défaite':'Égalité'):d.kind==='revision'?t+'/10':t+'/'+DUO_SPORT_GOAL+' rép.'} (${esc(d.from_pseudo)} ${d.from_score} · ${esc(d.to_pseudo)} ${d.to_score})`);}).join('')||'<p class="sub">Aucun pour l\'instant.</p>');
     casShell(html);
   }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
 }
-async function duoInvitePick(){
+async function duoInvitePick(mode){
+  if(mode==='manif')return manifPick();
   if(!duoOK(S))return toast('Le binôme est disponible en phase GAV, à l\'école et en unité.');
   try{const since=new Date(Date.now()-14*D).toISOString();
     const {data}=await sb(`/rest/v1/players?select=id,pseudo,recrue,phase,last_seen&last_seen=gte.${since}&order=last_seen.desc&limit=40`);
@@ -2279,10 +2298,18 @@ async function duoCreate(to,kind){
 async function duoPlayId(id){
   try{const {data}=await sb(`/rest/v1/duos?select=*&id=eq.${id}`);if(!data[0])return toast('Binôme introuvable.');duoPlay(data[0]);}catch(e){toast(errFr(e));}
 }
+async function manifPick(){
+  if(!manifOK(S))return;const REB=S.stage==='autre';
+  try{const since=new Date(Date.now()-14*D).toISOString();
+    const {data}=await sb(`/rest/v1/players?select=id,pseudo,recrue,last_seen,stats&last_seen=gte.${since}&order=last_seen.desc&limit=60`);
+    const L=data.filter(p=>p.id!==ME.id&&p.stats&&(REB?(p.stats.stage==='service'&&['GD','GM'].includes(p.stats.sub)):p.stats.stage==='autre'));
+    casShell(`<p><b>${REB?'Quelle ligne de gendarmes défier ?':'Quel cortège affronter ?'}</b></p>`+(L.map(p=>`<div class="crit" style="grid-template-columns:1fr auto;gap:6px"><span><b>${esc(p.pseudo)}</b><br><span class="sub" style="font-size:12px">${esc(p.recrue||'')} · ${ago(p.last_seen)}</span></span><button class="primary" style="width:auto;padding:8px 12px;font-size:13px;background:linear-gradient(135deg,#1b3a8c,#c8102e)" data-duo="new:${p.id}:manif">⚔️ Défier</button></div>`).join('')||`<p>${REB?'Aucun gendarme de GD ou GM disponible pour l\'instant.':'Aucun manifestant à l\'horizon pour l\'instant… profitez du calme.'}</p>`)+`<button class="cancel" data-cas="duo">Retour</button>`);
+  }catch(e){casShell(`<p>${esc(errFr(e))}</p>`);}
+}
 function duoPlay(d){
   const s=S;tick();
   if(s.sleeping)return toast('Il dort ! Réveille-le d\'abord.');
-  if(d.kind==='sport'&&s.energy<20)return toast('Il est trop fatigué pour le sport.');
+  if((d.kind==='sport'||d.kind==='manif')&&s.energy<20)return toast('Il est trop fatigué pour ça.');
   if(d.kind==='revision'&&s.energy<10)return toast('Il est trop fatigué pour réviser.');
   clearInterval(casPoll);
   const mate=d.from_id===ME.id?d.to_pseudo:d.from_pseudo;
@@ -2297,8 +2324,8 @@ function duoPlay(d){
       }));};
     show();
   } else {
-    let taps=0,left=10,running=false,timer=0,done=false;
-    $('panel').innerHTML=`<h3>🤝 Sport avec ${esc(mate)}</h3><p>Objectif commun : ${DUO_SPORT_GOAL} répétitions à deux. Tape le plus vite possible pendant 10 secondes !</p>
+    let taps=0,left=10,running=false,timer=0,done=false;const MF=d.kind==='manif',REB=s.stage==='autre';
+    $('panel').innerHTML=(MF?`<h3>${REB?'📢 Manif face à':'🛡️ Maintien de l\'ordre face à'} ${esc(mate)}</h3><p>${REB?'Poussez la ligne de boucliers !':'Tenez la ligne face au cortège !'} Tape le plus vite possible pendant 10 secondes : celui qui pousse le plus l'emporte.</p>`:`<h3>🤝 Sport avec ${esc(mate)}</h3><p>Objectif commun : ${DUO_SPORT_GOAL} répétitions à deux. Tape le plus vite possible pendant 10 secondes !</p>`)+`
       <button class="tapzone" id="tap"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">10 s</small></button>`;
     $('sheet').classList.add('center');$('sheet').classList.add('show');
     $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(done)return;
@@ -2307,12 +2334,15 @@ function duoPlay(d){
   }
   async function finish(score){
     tick();
-    if(d.kind==='revision'){s.energy=clamp(s.energy-8);}else{s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-20);s.food=clamp(s.food-6);s.lastSport=s.t;}
-    dailyEvent(s,'duo');save();render();
+    if(d.kind==='revision'){s.energy=clamp(s.energy-8);}else if(d.kind==='manif'){s.energy=clamp(s.energy-15);s.food=clamp(s.food-5);s.tenue=clamp(s.tenue-8);}else{s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-20);s.food=clamp(s.food-6);s.lastSport=s.t;}
+    if(d.kind!=='manif')dailyEvent(s,'duo');save();render();
     $('panel').innerHTML=`<h3>Envoi de ta part…</h3>`;
     try{const {data}=await rpc('duo_submit',{p_id:ME.id,p_secret:ME.secret,p_duo:d.id,p_score:score});
-      log(s,`🤝 ${d.kind==='revision'?'Révision':'Sport'} en binôme avec ${mate} : ta part est faite (${d.kind==='revision'?score+'/5':score+' répétitions'}).`);
-      if(data.status==='done'){await duoApplyResults(true);const t=data.from_score+data.to_score;const ok=d.kind==='revision'?t>=6:t>=DUO_SPORT_GOAL;
+      if(d.kind!=='manif')log(s,`🤝 ${d.kind==='revision'?'Révision':'Sport'} en binôme avec ${mate} : ta part est faite (${d.kind==='revision'?score+'/5':score+' répétitions'}).`);
+      if(d.kind==='manif'){if(data.status==='done'){await duoApplyResults(true);const mi=data.from_id===ME.id?data.from_score:data.to_score,hi=data.from_id===ME.id?data.to_score:data.from_score;
+          $('panel').innerHTML=`<h3>${mi>hi?'🏆 Victoire !':mi<hi?'💥 Défaite…':'🤝 Égalité'}</h3><p>${mi} poussées contre ${hi}.</p><button class="primary" data-cas="duo">OK</button>`;}
+        else $('panel').innerHTML=`<h3>✅ Tu as donné tout ce que tu avais !</h3><p>${score} poussées. Le résultat tombera quand ${esc(mate)} aura fait sa part (24 h max).</p><button class="primary" data-cas="duo">OK</button>`;}
+      else if(data.status==='done'){await duoApplyResults(true);const t=data.from_score+data.to_score;const ok=d.kind==='revision'?t>=6:t>=DUO_SPORT_GOAL;
         $('panel').innerHTML=`<h3>${ok?'🎉 Binôme réussi !':'😬 Binôme raté…'}</h3><p>${d.kind==='revision'?`${t}/10 à deux (toi ${score}/5)`:`${t} répétitions à deux (toi ${score})`}. ${ok?'Bonus pour vous deux !':'Malus pour vous deux… revanche demain !'}</p><button class="primary" data-cas="duo">OK</button>`;}
       else $('panel').innerHTML=`<h3>✅ Ta part est faite !</h3><p>${d.kind==='revision'?score+'/5':score+' répétitions'}. Le résultat tombera quand ${esc(mate)} aura fait la sienne (24 h max).</p><button class="primary" data-cas="duo">OK</button>`;
     }catch(e){$('panel').innerHTML=`<h3>Oups</h3><p>${esc(errFr(e))}</p><button class="primary" data-cas="duo">OK</button>`;}
@@ -2322,6 +2352,7 @@ function duoPlay(d){
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-duo]');if(!b)return;e.preventDefault();const [k,a1,a2]=b.dataset.duo.split(':');
   if(k==='invite')return duoInvitePick();
+  if(k==='invitem')return duoInvitePick('manif');
   if(k==='new')return duoCreate(a1,a2);
   if(k==='play')return duoPlayId(a1);
   if(k==='decline')return rpc('duo_decline',{p_id:ME.id,p_secret:ME.secret,p_duo:+a1}).then(()=>{duoRefreshCount();loadDuo();}).catch(er=>toast(errFr(er)));
@@ -2404,6 +2435,7 @@ const SPEC_DAYS_MIN=3;
  MEDALS.opj=['⚖️','Officier de police judiciaire'];MEDAL_ART.opj={m:'gold',r:['#1b3a8c','#fff','#1b3a8c'],sym:'txt',t:'OPJ'};
  MEDALS.affaires10=['🔎','10 affaires résolues'];MEDAL_ART.affaires10={m:'silver',r:['#5b3fa8','#f3c74b','#5b3fa8'],sym:'n',t:'10'};
  MEDALS.specPro=['⭐','15 missions de spécialité'];MEDAL_ART.specPro={m:'gold',r:['#2e8b57','#fff','#2e8b57'],sym:'star'};
+ MEDALS.ligne5=['🛡️','Mur de boucliers'];MEDAL_ART.ligne5={m:'silver',r:['#1b3a8c','#fff','#1b3a8c'],sym:'txt',t:'MO'};
  MEDALS.adc=['🎖️','Adjudant-chef'];MEDAL_ART.adc={m:'gold',r:['#7a1020','#f3c74b','#7a1020'],sym:'txt',t:'ADC'};}
 function specReqList(s,sp){const r=sp.req,L=[];
   for(const [k,lab] of [['forme','Condition physique'],['disc','Discipline'],['motiv','Motivation'],['moral','Moral'],['exp','Expérience']])if(r[k])L.push([lab,(s[k]||0)>=r[k],`${Math.floor(s[k]||0)} / ${r[k]}`]);
@@ -2586,7 +2618,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794519367';
+const BUILD_ID='1794557529';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2600,8 +2632,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.12', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.13', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.13',d:'13 novembre',items:[['🛡️','Maintien de l\'ordre','Nouveau défi pour les gendarmes affectés en GD et GM… à découvrir dans l\'onglet 🤝 de la caserne !']]},
  {v:'1.12',d:'12 novembre',items:[['👤','Fiche profil','Touche un joueur dans le classement ou « En ligne » pour voir ses stats : grade, spécialité, score, série, médailles… et l\'inviter en binôme.'],['🔄','Mises à jour automatiques','Le jeu se recharge tout seul quand une nouvelle version sort.']]},
  {v:'1.11',d:'12 novembre',items:[['🚤','Patrouille en mer','En outre-mer, la GM patrouille en semi-rigide, sur une mer qui défile.'],['🏍️','Motocycliste','Les spécialistes moto (PMO, escadron GR) partent en patrouille à moto.']]},
  {v:'1.10',d:'12 novembre',items:[['🚓','Patrouille animée','Le véhicule de la brigade part en patrouille : roues qui tournent, gyrophare et décor qui défile !']]},
