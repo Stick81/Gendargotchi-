@@ -1268,7 +1268,7 @@ function medalHow(k){
     c5:'Accomplir toutes les missions de l\'ordre du jour 5 fois (ouvrir le coffre 📅).',c20:'Accomplir toutes les missions de l\'ordre du jour 20 fois.',
     q10:'Réussir 10 questions du jour.',duo10:'Faire 10/10 à deux lors d\'une révision en binôme (🤝 dans la caserne).',
     duoSport:'Atteindre 260 répétitions à deux lors d\'un sport en binôme.',opj:'En GD : réussir l\'examen OPJ (7/10) depuis 🎓 Carrière.',
-    affaires10:'Résoudre 10 affaires avec l\'action 🔎 Enquête (OPJ).',specPro:'Réaliser 15 missions de spécialité.',adc:'Être promu Adjudant-chef en commission d\'avancement.',ligne5:'En GD ou GM : remporter 5 face-à-face de maintien de l\'ordre (🤝 dans la caserne).'};
+    affaires10:'Résoudre 10 affaires avec l\'action 🔎 Enquête (OPJ).',specPro:'Réaliser 15 missions de spécialité.',adc:'Être promu Adjudant-chef en commission d\'avancement.',parcours:'À l\'école : franchir 15 obstacles en un seul parcours d\'obstacles (🏃 Sport).',ligne5:'En GD ou GM : remporter 5 face-à-face de maintien de l\'ordre (🤝 dans la caserne).'};
   if(F[k])return F[k];
   if(REBEL_T[k])return REBEL_T[k][2];
   if(k.startsWith('spec_')){const sp=SPECS[k.slice(5)];if(sp)return `En ${sp.sub} : réussir la sélection ${sp.n} depuis 🎓 Carrière (${sp.tests.map(t=>t[2]).join(' + ')}).`;}
@@ -1611,22 +1611,79 @@ function option(o){
 
 /* --- mini-jeu sport --- */
 function sportGame(){
-  const s=S;let taps=0,left=10,running=false,timer=0;
-  sheet(`<h3>🏃 Parcours sportif</h3><p>Tape le plus vite possible pendant 10 secondes !</p>
+  const s=S,ECO=s.stage==='ecole';
+  sheet(`<h3>🏃 Séance de sport</h3><p>Choisis ton exercice :</p>
+    <button class="opt" data-sp="tap"><span class="e">👟</span><span>Sprint<small>Tape le plus vite possible pendant 10 s</small></span></button>
+    <button class="opt" data-sp="pompes"><span class="e">💪</span><span>Pompes<small>Tape quand la jauge est en haut : seules les pompes propres comptent (30 s)</small></span></button>
+    ${ECO?`<button class="opt" data-sp="parcours"><span class="e">🧗</span><span>Parcours d'obstacles<small>Saute les haies, rampe sous les filets (30 s)</small></span></button>`:''}
+    <button class="cancel" data-o="close">Annuler</button>`);
+  $('panel').querySelectorAll('[data-sp]').forEach(b=>b.addEventListener('click',()=>({tap:sportTap,pompes:sportPompes,parcours:sportParcours})[b.dataset.sp]()));
+}
+function sportReward(gain,line,title,detail){
+  const s=S;tick();gain=Math.max(2,Math.min(22,Math.round(gain)));
+  dailyEvent(s,'sport');s.forme=clamp(s.forme+gain);s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-25);s.food=clamp(s.food-8);s.moral=clamp(s.moral+5);s.motiv=clamp(s.motiv+2);s.disc=clamp(s.disc+3);s.lastSport=s.t;s.malbouffe=Math.max(0,s.malbouffe-.5);
+  log(s,`${line} (forme +${gain}, discipline +3).`,'good');
+  sheet(`<h3>${title}</h3><p>${detail} · forme +${gain} · discipline +3. Pense à la douche après !</p><button class="primary" data-o="close">OK</button>`,true);
+  save();render();
+}
+function sportTap(){
+  let taps=0,left=10,running=false,timer=0;
+  sheet(`<h3>👟 Sprint</h3><p>Tape le plus vite possible pendant 10 secondes !</p>
     <button class="tapzone" id="tap"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">10 s</small></button>`,true);
   $('tap').addEventListener('pointerdown',e=>{
     e.preventDefault();
-    if(!running){running=true;timer=setInterval(()=>{left--;$('tapT').textContent=left+' s';if(left<=0)finish();},1000);}
+    if(!running){running=true;timer=setInterval(()=>{if(!$('tapT')){clearInterval(timer);return;}left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(timer);$('tap').disabled=true;
+      sportReward(taps/3,`🏃 Sprint : ${taps} répétitions`,taps>=60?'Performance de commando ! 💪':taps>=35?'Belle séance ! 👍':'Séance un peu molle… 😅',`${taps} répétitions`);}},1000);}
     taps++;$('tapN').textContent=taps;
   });
-  function finish(){
-    clearInterval(timer);tick();
-    const gain=Math.min(22,Math.round(taps/3));
-    dailyEvent(s,'sport');s.forme=clamp(s.forme+gain);s.energy=clamp(s.energy-18);s.tenue=clamp(s.tenue-25);s.food=clamp(s.food-8);s.moral=clamp(s.moral+5);s.motiv=clamp(s.motiv+2);s.disc=clamp(s.disc+3);s.lastSport=s.t;s.malbouffe=Math.max(0,s.malbouffe-.5);
-    log(s,`🏃 Séance de sport : ${taps} répétitions (forme +${gain}, discipline +3).`,'good');
-    sheet(`<h3>${taps>=60?'Performance de commando ! 💪':taps>=35?'Belle séance ! 👍':'Séance un peu molle… 😅'}</h3><p>${taps} répétitions · forme +${gain} · discipline +3. Pense à la douche après !</p><button class="primary" data-o="close">OK</button>`,true);
-    save();render();
-  }
+}
+function sportPompes(){
+  let v=0,dir=1,ok=0,bad=0,left=30,run=false,done=false,raf=0,timer=0,last=0,speed=95;
+  sheet(`<h3>💪 Pompes</h3><p>Tape quand la jauge atteint la <b>zone verte</b> : la pompe est validée et il redescend. Trop tôt = pompe mal faite, elle ne compte pas !</p>
+    <div style="display:flex;gap:14px;align-items:stretch;justify-content:center;margin:8px 0">
+      <div style="position:relative;width:46px;height:200px;border-radius:14px;background:#ffffff14;overflow:hidden;border:2px solid #ffffff30">
+        <div style="position:absolute;left:0;right:0;top:0;height:20%;background:#2ecc7155;border-bottom:2px dashed #2ecc71"></div>
+        <div id="pg" style="position:absolute;left:4px;right:4px;bottom:4px;height:0;border-radius:10px;background:linear-gradient(#ffd84d,#f3964b)"></div></div>
+      <button class="tapzone" id="tap" style="flex:1;max-width:220px;height:200px"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">30 s</small></button></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span>✅ <span id="pOk">0</span> valides</span><span>❌ <span id="pBad">0</span> ratées</span></div>`,true);
+  const G=$('pg');
+  const loop=t=>{if(done||!G.isConnected){done=true;return;}const dt=last?(t-last)/1000:0;last=t;v=Math.min(100,v+speed*dt);G.style.height=v+'%';G.style.background=v>=80?'linear-gradient(#2ecc71,#27ae60)':'linear-gradient(#ffd84d,#f3964b)';raf=requestAnimationFrame(loop);};
+  $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(done)return;
+    if(!run){run=true;raf=requestAnimationFrame(loop);timer=setInterval(()=>{if(!$('pOk')){done=true;clearInterval(timer);cancelAnimationFrame(raf);return;}left--;$('tapT').textContent=left+' s';if(left<=0)end();},1000);$('tapN').textContent='0';return;}
+    if(v>=80){ok++;speed=Math.min(170,speed+4);fx('💪');}else{bad++;}
+    v=0;$('tapN').textContent=ok;$('pOk').textContent=ok;$('pBad').textContent=bad;});
+  function end(){done=true;clearInterval(timer);cancelAnimationFrame(raf);$('tap').disabled=true;
+    sportReward(ok*1.1,`💪 Pompes : ${ok} valides, ${bad} ratées`,ok>=18?'Pompes de légionnaire ! 💪':ok>=11?'Belle série ! 👍':'Il faudra muscler tout ça… 😅',`${ok} pompes valides (${bad} ratées)`);}
+}
+function sportParcours(){
+  const s=S,sx=sexOf(s)==='F'?'fille':'garcon',me=imgSrc(`${s.look&&LOOK_IMG.has(s.look+'_'+sx+'_treillis')?s.look+'_':''}${sx}_treillis`);
+  let left=30,run=false,done=false,raf=0,timer=0,last=0,act=null,actT=0,ok=0,hit=0,obs=[],spawnIn=0.6,spd=46,inv=0;
+  sheet(`<h3>🧗 Parcours d'obstacles</h3><p>⬆️ <b>Sauter</b> les haies, ⬇️ <b>Ramper</b> sous les filets. Chaque obstacle touché coûte du temps !</p>
+    <div id="pc" class="patrol" style="position:relative;height:200px;border-radius:16px;inset:auto">
+      <div class="pt-hills"></div><div class="pt-houses" style="opacity:.55"></div><div class="pt-road"></div>
+      <img id="pr" src="${me}" alt="" style="position:absolute;left:12%;bottom:12%;height:58%;transition:transform .12s;transform-origin:50% 100%;z-index:3">
+      <div id="pmsg" style="position:absolute;top:8px;left:0;right:0;text-align:center;font-weight:800;font-size:20px;color:#fff;text-shadow:0 2px 4px #000;z-index:4">Prêt ?</div></div>
+    <div class="row" style="margin-top:8px"><button class="primary" id="bJ" style="font-size:18px">⬆️ Sauter</button><button class="primary" id="bC" style="font-size:18px;background:linear-gradient(135deg,#2e8b57,#4fd1c5)">⬇️ Ramper</button></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span>✅ <span id="oOk">0</span> franchis</span><span>💥 <span id="oHit">0</span></span><span id="oT">30 s</span></div>`,true);
+  const P=$('pc'),R=$('pr'),M=$('pmsg');P.querySelectorAll('.pt-hills,.pt-houses,.pt-road').forEach(e=>e.style.animationPlayState='paused');
+  const start=()=>{if(run)return;run=true;M.textContent='';P.querySelectorAll('.pt-hills,.pt-houses,.pt-road').forEach(e=>e.style.animationPlayState='running');raf=requestAnimationFrame(loop);timer=setInterval(()=>{if(!$('oT')){done=true;clearInterval(timer);cancelAnimationFrame(raf);return;}left--;$('oT').textContent=left+' s';if(left<=0)end();},1000);};
+  const doAct=a=>{if(done)return;start();if(act&&actT>0.15)return;act=a;actT=0.62;R.style.transform=a==='j'?'translateY(-55%)':'scaleY(.45) scaleX(1.25)';};
+  ['pointerdown'].forEach(ev=>{$('bJ').addEventListener(ev,e=>{e.preventDefault();doAct('j');});$('bC').addEventListener(ev,e=>{e.preventDefault();doAct('c');});});
+  function spawn(){const t=Math.random()<.5?'j':'c',el=document.createElement('div');
+    el.style.cssText='position:absolute;z-index:2;left:100%;'+(t==='j'?'bottom:12%;width:30px;height:34px;background:repeating-linear-gradient(90deg,#c8102e 0 6px,#fff 6px 12px);border:3px solid #333;border-radius:4px 4px 0 0':'bottom:42%;width:64px;height:30px;background:repeating-linear-gradient(45deg,transparent 0 6px,#3b3f47 6px 8px),repeating-linear-gradient(-45deg,transparent 0 6px,#3b3f47 6px 8px);border-top:4px solid #5a4632');
+    P.appendChild(el);obs.push({t,x:100,el,done:false});}
+  function loop(ts){if(done||!P.isConnected){done=true;clearInterval(timer);return;}const dt=last?Math.min(.05,(ts-last)/1000):0;last=ts;
+    if(act){actT-=dt;if(actT<=0){act=null;R.style.transform='';}}
+    inv=Math.max(0,inv-dt);spawnIn-=dt;if(spawnIn<=0){spawn();spawnIn=1.05+Math.random()*0.7-Math.min(.35,(30-left)*0.012);}
+    spd=46+(30-left)*0.9;
+    for(const o of obs){o.x-=spd*dt;o.el.style.left=o.x+'%';
+      if(!o.done&&o.x<22&&o.x>8){if(act===o.t){o.done=true;ok++;$('oOk').textContent=ok;}else if(inv<=0){o.done=true;hit++;inv=.5;$('oHit').textContent=hit;R.animate([{filter:'brightness(2)'},{filter:'none'}],{duration:300});M.textContent=o.t==='j'?'💥 La haie !':'💥 Le filet !';setTimeout(()=>{if(!done)M.textContent='';},500);left=Math.max(1,left-1);$('oT').textContent=left+' s';}}
+      if(o.x<-25){o.el.remove();o.gone=true;}}
+    obs=obs.filter(o=>!o.gone);raf=requestAnimationFrame(loop);}
+  function end(){done=true;clearInterval(timer);cancelAnimationFrame(raf);$('bJ').disabled=true;$('bC').disabled=true;
+    P.querySelectorAll('.pt-hills,.pt-houses,.pt-road').forEach(e=>e.style.animationPlayState='paused');
+    if(ok>=15)addMedal(S,'parcours');
+    sportReward(ok*1.4-hit*0.5,`🧗 Parcours d'obstacles : ${ok} franchis, ${hit} touchés`,ok>=15&&hit<=2?'Parcours de commando ! 🧗':ok>=9?'Parcours réussi ! 👍':'Le parcours a gagné cette fois… 😅',`${ok} obstacles franchis (${hit} touchés)`);}
 }
 /* --- Garde républicaine : rester impassible --- */
 function impassibleGame(){
@@ -2480,6 +2537,7 @@ const SPEC_DAYS_MIN=3;
  MEDALS.opj=['⚖️','Officier de police judiciaire'];MEDAL_ART.opj={m:'gold',r:['#1b3a8c','#fff','#1b3a8c'],sym:'txt',t:'OPJ'};
  MEDALS.affaires10=['🔎','10 affaires résolues'];MEDAL_ART.affaires10={m:'silver',r:['#5b3fa8','#f3c74b','#5b3fa8'],sym:'n',t:'10'};
  MEDALS.specPro=['⭐','15 missions de spécialité'];MEDAL_ART.specPro={m:'gold',r:['#2e8b57','#fff','#2e8b57'],sym:'star'};
+ MEDALS.parcours=['🧗','Parcours de commando'];MEDAL_ART.parcours={m:'silver',r:['#2e8b57','#fff','#2e8b57'],sym:'n',t:'15'};
  MEDALS.ligne5=['🛡️','Mur de boucliers'];MEDAL_ART.ligne5={m:'silver',r:['#1b3a8c','#fff','#1b3a8c'],sym:'txt',t:'MO'};
  MEDALS.adc=['🎖️','Adjudant-chef'];MEDAL_ART.adc={m:'gold',r:['#7a1020','#f3c74b','#7a1020'],sym:'txt',t:'ADC'};}
 function specReqList(s,sp){const r=sp.req,L=[];
@@ -2663,7 +2721,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794581185';
+const BUILD_ID='1794583993';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2677,8 +2735,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.15', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.16', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.16',d:'13 novembre',items:[['💪','Nouveau sport : les pompes','Au choix avec le sprint : tape quand la jauge est en haut, seules les pompes propres comptent.'],['🧗','Parcours d\'obstacles','À l\'école : saute les haies et rampe sous les filets ! Nouvelle médaille à la clé.']]},
  {v:'1.15',d:'13 novembre',items:[['💡','Boîte à idées','Une idée ou un bug ? Envoie-le depuis ⚙️ : seul le créateur du jeu le lira.']]},
  {v:'1.14',d:'13 novembre',items:[['🌀','La dérive','Avant de passer vraiment de l\'autre côté, 10 jours pour apprendre les codes du groupe : tag, banderoles, collectif, endurance, discrétion.',1]]},
  {v:'1.13',d:'13 novembre',items:[['🛡️','Maintien de l\'ordre','Nouveau défi pour les gendarmes affectés en GD et GM… à découvrir dans l\'onglet 🤝 de la caserne !']]},
