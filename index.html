@@ -376,7 +376,7 @@ function sexOf(s){return s&&(s.sex||(s.kind===1?'F':'M'));}
 const FW=s=>new RegExp(`(?<![\\p{L}])(?:${s})(?![\\p{L}])`,'gu');
 const FEM_RULES=[
  [FW("s'il"),"si elle"],[FW('Il(?! (?:faut|fallait|faudra|y a|reste|manque|était une fois))'),'Elle'],[FW('il(?! (?:faut|fallait|faudra|y a|reste|manque))'),'elle'],
- [FW('tout fier'),'toute fière'],[FW('tout habillé'),'toute habillée'],[/fière de lui/g,"fière d'elle"],[/fiers de lui/g,"fiers d'elle"],
+ [FW('inaperçu'),'inaperçue'], [FW('tout fier'),'toute fière'],[FW('tout habillé'),'toute habillée'],[/fière de lui/g,"fière d'elle"],[/fiers de lui/g,"fiers d'elle"],
  [FW('Un gendarme adjoint volontaire'),'Une gendarme adjointe volontaire'],[FW('un gendarme adjoint volontaire'),'une gendarme adjointe volontaire'],
  [FW('Gendarme adjoint volontaire'),'Gendarme adjointe volontaire'],[FW('gendarme adjoint volontaire'),'gendarme adjointe volontaire'],
  [FW('Admis'),'Admise'],[FW('admis'),'admise'],[FW('ADMIS'),'ADMISE'],[FW('Promu'),'Promue'],[FW('promu'),'promue'],
@@ -680,7 +680,7 @@ function fuiteGame(){
     <div style="height:14px;border-radius:7px;background:#ffffff14;overflow:hidden"><div id="fBar" style="height:100%;width:0;background:linear-gradient(90deg,#f3c74b,#e8414f)"></div></div>
     <button class="tapzone" id="tap" style="height:140px;background:linear-gradient(135deg,#2a2a33,#5a1e2a)"><span id="fN">FUIS !</span><small id="fT" style="font-size:15px">6 s</small></button>`,true);
   $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(done)return;
-    if(!run){run=true;timer=setInterval(()=>{left--;$('fT').textContent=left+' s';if(left<=0)finish();},1000);}
+    if(!run){run=true;timer=setInterval(()=>{if(!$('fT')){clearInterval(timer);return;}left--;$('fT').textContent=left+' s';if(left<=0)finish();},1000);}
     n++;$('fN').textContent=n+' / '+need;$('fBar').style.width=Math.min(100,n/need*100)+'%';if(n>=need)finish();});
   function finish(){
     if(done)return;done=true;clearInterval(timer);tick();
@@ -1694,7 +1694,7 @@ function impassibleGame(){
     <div class="row" style="justify-content:space-between;font-weight:600"><span id="tN">0/${N}</span><span id="tP">Sérieux : 0</span></div>`,true);
   const range=$('range');
   function round(){
-    if(done)return;if(i>=N)return finish();
+    if(done||!range.isConnected){done=true;return;}if(i>=N)return finish();
     i++;$('tN').textContent=`${i}/${N}`;$('pv').textContent=PROVOCS[Math.floor(Math.random()*PROVOCS.length)];
     [...range.querySelectorAll('button')].forEach(b=>b.remove());
     let answered=false;
@@ -1767,8 +1767,8 @@ function ordreGame(){
   const call=['Gauche !','Droite !'];
   function frame(ts){
     if(!t0)t0=ts;const el=ts-t0,k=Math.floor(el/PER),pos=(el%PER)/PER;
-    if(k>=N)return finish();
-    const m=$('oMark');if(!m)return;m.style.left=(pos*100)+'%';$('oCall').textContent=`${call[k%2]} (${k+1}/${N})`;
+    const m=$('oMark');if(!m)return;
+    if(k>=N)return finish();m.style.left=(pos*100)+'%';$('oCall').textContent=`${call[k%2]} (${k+1}/${N})`;
     raf=requestAnimationFrame(frame);
   }
   raf=requestAnimationFrame(frame);
@@ -1797,7 +1797,7 @@ function tirGame(){
     <div class="row" style="justify-content:space-between;font-weight:600"><span id="tN">Cible 0/${N}</span><span id="tP">0 pt</span></div>`,true);
   const range=$('range');
   function spawn(){
-    if(done)return;if(n>=N)return setTimeout(finish,600);
+    if(done||!range.isConnected){done=true;return;}if(n>=N)return setTimeout(finish,600);
     n++;$('tN').textContent=`Cible ${n}/${N}`;
     const sz=64,x=Math.random()*(range.clientWidth-sz),y=Math.random()*(range.clientHeight-sz);
     const t=document.createElement('div');
@@ -2431,7 +2431,7 @@ function duoPlay(d){
       <button class="tapzone" id="tap"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">10 s</small></button>`;
     $('sheet').classList.add('center');$('sheet').classList.add('show');
     $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(done)return;
-      if(!running){running=true;timer=setInterval(()=>{left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(timer);done=true;finish(Math.min(200,taps));}},1000);}
+      if(!running){running=true;timer=setInterval(()=>{if(!$('tapT')){clearInterval(timer);done=true;return;}left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(timer);done=true;finish(Math.min(200,taps));}},1000);}
       taps++;$('tapN').textContent=taps;});
   }
   async function finish(score){
@@ -2589,7 +2589,7 @@ function testTap(title,t,done){
   sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : tape le plus vite possible pendant 10 secondes. Objectif : ${t[1]}.</p><button class="tapzone" id="tap"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">10 s</small></button>`,true);
   let n=0,left=10,run=false,fin=false,tm=0;
   $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(fin)return;
-    if(!run){run=true;tm=setInterval(()=>{left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(tm);fin=true;$('tap').disabled=true;done(n,n>=t[1]);}},1000);}
+    if(!run){run=true;tm=setInterval(()=>{if(!$('tapT')){clearInterval(tm);fin=true;return;}left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(tm);fin=true;$('tap').disabled=true;done(n,n>=t[1]);}},1000);}
     n++;$('tapN').textContent=n;});
 }
 function testCibles(title,t,done){
@@ -2597,7 +2597,7 @@ function testCibles(title,t,done){
     <div id="range" style="position:relative;height:230px;border-radius:16px;background:linear-gradient(#41506b,#2a344a);overflow:hidden;touch-action:manipulation"></div>
     <div class="row" style="justify-content:space-between;font-weight:600"><span id="cN">Cible 0/10</span><span id="cH">0 touchée</span></div>`,true);
   let n=0,hit=0;const R=$('range');
-  const spawn=()=>{if(n>=10){setTimeout(()=>done(hit,hit>=t[1]),300);return;}n++;$('cN').textContent=`Cible ${n}/10`;
+  const spawn=()=>{if(!R.isConnected)return;if(n>=10){setTimeout(()=>done(hit,hit>=t[1]),300);return;}n++;$('cN').textContent=`Cible ${n}/10`;
     const c=document.createElement('button'),sz=46;c.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;border-radius:50%;border:4px solid #fff;background:radial-gradient(circle,#e8414f 0 22%,#fff 23% 42%,#e8414f 43% 62%,#fff 63%);left:${8+Math.random()*78}%;top:${8+Math.random()*68}%;transform:translate(-50%,0);padding:0`;
     let gone=false;const kill=()=>{if(gone)return;gone=true;c.remove();setTimeout(spawn,180);};
     c.addEventListener('pointerdown',e=>{e.preventDefault();if(gone)return;hit++;$('cH').textContent=hit+' touchée'+(hit>1?'s':'');fx('🎯');kill();});
@@ -2721,7 +2721,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794587526';
+const BUILD_ID='1794588858';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2735,7 +2735,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.16', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.16.1', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.16',d:'13 novembre',items:[['💪','Nouveau sport : les pompes','Au choix avec le sprint : tape quand la jauge est en haut, seules les pompes propres comptent.'],['🧗','Parcours d\'obstacles','À l\'école : saute les haies et rampe sous les filets ! Nouvelle médaille à la clé.']]},
  {v:'1.15',d:'13 novembre',items:[['💡','Boîte à idées','Une idée ou un bug ? Envoie-le depuis ⚙️ : seul le créateur du jeu le lira.']]},
@@ -2766,12 +2766,12 @@ function openNews(all){
     <div class="row" style="margin-top:12px">${all?'':`<button class="cancel" data-news="all">Historique</button>`}<button class="primary" data-news="ok">C'est parti !</button></div></div>`;
   document.body.appendChild(el);
   el.addEventListener('click',e=>{const b=e.target.closest('[data-news]');if(!b&&e.target!==el)return;
-    try{localStorage.setItem(NEWS_KEY,APP_VERSION);}catch(_){}el.remove();if(b&&b.dataset.news==='all')openNews(true);});
+    try{localStorage.setItem(NEWS_KEY,CHANGELOG[0].v);}catch(_){}el.remove();if(b&&b.dataset.news==='all')openNews(true);});
 }
 function checkNews(){let seen=null;try{seen=localStorage.getItem(NEWS_KEY);}catch(e){}
-  if(seen===APP_VERSION)return;
-  if(!CHANGELOG[0].items.some(i=>!i[3]||rebelSeen(S||loadLocal()))){try{localStorage.setItem(NEWS_KEY,APP_VERSION);}catch(e){}return;}
-  if(!seen&&!loadLocal()){try{localStorage.setItem(NEWS_KEY,APP_VERSION);}catch(e){}return;}
+  if(seen===CHANGELOG[0].v)return;
+  if(!CHANGELOG[0].items.some(i=>!i[3]||rebelSeen(S||loadLocal()))){try{localStorage.setItem(NEWS_KEY,CHANGELOG[0].v);}catch(e){}return;}
+  if(!seen&&!loadLocal()){try{localStorage.setItem(NEWS_KEY,CHANGELOG[0].v);}catch(e){}return;}
   setTimeout(()=>openNews(false),1200);}
 /* iOS : empêche le zoom double-tap / défilement pendant les mini-jeux de tapotage */
 ['touchstart','touchmove','touchend','dblclick','gesturestart'].forEach(ev=>document.addEventListener(ev,e=>{
