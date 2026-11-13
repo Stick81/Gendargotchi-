@@ -1534,6 +1534,8 @@ function act(a){
       <button class="cancel" data-o="close">Fermer</button>`);}
   case 'menu':
     return sheet(`<h3>Options</h3><p>Ta partie est sauvegardée automatiquement.</p>
+      <button class="opt" data-o="feedback"><span class="e">💡</span><span>Boîte à idées / signaler un bug<small>Envoyé uniquement au créateur du jeu</small></span></button>
+      ${IS_ADMIN?`<button class="opt" data-o="fbadmin"><span class="e">📥</span><span>Retours des joueurs${fbNew?` <b style="color:#f3c74b">(${fbNew} nouveau${fbNew>1?'x':''})</b>`:''}<small>Visible par toi seul (admin)</small></span></button>`:''}
       <button class="opt" data-o="news"><span class="e">🆕</span><span>Quoi de neuf ?<small>Les dernières nouveautés du jeu (version ${APP_VERSION})</small></span></button>
       <button class="opt" data-o="guide"><span class="e">📖</span><span>Règlement du jeu<small>Conditions d'avancement, concours, école, binôme, médailles</small></span></button>
       <button class="opt" data-o="home"><span class="e">🏠</span><span>Accueil Gendargotchi<small>Revenir à l'écran d'accueil</small></span></button>
@@ -1566,6 +1568,8 @@ function option(o){
   if(k==='home'){closeSheet();showHome();return;}
   if(k==='guide'){openGuide();return;}
   if(k==='news'){closeSheet();openNews(true);return;}
+  if(k==='feedback')return openFeedback();
+  if(k==='fbadmin')return openFbAdmin();
   if(k==='resetok'){closeSheet();S=newGame();lastLook='';actKey='';log(S,'Un nouvel œuf est arrivé à la brigade.');save();render();return;}
   closeSheet();
   if(['eat:popote','eat:salade','talk:career','talk:praise','talk:recadrer','fun:famille'].includes(o)&&refuses())return;
@@ -2655,7 +2659,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794566649';
+const BUILD_ID='1794572126';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2669,8 +2673,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.14', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.15', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.15',d:'13 novembre',items:[['💡','Boîte à idées','Une idée ou un bug ? Envoie-le depuis ⚙️ : seul le créateur du jeu le lira.']]},
  {v:'1.14',d:'13 novembre',items:[['🌀','La dérive','Avant de passer vraiment de l\'autre côté, 10 jours pour apprendre les codes du groupe : tag, banderoles, collectif, endurance, discrétion.',1]]},
  {v:'1.13',d:'13 novembre',items:[['🛡️','Maintien de l\'ordre','Nouveau défi pour les gendarmes affectés en GD et GM… à découvrir dans l\'onglet 🤝 de la caserne !']]},
  {v:'1.12',d:'12 novembre',items:[['👤','Fiche profil','Touche un joueur dans le classement ou « En ligne » pour voir ses stats : grade, spécialité, score, série, médailles… et l\'inviter en binôme.'],['🔄','Mises à jour automatiques','Le jeu se recharge tout seul quand une nouvelle version sort.']]},
@@ -2713,6 +2718,58 @@ function patrolHTML(kind){const I=imgSrc;
   if(kind==='moto'){const w=I('moto_roue');return `<div class="patrol"><div class="pt-hills"></div><div class="pt-houses" style="animation-duration:5s"></div><div class="pt-road" style="animation-duration:.4s"></div><div class="pt-speed"></div><div class="pt-moto"><img class="wheel" src="${w}" alt="" style="left:12.17%;top:64.15%"><img class="wheel" src="${w}" alt="" style="left:75.27%;top:65.8%"><img class="body" src="${I('moto_corps')}" alt=""><div class="gyro"></div></div></div>`;}
   const b=I('vehicule_gd'),w=I('vehicule_roue');
   return `<div class="patrol"><div class="pt-hills"></div><div class="pt-houses"></div><div class="pt-road"></div><div class="pt-car"><img class="body" src="${b}" alt=""><img class="wheel" src="${w}" alt="" style="left:12%"><img class="wheel" src="${w}" alt="" style="left:73.8%"><div class="gyro"></div></div></div>`;}
+/* ======================= BOÎTE À IDÉES (lue uniquement par l'admin) ======================= */
+let IS_ADMIN=false,fbNew=0,fbKind='idee';
+Object.assign(ERR_FR,{message_vide:'Écris au moins quelques mots.',message_trop_long:'Message trop long (1000 caractères max).',trop_rapide:'Doucement ! Réessaie dans un moment.'});
+async function fbAdminCheck(){
+  if(!ME||!ME.pseudo)return;
+  try{const {data}=await sb(`/rest/v1/players?select=is_admin&id=eq.${ME.id}`);IS_ADMIN=!!(data[0]&&data[0].is_admin);
+    if(IS_ADMIN){const {data:l}=await rpc('list_feedback',{p_id:ME.id,p_secret:ME.secret});const n=(l||[]).filter(f=>f.status==='nouveau').length;
+      if(n>fbNew)toast(`📥 ${n} nouveau${n>1?'x':''} retour${n>1?'s':''} de joueurs dans ⚙️`);fbNew=n;}
+  }catch(e){}
+}
+setTimeout(fbAdminCheck,5000);setInterval(()=>{if(!document.hidden)fbAdminCheck();},5*60000);
+function openFeedback(){
+  if(!ME||!ME.pseudo){closeSheet();return toast('Choisis d\'abord ton pseudo dans 👥 la caserne.');}
+  $('panel').innerHTML=`<h3>💡 Boîte à idées</h3>
+    <p style="font-size:13px">Une idée d'amélioration ou un bug ? Ton message est envoyé <b>uniquement au créateur du jeu</b> : personne d'autre ne peut le lire.</p>
+    <div class="row" style="margin:6px 0"><button class="${fbKind==='idee'?'primary':'cancel'}" style="font-size:14px" data-fb="k:idee">💡 Idée</button><button class="${fbKind==='bug'?'primary':'cancel'}" style="font-size:14px" data-fb="k:bug">🐞 Bug</button></div>
+    <textarea id="fbText" maxlength="1000" rows="6" placeholder="${fbKind==='bug'?'Décris ce qui s\'est passé : où, quand, ce que tu faisais…':'Ton idée pour améliorer le jeu…'}" style="width:100%;box-sizing:border-box;border-radius:12px;border:none;padding:10px;font:inherit;font-size:15px;color:#1b2547"></textarea>
+    <p class="sub" style="font-size:11.5px">Jeu uniquement : aucune information de service, aucun nom réel. Version ${APP_VERSION} et ta phase sont jointes automatiquement.</p>
+    <button class="primary" data-fb="send">Envoyer</button><button class="cancel" data-o="close">Annuler</button>`;
+  $('sheet').classList.remove('center');$('sheet').classList.add('show');
+}
+async function fbSend(){
+  const t=($('fbText').value||'').trim();if(t.length<3)return toast('Écris au moins quelques mots.');
+  const b=$('panel').querySelector('[data-fb="send"]');b.disabled=true;b.textContent='Envoi…';
+  try{await rpc('send_feedback',{p_id:ME.id,p_secret:ME.secret,p_kind:fbKind,p_body:t,p_ctx:`v${APP_VERSION} · ${S?phaseLabel(S):'accueil'}`.slice(0,120)});
+    $('panel').innerHTML=`<h3>✅ Merci !</h3><p>Ton ${fbKind==='bug'?'signalement':'idée'} est bien arrivé${fbKind==='bug'?'':'e'} chez le créateur du jeu.</p><button class="primary" data-o="close">Fermer</button>`;
+  }catch(e){b.disabled=false;b.textContent='Envoyer';toast(errFr(e));}
+}
+let fbFilter='nouveau';
+async function openFbAdmin(){
+  if(!IS_ADMIN)return;
+  $('panel').innerHTML='<h3>📥 Retours des joueurs</h3><p>Chargement…</p>';$('sheet').classList.remove('center');$('sheet').classList.add('show');
+  try{const {data}=await rpc('list_feedback',{p_id:ME.id,p_secret:ME.secret});const L=(data||[]);
+    fbNew=L.filter(f=>f.status==='nouveau').length;
+    const cnt=k=>L.filter(f=>k==='tout'||f.status===k).length;
+    const tabs=[['nouveau','🆕'],['lu','👁️'],['fait','✅'],['tout','Tout']].map(([k,l])=>`<button class="${fbFilter===k?'primary':'cancel'}" style="font-size:13px;padding:6px 8px" data-fb="f:${k}">${l} ${cnt(k)}</button>`).join('');
+    const items=L.filter(f=>fbFilter==='tout'||f.status===fbFilter).map(f=>`<div class="card" style="margin:8px 0;padding:10px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;opacity:.75"><span>${f.kind==='bug'?'🐞 Bug':'💡 Idée'} · <b>${esc(f.pseudo)}</b></span><span>${ago(f.created_at)}</span></div>
+        <div style="margin:6px 0;white-space:pre-wrap;font-size:14px">${esc(f.body)}</div>
+        <div style="font-size:11px;opacity:.6">${esc(f.ctx||'')}</div>
+        <div class="row" style="margin-top:6px">${f.status!=='lu'?`<button class="cancel" style="font-size:12px;padding:5px" data-fb="s:${f.id}:lu">👁️ Lu</button>`:''}${f.status!=='fait'?`<button class="cancel" style="font-size:12px;padding:5px" data-fb="s:${f.id}:fait">✅ Fait</button>`:''}${f.status!=='nouveau'?`<button class="cancel" style="font-size:12px;padding:5px" data-fb="s:${f.id}:nouveau">↩︎ Nouveau</button>`:''}</div>
+      </div>`).join('')||'<p class="sub">Rien ici.</p>';
+    $('panel').innerHTML=`<h3>📥 Retours des joueurs</h3><div class="row" style="flex-wrap:wrap;gap:4px">${tabs}</div>${items}<button class="cancel" data-o="close">Fermer</button>`;
+  }catch(e){$('panel').innerHTML=`<h3>📥 Retours</h3><p>${esc(errFr(e))}</p><button class="cancel" data-o="close">Fermer</button>`;}
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-fb]');if(!b)return;e.preventDefault();const [k,a1,a2]=b.dataset.fb.split(':');
+  if(k==='k'){const keep=($('fbText')||{}).value||'';fbKind=a1;openFeedback();$('fbText').value=keep;return;}
+  if(k==='send')return fbSend();
+  if(k==='f'){fbFilter=a1;return openFbAdmin();}
+  if(k==='s'){try{await rpc('set_feedback_status',{p_id:ME.id,p_secret:ME.secret,p_fid:+a1,p_status:a2});}catch(er){toast(errFr(er));}return openFbAdmin();}
+});
 function tick(){
   if(!S)return;
   const before=S.stage;simulate(S,Date.now());
