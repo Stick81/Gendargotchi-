@@ -112,6 +112,8 @@
   .stat.low .bar>div:first-child{background:var(--danger)!important;animation:blink 1s infinite}
   @keyframes blink{50%{opacity:.45}}
 
+  .nevBar{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:9px 12px;border:0;border-radius:14px;color:#fff;text-align:left;background:linear-gradient(135deg,#1b3a8c,#3b6fd8 60%,#c8102e);box-shadow:0 3px 10px rgba(0,0,0,.25);font:inherit;cursor:pointer}
+  .nevBar .ne{font-size:28px}.nevBar .nt{flex:1;display:flex;flex-direction:column;line-height:1.2}.nevBar .nt small{opacity:.9;font-size:12px}.nevBar .ng{background:rgba(255,255,255,.22);border-radius:10px;padding:3px 8px;font-weight:700;font-size:13px}
   .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
   .actions.one{grid-template-columns:1fr}
   button{font-family:inherit;border:0;cursor:pointer;color:var(--ink)}
@@ -242,6 +244,7 @@
     <div id="extras"></div>
   </div>
 
+  <div id="nevBar" style="display:none"></div>
   <div id="cards" style="display:grid;gap:10px"></div>
   <div class="actions" id="actions"></div>
   <div class="card"><h4>Journal de bord</h4><div class="journal" id="journal"></div></div>
@@ -1243,7 +1246,7 @@ function render(){
       <div class="card"><h4>Carrière <span>Concours : ${ok}/5 critères</span></h4>${bars([['🔥','Motivation',s.motiv,'linear-gradient(90deg,#f3964b,#f3c74b)',REQ.motiv],['🏃','Forme',s.forme,'#4fd1c5',REQ.forme],['🎖️','Discipline',s.disc,'#9db4ff',REQ.disc],['📚','Révisions',s.comp,'#c49bff',0,1]])}</div>`;
   }
   $('cards').innerHTML=T(html);
-  renderActions();
+  renderActions();renderNev();
   {const b=$('dailyBtn');if(b){const pend=dailyPending(s);b.style.boxShadow=pend?'0 0 0 2px #f3c74b':'';b.style.display=(st==='over'||st==='egg'&&!s.daily)?'none':'';}
    if(s.daily&&s.daily.pendingPopup&&$('home').classList.contains('hide')&&!$('sheet').classList.contains('show')&&st!=='over'){openDaily();}}
   // journal
@@ -1411,6 +1414,7 @@ function refuses(p=.75){
 
 /* ======================= ACTIONS ======================= */
 function act(a){
+  if(a==='nev')return openNev();if(a==='nevGo')return nevGo();
   tick();const s=S;
   const ECO=s.stage==='ecole';
   if(a.startsWith('pick:')){
@@ -2724,6 +2728,79 @@ function testPave(title,t,done){
     if(!fin||sparks.length||rocks.length)requestAnimationFrame(loop);};
   requestAnimationFrame(loop);
 }
+// ===== Événements nationaux =====
+const NEV={
+ tdf:{e:'🚴',n:'Tour de France',d:'La caravane et le peloton traversent la région : foule au bord des routes !',real:[7,1,7,27],m:{gav:['Signaleur au carrefour','tap',70],ecole:['Renfort circulation (exercice)','quiz',3,'gd'],GD:['Gestion de la circulation','quiz',3,'gd'],GM:['Sécurisation de la ligne d\'arrivée','pave',9],GR:['Escorte moto du peloton','tap',85],reb:['Banderole au bord de la route','tap',75]}},
+ j14:{e:'🇫🇷',n:'14 Juillet',d:'Fête nationale : défilé le matin, feu d\'artifice le soir.',real:[7,13,7,14],m:{gav:['Défilé au pas','cibles',6],ecole:['Répétition du défilé','cibles',7],GD:['Sécurisation du feu d\'artifice','cibles',6],GM:['Défilé sur les Champs-Élysées','cibles',7],GR:['Escorte présidentielle','tap',85],reb:['Pétards pendant le feu d\'artifice','tap',75]}},
+ froid:{e:'🥶',n:'Plan Grand Froid',d:'Températures négatives : tout le monde est mobilisé pour les plus fragiles.',real:[12,1,2,28],season:[11,12,1,2],m:{gav:['Maraude avec la mairie','quiz',3],ecole:['Footing par -5 °C','tap',80],GD:['Mise à l\'abri des sans-abri','quiz',3],GM:['Renfort sur les routes verglacées','tap',80],GR:['Garde statique dans le froid','tap',85],reb:['Tenir le squat chauffé','tap',75]}},
+ elec:{e:'🗳️',n:'Élections',d:'Jour de scrutin : bureaux de vote, urnes et soirée des résultats.',m:{gav:['Accueil devant le bureau de vote','quiz',3],ecole:['Cours de droit électoral','quiz',3],GD:['Sécurisation des bureaux de vote','quiz',3,'cpp'],GM:['Renfort au soir des résultats','pave',9],GR:['Escorte des procès-verbaux','tap',85],reb:['Collage d\'affiches sauvages','tap',75]}},
+ chasse:{e:'🚗',n:'Chassé-croisé des vacances',d:'Bouchons record sur les autoroutes, tout le monde part en même temps.',real:[7,25,8,20],m:{gav:['Point prévention sur l\'aire d\'autoroute','quiz',3,'gd'],ecole:['Contrôle routier encadré','quiz',3,'gd'],GD:['Repérer les excès de vitesse','cibles',7],GM:['Renfort sur l\'autoroute','tap',80],GR:['Escorte officielle vers les vacances','tap',85],reb:['Opération péage gratuit','tap',75]}},
+ musique:{e:'🎵',n:'Fête de la musique',d:'Concerts dans toutes les rues jusqu\'au bout de la nuit.',real:[6,21,6,21],m:{gav:['Prévention dans la foule','quiz',3],ecole:['Fanfare de l\'école','cibles',6],GD:['Patrouille de nuit','cibles',6],GM:['Maintien de l\'ordre en fin de soirée','pave',9],GR:['Concert de la Musique de la Garde','cibles',7],reb:['Sound-system sauvage','tap',75]}},
+ noel:{e:'🎄',n:'Marchés de Noël',d:'Foule, vin chaud et Vigipirate renforcé.',real:[11,22,12,31],season:[11,12],m:{gav:['Patrouille au marché de Noël','cibles',6],ecole:['Exercice anti-vol à l\'étalage','quiz',3],GD:['Sécurisation du marché','cibles',7],GM:['Dispositif Vigipirate','pave',9],GR:['Garde d\'honneur de Noël','tap',85],reb:['Tag du Père Noël rebelle','tap',75]}},
+ nouvelan:{e:'🎆',n:'Réveillon du Nouvel An',d:'La nuit la plus longue de l\'année pour les forces de l\'ordre.',real:[12,30,1,1],season:[12,1],m:{gav:['Prévention alcool au volant','quiz',3,'gd'],ecole:['Garde de la caserne au réveillon','tap',80],GD:['Contrôles d\'alcoolémie','cibles',7],GM:['Nuit de la Saint-Sylvestre','pave',10],GR:['Escorte des vœux officiels','tap',85],reb:['Pétards à minuit','tap',75]}},
+ sommet:{e:'🌍',n:'Sommet international',d:'Des chefs d\'État arrivent : sécurité maximale.',m:{gav:['Filtrage des accès','quiz',3],ecole:['Exercice de protection rapprochée','cibles',6],GD:['Périmètre de sécurité','cibles',7],GM:['Face au contre-sommet','pave',10],GR:['Escorte des chefs d\'État','tap',90],reb:['Grand rassemblement du contre-sommet','tap',80]}},
+ crue:{e:'🌊',n:'Inondations',d:'La rivière déborde : plan ORSEC déclenché.',m:{gav:['Aide aux sinistrés','tap',70],ecole:['Renfort plan ORSEC','tap',80],GD:['Évacuation des riverains','quiz',3],GM:['Renfort sur la zone inondée','tap',85],GR:['Patrouille à cheval sur les digues','tap',85],reb:['Solidarité avec les sinistrés','tap',70]}},
+ match:{e:'⚽',n:'Grand match au stade',d:'Derby à guichets fermés, supporters chauffés à blanc.',m:{gav:['Palpation à l\'entrée du stade','cibles',6],ecole:['Exercice d\'interpellation','quiz',3],GD:['Circulation autour du stade','quiz',3,'gd'],GM:['Tenir les supporters','pave',10],GR:['Escorte des équipes','tap',85],reb:['Fumigènes en tribune','tap',75]}}
+};
+const NEV_K=Object.keys(NEV),NEV_MON=4*D,NEV_LEN=48*H,NEV_SLOT=[11*H,4*D+11*H];// lun. et ven. 11 h UTC
+function nevHash(n){let t=(n*0x9E3779B1+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
+function nevStart(n){return NEV_MON+Math.floor(n/2)*7*D+NEV_SLOT[n%2];}
+function nevReal(ev,ts){if(!ev.real)return false;const d=new Date(ts),m=d.getMonth()+1,j=d.getDate(),v=m*100+j,a=ev.real[0]*100+ev.real[1],b=ev.real[2]*100+ev.real[3];return a<=b?v>=a&&v<=b:v>=a||v<=b;}
+function nevBase(n){const L=NEV_K.length,c=Math.floor(n/L),bag=NEV_K.slice();for(let i=L-1;i>0;i--){const j=Math.floor(nevHash(c*31+i)*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}return bag[((n%L)+L)%L];}
+function nevKind(n,noRec){const ts=nevStart(n),real=NEV_K.filter(k=>nevReal(NEV[k],ts)),prev=noRec?null:nevKind(n-1,true);
+  if(real.length&&nevHash(n*7+3)<.45){const k=real[Math.floor(nevHash(n*13+5)*real.length)];if(k!==prev)return k;}
+  const k=nevBase(n);return k===prev?nevBase(n+1):k;}
+function nevAt(ts){const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2+1;n>=w*2-2;n--){const st=nevStart(n);if(ts>=st&&ts<st+NEV_LEN){const k=nevKind(n);return {n,id:'ev'+n,k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:nevReal(NEV[k],st)};}}return null;}
+function nevNext(ts){const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2;n<w*2+6;n++){const st=nevStart(n);if(st>ts)return {n,start:st,k:nevKind(n)};}return null;}
+function nevLast(ts){const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2+1;n>=w*2-4;n--){const st=nevStart(n);if(st+NEV_LEN<=ts){const k=nevKind(n);return {n,id:'ev'+n,k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:nevReal(NEV[k],st)};}}return null;}
+function nevGroup(s){if(!s||s.leave)return null;if(s.stage==='autre')return 'reb';if(s.stage==='gav'||s.stage==='ecole')return s.stage;if(s.stage==='service'&&SUBS[s.sub])return s.sub;return null;}
+function nevSide(g){return g==='reb'?'reb':'gend';}
+function nevDur(ms){const h=Math.max(0,Math.ceil(ms/H));return h>=24?`${Math.floor(h/24)} j ${h%24} h`:`${h} h`;}
+let nevProg={},nevBusy=false;
+function nevState(s,E){if(!s.nev||s.nev.id!==E.id)s.nev={id:E.id,k:E.k,done:false,tries:0,next:0,contrib:false};return s.nev;}
+async function nevLoad(id){if(nevBusy)return;nevBusy=true;try{const {data}=await rpc('event_progress',{p_event:id});nevProg[id]=data;}catch(e){}nevBusy=false;}
+function nevBonus(s,id,side,ev){s.nevClaim=s.nevClaim||[];if(s.nevClaim.includes(id))return;s.nevClaim.push(id);s.nevClaim=s.nevClaim.slice(-12);
+  s.moral=clamp(s.moral+8);if(side==='reb')s.rep=clamp((s.rep||0)+3);else s.motiv=clamp(s.motiv+8);
+  log(s,`🤝 ${ev.e} ${ev.n} : objectif collectif atteint ! Bonus pour tout le monde (moral +8, ${side==='reb'?'réputation +3':'motivation +8'}).`,'good');toast(`🤝 Objectif collectif atteint : ${ev.n} !`);fx('🤝',3);}
+async function nevSync(){const s=S,g=nevGroup(s);if(!g)return;const side=nevSide(g),now=Date.now(),cur=nevAt(now),lst=nevLast(now);
+  for(const E of [cur,lst].filter(Boolean)){
+    if(s.nev&&s.nev.id===E.id&&s.nev.done&&!s.nev.contrib&&ME&&ME.pseudo){try{const {data}=await rpc('event_contribute',{p_id:ME.id,p_secret:ME.secret,p_event:E.id,p_side:side});s.nev.contrib=true;nevProg[E.id]=data;}catch(e){}}
+    else await nevLoad(E.id);
+    const P=nevProg[E.id];if(P&&P[side]>=P[side+'_target']&&!(s.nevClaim||[]).includes(E.id)){tick();nevBonus(s,E.id,side,E.ev);save();}
+  }
+  nevKey='';render();if($('nevSheet'))openNev();}
+let nevKey='';
+function renderNev(){const el=$('nevBar');if(!el)return;const s=S,g=nevGroup(s),E=nevAt(Date.now());
+  const st=E&&g?nevState(s,E):null,P=E&&nevProg[E.id],side=nevSide(g);
+  const key=E&&g?[E.id,st.done,P?P[side]:'',Math.floor((E.end-Date.now())/H)].join('|'):'';if(key===nevKey)return;nevKey=key;
+  if(!key){el.innerHTML='';el.style.display='none';return;}el.style.display='';
+  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>`;}
+function openNev(){const s=S,g=nevGroup(s),E=nevAt(Date.now());
+  if(!E||!g){const N=nevNext(Date.now());return sheet(`<h3>📅 Événements nationaux</h3><p>Aucun événement en cours.${N?` Prochain : ${NEV[N.k].e} dans ${nevDur(N.start-Date.now())}.`:''}</p><button class="primary" data-o="close">OK</button>`,true);}
+  tick();const st=nevState(s,E),M=E.ev.m[g],side=nevSide(g),P=nevProg[E.id],now=Date.now();
+  const bar=(lab,c,t,col,names)=>`<div style="margin:6px 0"><div class="row" style="justify-content:space-between;font-size:13px;font-weight:600"><span>${lab}</span><span>${c}/${t}${c>=t?' ✅':''}</span></div><div style="height:12px;border-radius:7px;background:rgba(127,127,127,.25);overflow:hidden"><div style="height:100%;width:${Math.min(100,c/t*100)}%;background:${col}"></div></div>${names&&names.length?`<small style="opacity:.7">${names.map(esc).join(', ')}</small>`:''}</div>`;
+  const showReb=side==='reb'||rebelSeen();
+  const col=s.nevCol||{};
+  const mBtn=st.done?`<p>✅ <b>Mission accomplie.</b> ${ME&&ME.pseudo?(st.contrib?'Ta participation compte dans la jauge.':'Envoi de ta participation…'):'Inscris-toi à la caserne 👥 pour compter dans la jauge.'}</p>`
+    :st.next>now?`<button class="primary" disabled>🔁 Nouvel essai dans ${Math.ceil((st.next-now)/M_)} min</button>`:`<button class="primary" data-a="nevGo">🎯 Lancer la mission</button>`;
+  sheet(`<div id="nevSheet"></div><h3>${E.ev.e} ${E.ev.n}</h3>${E.gold?'<p style="color:#e0b84b;font-weight:700">⭐ Édition officielle : c\'est la vraie date ! Récompenses ×1,5.</p>':''}<p>${E.ev.d}</p><p style="opacity:.8;font-size:13px">⏳ Encore ${nevDur(E.end-now)}</p>
+   <div class="card" style="margin:8px 0;padding:10px"><b>🎯 Ta mission : ${M[0]}</b><br><small>${{tap:`Épreuve d'endurance : ${M[2]} répétitions en 10 s`,cibles:`Épreuve de précision : ${M[2]}/10`,quiz:`Épreuve de connaissances : ${M[2]}/5`,pave:`Épreuve au tonfa : ${M[2]}/15`}[M[1]]}</small>${mBtn}</div>
+   <b>🤝 Objectif collectif</b>${P?bar('👮 La caserne',P.gend,P.gend_target,'#3b6fd8',P.gend_names)+(showReb?bar('🖤 De l\'autre côté',P.reb,P.reb_target,'#c8102e',P.reb_names):''):'<p><small>Chargement…</small></p>'}
+   <p style="font-size:12px;opacity:.75">Si l'objectif de ton camp est atteint, tout le monde y gagne un bonus, même ceux qui n'ont pas joué.</p>
+   ${Object.keys(col).length?`<p><b>🗂️ Ta collection</b><br>${NEV_K.filter(k=>col[k]).map(k=>`${NEV[k].e}${col[k]>1?'×'+col[k]:''}`).join(' ')}</p>`:''}
+   <button class="primary" data-o="close">Fermer</button>`,true);
+  if(!P)nevLoad(E.id).then(()=>{if($('nevSheet'))openNev();nevKey='';renderNev();});}
+const M_=60000;
+function nevGo(){const s=S,g=nevGroup(s),E=nevAt(Date.now());if(!E||!g)return closeSheet();const st=nevState(s,E);if(st.done||st.next>Date.now())return;const M=E.ev.m[g];
+  runTests(`${E.ev.e} ${E.ev.n}`,[[M[1],M[2],M[0],M[3]]],res=>{const ok=res[0]&&res[0].ok;tick();st.tries++;
+    if(!ok){st.next=Date.now()+2*H;log(s,`${E.ev.e} Mission « ${M[0]} » ratée. Nouvel essai possible dans 2 h.`,'bad');save();sheet(`<h3>${E.ev.e} Mission ratée</h3><p>Pas cette fois ! Tu pourras retenter dans 2 heures.</p><button class="primary" data-o="close">OK</button>`,true);render();return;}
+    st.done=true;const k=E.gold?1.5:1,side=nevSide(g);s.nevCol=s.nevCol||{};s.nevCol[E.k]=(s.nevCol[E.k]||0)+1;
+    const mo=Math.round(10*k),b2=Math.round((side==='reb'?6:10)*k);s.moral=clamp(s.moral+mo);if(side==='reb')s.rep=clamp((s.rep||0)+b2);else s.motiv=clamp(s.motiv+b2);
+    log(s,`${E.ev.e} Mission « ${M[0]} » accomplie (${E.ev.n}) : moral +${mo}, ${side==='reb'?'réputation':'motivation'} +${b2}.`,'good');fx(E.ev.e,4);save();
+    sheet(`<h3>${E.ev.e} Mission accomplie !</h3><p>« ${M[0]} » : réussi !${E.gold?' ⭐ Édition officielle.':''}</p><p>Moral +${mo} · ${side==='reb'?'Réputation':'Motivation'} +${b2} · tampon ${E.ev.e} ajouté à ta collection.</p>${ME&&ME.pseudo?'<p>Ta participation est ajoutée à la jauge collective 🤝</p>':'<p><small>Inscris-toi à la caserne 👥 pour compter dans la jauge collective.</small></p>'}<button class="primary" data-a="nev">Voir la jauge</button>`,true);
+    render();nevSync();});}
+setInterval(()=>{if(!document.hidden&&S){nevKey='';renderNev();}},60000);
+setInterval(()=>{if(!document.hidden&&S)nevSync();},5*60000);setTimeout(()=>{if(S)nevSync();},3000);
 function testQuiz(title,t,done){
   const pool=t[3]==='cpp'?QUIZ_CPP:t[3]==='gd'?QUIZ_GD:QUIZ.concat(QUIZ_GD,QUIZ_CPP);
   const qs=pool.slice().sort(()=>Math.random()-.5).slice(0,5);let i=0,sc=0;
@@ -2841,7 +2918,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794660210';
+const BUILD_ID='1794661416';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2855,8 +2932,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.16.6', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.17',d:'14 novembre',items:[['📅','Événements nationaux','Deux fois par semaine, un événement touche tout le monde pendant 48 h : Tour de France, Plan Grand Froid, élections, marchés de Noël… Une bannière apparaît au-dessus des actions.'],['🎯','Missions spéciales','Chaque phase a sa mission : réussis-la pour gagner moral, motivation et un tampon de collection. ⭐ Bonus ×1,5 quand l\'événement tombe à sa vraie date !'],['🤝','Objectif collectif','Une jauge commune pour toute la caserne : si elle est remplie, tout le monde gagne un bonus, même ceux qui n\'ont pas joué.']]},
  {v:'1.16.3',d:'13 novembre',items:[['⬆️','Statuts','De sympathisant à meneur : la réputation fait évoluer son statut dans le milieu.',1],['❗','Imprévus','Journalistes, contrôles, rumeurs de descente… à toi de décider.',1],['🏁','Une fin à choisir','Au sommet, deux voies possibles. Et un nouveau trophée caché.',1]]},
  {v:'1.16.2',d:'13 novembre',items:[['🏖️','Permission','Absent quelques jours ? Pose une permission depuis ⚙️ : 1 à 3 jours de pause, jauges et progression figées, série de présence conservée.']]},
  {v:'1.16',d:'13 novembre',items:[['💪','Nouveau sport : les pompes','Au choix avec le sprint : tape quand la jauge est en haut, seules les pompes propres comptent.'],['🧗','Parcours d\'obstacles','À l\'école : saute les haies et rampe sous les filets ! Nouvelle médaille à la clé.']]},
