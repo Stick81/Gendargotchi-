@@ -2590,7 +2590,7 @@ function saluteKey(s){const C=ctxOf(s),L=imgKeys(s,s.stage==='service'?{gr:C==='
 /* ---- spécialités ---- */
 const SPECS={
  PSIG:{sub:'GD',e:'⚡',n:'PSIG',d:'Peloton de surveillance et d\'intervention : nuits, flagrants délits, interpellations.',req:{forme:65,disc:60,exp:20},
-   tests:[['pave',10,'Renvoi de pavés au tonfa'],['cibles',7,'Tir de précision']],act:['🚨','Intervention PSIG'],
+   tests:[['pave',11,'Renvoi de pavés au tonfa'],['cibles',7,'Tir de précision']],act:['🚨','Intervention PSIG'],
    lines:[['Cambriolage en cours : les auteurs interpellés en flagrant délit.','great'],['Rodéo urbain stoppé sans casse.','good'],['Patrouille de nuit : RAS, mais présence remarquée.','mid'],['Rixe devant un bar : calme ramené en deux minutes.','good']]},
  PMO:{sub:'GD',e:'🏍️',n:'Motocycliste (PMO)',d:'Peloton motorisé : sécurité routière, escortes, contrôles sur les grands axes.',req:{disc:60,exp:20},
    tests:[['quiz',4,'Code de la route','gd'],['tap',80,'Maniabilité moto']],act:['🏍️','Mission moto'],
@@ -2695,14 +2695,14 @@ function testPave(title,t,done){
     <canvas id="pvC" style="width:100%;height:300px;border-radius:16px;touch-action:none;display:block;background:linear-gradient(#2b3550,#141a2a)"></canvas>
     <div class="row" style="justify-content:space-between;font-weight:600"><span id="pvN">Pavé 0/15</span><span id="pvH">0 renvoyé</span></div>`,true);
   const C=$('pvC'),dpr=window.devicePixelRatio||1,W=C.clientWidth||330,HH=300;C.width=W*dpr;C.height=HH*dpr;const g=C.getContext('2d');g.scale(dpr,dpr);
-  const TOT=15,G=900;let rocks=[],sparks=[],trail=[],thrown=0,hit=0,res=0,fin=false,last=performance.now(),nextAt=last+700,down=false,ang=0;
+  const TOT=15,G=1050;let rocks=[],sparks=[],trail=[],thrown=0,hit=0,res=0,fin=false,last=performance.now(),nextAt=last+700,down=false,ang=0;
   const throwOne=()=>{if(thrown>=TOT)return;thrown++;$('pvN').textContent=`Pavé ${thrown}/${TOT}`;
-    const x=W*(.15+Math.random()*.7);rocks.push({x,y:HH+30,vx:(W/2-x)*(.4+Math.random()*.6)+(Math.random()-.5)*80,vy:-(560+Math.random()*120+thrown*6),r:17+Math.random()*4,a:Math.random()*6,va:(Math.random()-.5)*8,st:0,s:1});};
-  const segHit=(ax,ay,bx,by,o)=>{const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy||1;let k=((o.x-ax)*dx+(o.y-ay)*dy)/L;k=Math.max(0,Math.min(1,k));const px=ax+k*dx-o.x,py=ay+k*dy-o.y;return px*px+py*py<(o.r+10)*(o.r+10);};
+    const x=W*(.15+Math.random()*.7);rocks.push({x,y:HH+30,vx:(W/2-x)*(.4+Math.random()*.6)+(Math.random()-.5)*80,vy:-(610+Math.random()*130+thrown*6),r:17+Math.random()*4,a:Math.random()*6,va:(Math.random()-.5)*8,st:0,s:1});};
+  const segHit=(ax,ay,bx,by,o)=>{const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy||1;let k=((o.x-ax)*dx+(o.y-ay)*dy)/L;k=Math.max(0,Math.min(1,k));const px=ax+k*dx-o.x,py=ay+k*dy-o.y;return px*px+py*py<(o.r+4)*(o.r+4);};
   const pos=e=>{const b=C.getBoundingClientRect();return [e.clientX-b.left,e.clientY-b.top];};
   C.addEventListener('pointerdown',e=>{e.preventDefault();down=true;try{C.setPointerCapture(e.pointerId);}catch(_){}const [x,y]=pos(e);trail=[{x,y,t:performance.now()}];});
   C.addEventListener('pointermove',e=>{e.preventDefault();if(!down)return;const [x,y]=pos(e),p=trail[trail.length-1];trail.push({x,y,t:performance.now()});
-    if(p){ang=Math.atan2(y-p.y,x-p.x);const sp=Math.hypot(x-p.x,y-p.y);if(sp>3)rocks.forEach(o=>{if(o.st===0&&segHit(p.x,p.y,x,y,o)){o.st=1;hit++;res++;$('pvH').textContent=hit+' renvoyé'+(hit>1?'s':'');
+    if(p){ang=Math.atan2(y-p.y,x-p.x);const sp=Math.hypot(x-p.x,y-p.y);if(sp>6)rocks.forEach(o=>{if(o.st===0&&segHit(p.x,p.y,x,y,o)){o.st=1;hit++;res++;$('pvH').textContent=hit+' renvoyé'+(hit>1?'s':'');
       o.vx=(x-p.x)*25+(Math.random()-.5)*80;o.vy=-700;o.va*=4;for(let i=0;i<10;i++)sparks.push({x:o.x,y:o.y,vx:(Math.random()-.5)*400,vy:(Math.random()-.5)*400,l:.4});if(navigator.vibrate)try{navigator.vibrate(15)}catch(_){}}});}});
   const up=e=>{down=false;};C.addEventListener('pointerup',up);C.addEventListener('pointercancel',up);
   const drawRock=o=>{g.save();g.translate(o.x,o.y);g.rotate(o.a);g.scale(o.s,o.s);const r=o.r;
@@ -2712,7 +2712,7 @@ function testPave(title,t,done){
   const drawTonfa=(x,y)=>{g.save();g.translate(x,y);g.rotate(ang);g.fillStyle='#1c1c1c';g.strokeStyle='#555';g.lineWidth=1.5;
     g.beginPath();g.roundRect?g.roundRect(-34,-5,68,10,5):g.rect(-34,-5,68,10);g.fill();g.stroke();g.fillRect(8,-5,7,-15);g.beginPath();g.arc(11.5,-21,5,0,7);g.fill();g.restore();};
   const loop=now=>{if(!C.isConnected)return;const dt=Math.min(.05,(now-last)/1000);last=now;
-    if(thrown<TOT&&now>=nextAt){throwOne();if(thrown>5&&thrown<TOT&&Math.random()<.35)throwOne();nextAt=now+Math.max(650,1250-thrown*35);}
+    if(thrown<TOT&&now>=nextAt){throwOne();if(thrown>3&&thrown<TOT&&Math.random()<.45)throwOne();nextAt=now+Math.max(560,1100-thrown*40);}
     g.clearRect(0,0,W,HH);g.fillStyle='rgba(255,255,255,.06)';for(let i=0;i<W;i+=26)g.fillRect(i,HH-14,22,10);
     rocks.forEach(o=>{o.vy+=G*dt*(o.st?.6:1);o.x+=o.vx*dt;o.y+=o.vy*dt;o.a+=o.va*dt;if(o.st)o.s=Math.max(.2,o.s-dt*.9);
       if(!o.st&&o.vy>0&&o.y>HH+40){o.st=2;res++;fx('💥');}});
@@ -2841,7 +2841,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794653220';
+const BUILD_ID='1794659950';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2855,7 +2855,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.16.4', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.16.5', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.16.3',d:'13 novembre',items:[['⬆️','Statuts','De sympathisant à meneur : la réputation fait évoluer son statut dans le milieu.',1],['❗','Imprévus','Journalistes, contrôles, rumeurs de descente… à toi de décider.',1],['🏁','Une fin à choisir','Au sommet, deux voies possibles. Et un nouveau trophée caché.',1]]},
  {v:'1.16.2',d:'13 novembre',items:[['🏖️','Permission','Absent quelques jours ? Pose une permission depuis ⚙️ : 1 à 3 jours de pause, jauges et progression figées, série de présence conservée.']]},
