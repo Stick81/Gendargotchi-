@@ -114,6 +114,7 @@
 
   .nevBar{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:9px 12px;border:0;border-radius:14px;color:#fff;text-align:left;background:linear-gradient(135deg,#1b3a8c,#3b6fd8 60%,#c8102e);box-shadow:0 3px 10px rgba(0,0,0,.25);font:inherit;cursor:pointer}
   .nevBar .ne{font-size:28px}.nevBar .nt{flex:1;display:flex;flex-direction:column;line-height:1.2}.nevBar .nt small{opacity:.9;font-size:12px}.nevBar .ng{background:rgba(255,255,255,.22);border-radius:10px;padding:3px 8px;font-weight:700;font-size:13px}
+  .nevHot{width:100%;margin:6px 0 0;padding:7px;border:0;border-radius:12px;background:#5a3a22;color:#fff;font:inherit;font-weight:600}.nevHot:disabled{opacity:.6}
   .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
   .actions.one{grid-template-columns:1fr}
   button{font-family:inherit;border:0;cursor:pointer;color:var(--ink)}
@@ -453,8 +454,9 @@ function step(s,dt){
   if(DUTY&&sl){/* il dort pendant sa faction : géré à la prise de faction */}
 
   /* --- besoins --- */
+  const COLD=nevCold(t)&&!(s.hotUntil>t)?1.3:1;
   s.food  =clamp(s.food  -(sl?2.5:busy?10:7)*h);
-  s.energy=clamp(s.energy+(sl&&(s.recupUntil||0)>t?40:sl?(s.bedByPlayer?(hourOf(t)>=8&&hourOf(t)<20?25:15):12):-(busy?9:5)-(s.lateNight?6:0))*h);
+  s.energy=clamp(s.energy+(sl&&(s.recupUntil||0)>t?40:sl?(s.bedByPlayer?(hourOf(t)>=8&&hourOf(t)<20?25:15):12):-((busy?9:5)+(s.lateNight?6:0))*COLD)*h);
   s.moral =clamp(s.moral -(sl?0.8:s.phoneMode?1.5:DUTY?4:3)*h-(MIS&&!(t-(s._fam||0)<12*H)?1.2*h:0));
   s.tenue =clamp(s.tenue -(sl?0.5:busy?6:3)*(isRebel(s)?1.5:1)*h);
   s.forme =clamp(s.forme -0.4*h);
@@ -1383,7 +1385,7 @@ function openGuide(){
   sec('🎓 Avancement en unité',`<p>Une commission tous les <b>${SBOARD_EVERY} jours</b> après l'affectation, ouverte <b>${SBOARD_HOURS} h</b>. Les instructions (📘) réussies sont comptées au total depuis l'affectation. En GD, la qualification <b>OPJ</b> est aussi exigée pour tous les grades à partir de MDL-chef.</p>`+
     tb(['Grade','Exp.','Disc.','Motiv.','Forme','Instr.','Ret.'],[1,2,3].map(k=>{const c=SPROMO[k];return [SGRADES[k],c.exp,c.disc,c.motiv,dash(c.forme),c.instr,c.ret];})))+
   sec('⭐ Spécialités & OPJ',`<p>Depuis 🎓 Carrière. Une seule spécialité par carrière, ${SPEC_DAYS_MIN} jours d'ancienneté minimum. En cas d'échec à une sélection : nouvelle tentative 24 h plus tard.</p>`+
-    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):' rép.'})`).join(' + ')]))+
+    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):' rép.'})`).join(' + ')]))+
     `<p class="gnote">⚖️ <b>OPJ</b> (GD) : dès le grade de Gendarme, expérience ${OPJ_REQ.exp}, ${OPJ_REQ.instr} instructions réussies. Examen de 10 questions de procédure pénale, 7 bonnes réponses pour réussir (sinon 48 h d'attente). Débloque 🔎 Enquête. <b>En GD, l'OPJ est obligatoire pour passer MDL-chef.</b></p>`)+
   sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
     tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
@@ -1414,7 +1416,7 @@ function refuses(p=.75){
 
 /* ======================= ACTIONS ======================= */
 function act(a){
-  if(a==='nev')return openNev();if(a==='nevGo')return nevGo();
+  if(a==='nev')return openNev();if(a==='hot')return nevHot();if(a==='nevGo')return nevGo();
   tick();const s=S;
   const ECO=s.stage==='ecole';
   if(a.startsWith('pick:')){
@@ -2670,9 +2672,9 @@ function runTests(title,tests,onEnd){
   let i=0,res=[];
   const next=()=>{if(i>=tests.length)return onEnd(res);const t=tests[i];
     const done=(score,ok)=>{res.push({name:t[2],score,ok});i++;
-      $('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
+      $('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
       $('tNext').onclick=next;};
-    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
+    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='froid')testFroid(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
   next();
 }
 function testTap(title,t,done){
@@ -2732,7 +2734,7 @@ function testPave(title,t,done){
 const NEV={
  tdf:{e:'🚴',n:'Tour de France',d:'La caravane et le peloton traversent la région : foule au bord des routes !',real:[7,1,7,27],m:{gav:['Signaleur au carrefour','tap',70],ecole:['Renfort circulation (exercice)','quiz',3,'gd'],GD:['Gestion de la circulation','quiz',3,'gd'],GM:['Sécurisation de la ligne d\'arrivée','pave',9],GR:['Escorte moto du peloton','tap',85],reb:['Banderole au bord de la route','tap',75]}},
  j14:{e:'🇫🇷',n:'14 Juillet',d:'Fête nationale : défilé le matin, feu d\'artifice le soir.',real:[7,13,7,14],m:{gav:['Défilé au pas','cibles',6],ecole:['Répétition du défilé','cibles',7],GD:['Sécurisation du feu d\'artifice','cibles',6],GM:['Défilé sur les Champs-Élysées','cibles',7],GR:['Escorte présidentielle','tap',85],reb:['Pétards pendant le feu d\'artifice','tap',75]}},
- froid:{e:'🥶',n:'Plan Grand Froid',d:'Températures négatives : tout le monde est mobilisé pour les plus fragiles.',real:[12,1,2,28],season:[11,12,1,2],m:{gav:['Maraude avec la mairie','quiz',3],ecole:['Footing par -5 °C','tap',80],GD:['Mise à l\'abri des sans-abri','quiz',3],GM:['Renfort sur les routes verglacées','tap',80],GR:['Garde statique dans le froid','tap',85],reb:['Tenir le squat chauffé','tap',75]}},
+ froid:{e:'🥶',n:'Plan Grand Froid',d:'Températures négatives : tout le monde est mobilisé pour les plus fragiles.',real:[12,1,2,28],season:[11,12,1,2],m:{gav:['Maraude de nuit avec la mairie','froid',7,'gend'],ecole:['Maraude de nuit (exercice)','froid',8,'gend'],GD:['Maraude de nuit','froid',10,'gend'],GM:['Renfort maraude de nuit','froid',10,'gend'],GR:['Maraude de nuit','froid',10,'gend'],reb:['Tenir le squat','froid',28,'reb']}},
  elec:{e:'🗳️',n:'Élections',d:'Jour de scrutin : bureaux de vote, urnes et soirée des résultats.',m:{gav:['Accueil devant le bureau de vote','quiz',3],ecole:['Cours de droit électoral','quiz',3],GD:['Sécurisation des bureaux de vote','quiz',3,'cpp'],GM:['Renfort au soir des résultats','pave',9],GR:['Escorte des procès-verbaux','tap',85],reb:['Collage d\'affiches sauvages','tap',75]}},
  chasse:{e:'🚗',n:'Chassé-croisé des vacances',d:'Bouchons record sur les autoroutes, tout le monde part en même temps.',real:[7,25,8,20],m:{gav:['Point prévention sur l\'aire d\'autoroute','quiz',3,'gd'],ecole:['Contrôle routier encadré','quiz',3,'gd'],GD:['Repérer les excès de vitesse','cibles',7],GM:['Renfort sur l\'autoroute','tap',80],GR:['Escorte officielle vers les vacances','tap',85],reb:['Opération péage gratuit','tap',75]}},
  musique:{e:'🎵',n:'Fête de la musique',d:'Concerts dans toutes les rues jusqu\'au bout de la nuit.',real:[6,21,6,21],m:{gav:['Prévention dans la foule','quiz',3],ecole:['Fanfare de l\'école','cibles',6],GD:['Patrouille de nuit','cibles',6],GM:['Maintien de l\'ordre en fin de soirée','pave',9],GR:['Concert de la Musique de la Garde','cibles',7],reb:['Sound-system sauvage','tap',75]}},
@@ -2754,6 +2756,7 @@ function nevFixed(ts){for(const k in NEV){const f=NEV[k].fixed;if(!f)continue;co
 function nevAt(ts){const F=nevFixed(ts);if(F)return F;const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2+1;n>=w*2-2;n--){const st=nevStart(n);if(ts>=st&&ts<st+NEV_LEN){const k=nevKind(n);return {n,id:'ev'+n,k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:nevReal(NEV[k],st)};}}return null;}
 function nevNext(ts){const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2;n<w*2+6;n++){const st=nevStart(n);if(st>ts)return {n,start:st,k:nevKind(n)};}return null;}
 function nevLast(ts){const F=nevFixed(ts-NEV_LEN);if(F&&F.end<=ts&&F.end>ts-4*D)return F;const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2+1;n>=w*2-4;n--){const st=nevStart(n);if(st+NEV_LEN<=ts){const k=nevKind(n);return {n,id:'ev'+n,k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:nevReal(NEV[k],st)};}}return null;}
+let _ncH=-1,_ncV=false;function nevCold(t){const k=Math.floor(t/H);if(k!==_ncH){_ncH=k;const E=nevAt(t);_ncV=!!(E&&E.k==='froid');}return _ncV;}
 function nevGroup(s){if(!s||s.leave)return null;if(s.stage==='autre')return 'reb';if(s.stage==='gav'||s.stage==='ecole')return s.stage;if(s.stage==='service'&&SUBS[s.sub])return s.sub;return null;}
 function nevSide(g){return g==='reb'?'reb':'gend';}
 function nevDur(ms){const h=Math.max(0,Math.ceil(ms/H));return h>=24?`${Math.floor(h/24)} j ${h%24} h`:`${h} h`;}
@@ -2773,9 +2776,9 @@ async function nevSync(){const s=S,g=nevGroup(s);if(!g)return;const side=nevSide
 let nevKey='';
 function renderNev(){const el=$('nevBar');if(!el)return;const s=S,g=nevGroup(s),E=nevAt(Date.now());
   const st=E&&g?nevState(s,E):null,P=E&&nevProg[E.id],side=nevSide(g);
-  const key=E&&g?[E.id,st.done,P?P[side]:'',Math.floor((E.end-Date.now())/H)].join('|'):'';if(key===nevKey)return;nevKey=key;
+  const key=E&&g?[E.id,st.done,(s.hotUntil||0)>Date.now(),(s.hotCd||0)>Date.now(),P?P[side]:'',Math.floor((E.end-Date.now())/H)].join('|'):'';if(key===nevKey)return;nevKey=key;
   if(!key){el.innerHTML='';el.style.display='none';return;}el.style.display='';
-  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>`;}
+  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>${E.k==='froid'?`<button class="nevHot" data-a="hot" ${(s.hotCd||0)>Date.now()?'disabled':''}>☕ ${(s.hotUntil||0)>Date.now()?'Au chaud ✓':(s.hotCd||0)>Date.now()?'Boisson chaude (dans '+nevDur(s.hotCd-Date.now())+')':'Boisson chaude'}</button>`:''}`;}
 function openNev(){const s=S,g=nevGroup(s),E=nevAt(Date.now());
   if(!E||!g){const N=nevNext(Date.now());return sheet(`<h3>📅 Événements nationaux</h3><p>Aucun événement en cours.${N?` Prochain : ${NEV[N.k].e} dans ${nevDur(N.start-Date.now())}.`:''}</p><button class="primary" data-o="close">OK</button>`,true);}
   tick();const st=nevState(s,E),M=E.ev.m[g],side=nevSide(g),P=nevProg[E.id],now=Date.now();
@@ -2785,13 +2788,15 @@ function openNev(){const s=S,g=nevGroup(s),E=nevAt(Date.now());
   const mBtn=st.done?`<p>✅ <b>Mission accomplie.</b> ${ME&&ME.pseudo?(st.contrib?'Ta participation compte dans la jauge.':'Envoi de ta participation…'):'Inscris-toi à la caserne 👥 pour compter dans la jauge.'}</p>`
     :st.next>now?`<button class="primary" disabled>🔁 Nouvel essai dans ${Math.ceil((st.next-now)/M_)} min</button>`:`<button class="primary" data-a="nevGo">🎯 Lancer la mission</button>`;
   sheet(`<div id="nevSheet"></div><h3>${E.ev.e} ${E.ev.n}</h3>${E.gold?'<p style="color:#e0b84b;font-weight:700">⭐ Édition officielle : c\'est la vraie date ! Récompenses ×1,5.</p>':''}<p>${E.ev.d}</p><p style="opacity:.8;font-size:13px">⏳ Encore ${nevDur(E.end-now)}</p>
-   <div class="card" style="margin:8px 0;padding:10px"><b>🎯 Ta mission : ${M[0]}</b><br><small>${{tap:`Épreuve d'endurance : ${M[2]} répétitions en 10 s`,cibles:`Épreuve de précision : ${M[2]}/10`,quiz:`Épreuve de connaissances : ${M[2]}/5`,pave:`Épreuve au tonfa : ${M[2]}/15`,marche:M[3]==='reb'?`Mini-jeu du marché : ${M[2]} tracts en 45 s`:`Mini-jeu du marché : ${M[2]} points en 45 s`}[M[1]]}</small>${mBtn}</div>
+   <div class="card" style="margin:8px 0;padding:10px"><b>🎯 Ta mission : ${M[0]}</b><br><small>${{tap:`Épreuve d'endurance : ${M[2]} répétitions en 10 s`,cibles:`Épreuve de précision : ${M[2]}/10`,quiz:`Épreuve de connaissances : ${M[2]}/5`,pave:`Épreuve au tonfa : ${M[2]}/15`,froid:M[3]==='reb'?`Mini-jeu du squat : ${M[2]} s au chaud sur 45`:`Mini-jeu de la maraude : ${M[2]} personnes aidées en 45 s`,marche:M[3]==='reb'?`Mini-jeu du marché : ${M[2]} tracts en 45 s`:`Mini-jeu du marché : ${M[2]} points en 45 s`}[M[1]]}</small>${mBtn}</div>
    <b>🤝 Objectif collectif</b>${P?bar('👮 La caserne',P.gend,P.gend_target,'#3b6fd8',P.gend_names)+(showReb?bar('🖤 De l\'autre côté',P.reb,P.reb_target,'#c8102e',P.reb_names):''):'<p><small>Chargement…</small></p>'}
    <p style="font-size:12px;opacity:.75">Si l'objectif de ton camp est atteint, tout le monde y gagne un bonus, même ceux qui n'ont pas joué.</p>
    ${Object.keys(col).length?`<p><b>🗂️ Ta collection</b><br>${NEV_K.filter(k=>col[k]).map(k=>`${NEV[k].e}${col[k]>1?'×'+col[k]:''}`).join(' ')}</p>`:''}
    <button class="primary" data-o="close">Fermer</button>`,true);
   if(!P)nevLoad(E.id).then(()=>{if($('nevSheet'))openNev();nevKey='';renderNev();});}
 const M_=60000;
+function nevHot(){const s=S;tick();const E=nevAt(Date.now());if(!E||E.k!=='froid'||(s.hotCd||0)>Date.now()||s.sleeping)return s.sleeping?toast('Il dort…'):null;
+  s.hotUntil=Date.now()+3*H;s.hotCd=Date.now()+4*H;s.energy=clamp(s.energy+8);s.moral=clamp(s.moral+4);fx('☕',3);log(s,'☕ Une boisson bien chaude : énergie +8, moral +4, et le froid se fait moins sentir pendant 3 h.','good');toast('☕ Ça réchauffe !');nevKey='';save();render();}
 function nevGo(){const s=S,g=nevGroup(s),E=nevAt(Date.now());if(!E||!g)return closeSheet();const st=nevState(s,E);if(st.done||st.next>Date.now())return;const M=E.ev.m[g];
   runTests(`${E.ev.e} ${E.ev.n}`,[[M[1],M[2],M[0],M[3]]],res=>{const ok=res[0]&&res[0].ok;tick();st.tries++;
     if(!ok){st.next=Date.now()+2*H;log(s,`${E.ev.e} Mission « ${M[0]} » ratée. Nouvel essai possible dans 2 h.`,'bad');save();sheet(`<h3>${E.ev.e} Mission ratée</h3><p>Pas cette fois ! Tu pourras retenter dans 2 heures.</p><button class="primary" data-o="close">OK</button>`,true);render();return;}
@@ -2881,6 +2886,81 @@ function testMarche(title,t,done){
     requestAnimationFrame(loop);};
   requestAnimationFrame(loop);
   $('mkGo').onclick=()=>{$('mkGo').remove();run=true;last=performance.now();};
+}
+function testFroid(title,t,done){
+  const REB=t[3]==='reb',DUR=45;
+  sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : ${REB?'des fenêtres s\'ouvrent sous les courants d\'air 🌬️ : touche-les pour les refermer. Touche le brasero 🔥 pour remettre du bois. Garde la température hors du bleu !':'il fait nuit noire. Promène ta lampe torche 🔦 du doigt et repère les personnes à la rue (petits nuages de souffle 💨). Garde la lampe sur elles un instant pour leur donner une couverture avant que le froid ne gagne.'} Objectif : ${t[1]} ${REB?'secondes au chaud':'personnes aidées'} en ${DUR} s.</p>
+    <div style="position:relative"><canvas id="frC" style="width:100%;height:340px;border-radius:16px;touch-action:none;display:block;background:#0b1020"></canvas>
+    <button class="primary" id="frGo" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:12px 26px">▶️ Commencer</button></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="frT">⏱ ${DUR} s</span><span id="frS">${REB?'🔥 0 s au chaud':'🧣 0 personne aidée'}</span></div>`,true);
+  const C=$('frC'),dpr=window.devicePixelRatio||1,W=C.clientWidth||330,HH=340;C.width=W*dpr;C.height=HH*dpr;const g=C.getContext('2d');g.scale(dpr,dpr);
+  const rnd=(a,b)=>a+Math.random()*(b-a);let run=false,fin=false,last=0,acc=0,left=DUR,score=0,fx=[],msg='',msgT=0;
+  const snow=Array.from({length:45},()=>({x:rnd(0,W),y:rnd(0,HH),v:rnd(18,40),r:rnd(1,2.2)}));
+  const say=m=>{msg=m;msgT=1.4;};
+  const setS=()=>{$('frS').textContent=REB?`🔥 ${score} s au chaud`:`🧣 ${score} personne${score>1?'s':''} aidée${score>1?'s':''}`;};
+  const pos=e=>{const b=C.getBoundingClientRect();return [(e.clientX-b.left)*W/b.width,(e.clientY-b.top)*HH/b.height];};
+  const drawSnow=dt=>{g.fillStyle='rgba(255,255,255,.85)';snow.forEach(f=>{f.y+=f.v*dt;f.x+=Math.sin(f.y/20)*8*dt;if(f.y>HH){f.y=-3;f.x=rnd(0,W);}g.beginPath();g.arc(f.x,f.y,f.r,0,7);g.fill();});};
+  const msgDraw=dt=>{if(msgT>0){msgT-=dt;g.fillStyle='rgba(0,0,0,.65)';g.font='bold 13px sans-serif';const w=g.measureText(msg).width+16;g.fillRect(W/2-w/2,HH/2-14,w,26);g.fillStyle='#fff';g.textAlign='center';g.fillText(msg,W/2,HH/2+4);}};
+  const fxDraw=dt=>{fx.forEach(f=>{f.l-=dt;f.y-=dt*25;g.globalAlpha=Math.max(0,f.l);g.fillStyle=f.c;g.font='bold 15px sans-serif';g.textAlign='center';g.fillText(f.txt,f.x,f.y);g.globalAlpha=1;});fx=fx.filter(f=>f.l>0);};
+  const tickTime=dt=>{if(!run||fin)return;acc+=dt;if(acc>=1){acc-=1;left--;$('frT').textContent=`⏱ ${left} s`;if(REB&&temp>=35){score++;setS();}if(left<=0){fin=true;setTimeout(()=>{if(C.isConnected)done(score,score>=t[1]);},700);}}};
+  let temp=70,wood=70,wins=[],people=[],spawn=1,lamps=[],L={x:W/2,y:HH/2},dark=null;
+  if(REB){const cols=3,rows=2,ww=W/cols;for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)wins.push({x:ww*c+ww*.18,y:22+r*92,w:ww*.64,h:70,open:0,next:rnd(1,5)});}
+  else{dark=document.createElement('canvas');dark.width=W;dark.height=HH;
+    for(let i=0;i<5;i++)lamps.push({x:[40,W-40,W/2,70,W-70][i],y:[40,40,HH/2,HH-40,HH-40][i]});}
+  const streets=[[0,HH/2-22,W,44],[W/2-22,0,44,HH],[0,26,W,30],[0,HH-56,W,30]];
+  const onStreet=()=>{const s=streets[Math.floor(Math.random()*streets.length)];return {x:s[0]+rnd(14,s[2]-14),y:s[1]+rnd(8,s[3]-8)};};
+  C.addEventListener('pointerdown',e=>{e.preventDefault();if(!run||fin)return;const [x,y]=pos(e);
+    if(REB){if(Math.hypot(x-W/2,y-(HH-42))<44){wood=Math.min(100,wood+22);fx.push({x:W/2,y:HH-80,txt:'🪵',c:'#fff',l:.8});return;}
+      const w=wins.find(w=>x>=w.x-6&&x<=w.x+w.w+6&&y>=w.y-6&&y<=w.y+w.h+6);if(w&&w.open>0){w.open=0;w.next=rnd(1.5,4.5)*(1-.4*(DUR-left)/DUR);fx.push({x:w.x+w.w/2,y:w.y+w.h/2,txt:'✔️',c:'#fff',l:.6});}return;}
+    L.x=x;L.y=y;L.down=true;});
+  C.addEventListener('pointermove',e=>{e.preventDefault();if(REB||!run)return;const [x,y]=pos(e);L.x=x;L.y=y;});
+  const loop=now=>{if(!C.isConnected)return;const dt=Math.min(.05,(now-last)/1000||0);last=now;tickTime(dt);
+    if(REB){// --- squat ---
+      if(run&&!fin){const prog=(DUR-left)/DUR;wins.forEach(w=>{if(w.open>0)w.open=Math.min(1,w.open+dt*3);else{w.next-=dt;if(w.next<=0){w.open=.01;}}});
+        wood=Math.max(0,wood-dt*(6+prog*5));const nOpen=wins.filter(w=>w.open>0).length;temp=Math.max(0,Math.min(100,temp+dt*(wood>0?wood/100*11:-2)-dt*(2+nOpen*3.2)));}
+      const warm=temp/100;g.fillStyle=`rgb(${60+warm*70},${45+warm*25},${55-warm*20})`;g.fillRect(0,0,W,HH);
+      g.fillStyle='rgba(0,0,0,.18)';for(let x=0;x<W;x+=24)for(let y=(x/24%2)*10;y<HH;y+=20)g.fillRect(x,y,22,1.5);
+      g.font='bold 18px sans-serif';g.fillStyle='rgba(255,95,162,.55)';g.textAlign='left';g.fillText('Ⓐ',8,HH-110);g.fillStyle='rgba(46,139,87,.55)';g.fillText('NO PASARÁN',36,HH-110);
+      wins.forEach(w=>{g.fillStyle='#1b2433';g.fillRect(w.x-4,w.y-4,w.w+8,w.h+8);
+        if(w.open>0){g.fillStyle='#0d1a33';g.fillRect(w.x,w.y,w.w,w.h);g.fillStyle='rgba(255,255,255,.9)';for(let i=0;i<6;i++){const k=(now/400+i*.37)%1;g.beginPath();g.arc(w.x+w.w*(i/6+.08),w.y+w.h*k,1.8,0,7);g.fill();}
+          g.fillStyle='#6b4b2a';g.fillRect(w.x-w.w*.45*w.open,w.y,w.w*.45*w.open,w.h);g.fillRect(w.x+w.w,w.y,w.w*.45*w.open,w.h);g.font='18px sans-serif';g.textAlign='center';g.fillText('🌬️',w.x+w.w/2,w.y+w.h/2+6);}
+        else{g.fillStyle='#8a6a42';g.fillRect(w.x,w.y,w.w/2-1,w.h);g.fillRect(w.x+w.w/2+1,w.y,w.w/2-1,w.h);g.strokeStyle='#5a4128';g.lineWidth=2;for(let k=1;k<4;k++){g.beginPath();g.moveTo(w.x,w.y+k*w.h/4);g.lineTo(w.x+w.w,w.y+k*w.h/4);g.stroke();}}});
+      // brasero
+      const bx=W/2,by=HH-42;g.fillStyle='#333';g.fillRect(bx-30,by-6,60,30);g.fillStyle='#555';g.fillRect(bx-34,by-10,68,8);
+      const fl=wood/100;if(fl>0){for(let i=0;i<5;i++){const h=(18+Math.sin(now/90+i)*6)*fl+6;g.fillStyle=i%2?'#ffb347':'#ff5a1f';g.beginPath();g.moveTo(bx-24+i*12,by-10);g.quadraticCurveTo(bx-18+i*12,by-10-h*1.4,bx-12+i*12,by-10);g.fill();}}
+      else{g.fillStyle='#888';g.font='12px sans-serif';g.textAlign='center';g.fillText('éteint !',bx,by-16);}
+      g.fillStyle='rgba(255,255,255,.8)';g.font='11px sans-serif';g.textAlign='center';g.fillText('🪵 touche pour du bois',bx,by+38);
+      // thermomètre
+      g.fillStyle='rgba(0,0,0,.35)';g.fillRect(W-22,HH-150,12,110);const th=110*temp/100;g.fillStyle=temp<35?'#4fa3ff':temp<60?'#ffb347':'#ff4d4d';g.fillRect(W-22,HH-40-th,12,th);g.fillStyle='#fff';g.fillRect(W-24,HH-40-110*.35,16,2);
+      g.font='14px sans-serif';g.fillText('🌡️',W-16,HH-155);
+      drawSnow(dt*.4);
+      if(run&&!fin&&temp<35&&Math.floor(now/600)%2)say('🥶 Il fait trop froid dans le squat !');
+    } else {// --- maraude ---
+      if(run&&!fin){const prog=(DUR-left)/DUR;spawn-=dt;if(spawn<=0&&people.length<6){const p=onStreet();people.push({...p,cold:100,rate:rnd(6.5,8.5)+prog*4,help:0,st:'wait',puff:rnd(0,2)});spawn=rnd(2.2,3.2)-prog*1.1;}
+        people.forEach(p=>{if(p.st!=='wait')return;p.cold-=p.rate*dt;p.puff-=dt;const lit=Math.hypot(p.x-L.x,p.y-L.y)<48;
+          if(lit){p.help+=dt;if(p.help>=.7){p.st='ok';p.l=1.2;score++;setS();fx.push({x:p.x,y:p.y-14,txt:'🧣 +1',c:'#ffd54f',l:1});}}else p.help=Math.max(0,p.help-dt*.5);
+          if(p.cold<=0){p.st='lost';p.l=1.2;say('🚑 Trop tard, le SAMU social prend le relais…');}});
+        people.forEach(p=>{if(p.st!=='wait')p.l-=dt;});people=people.filter(p=>p.st==='wait'||p.l>0);}
+      g.fillStyle='#2a2f3a';g.fillRect(0,0,W,HH);g.fillStyle='#3b4250';streets.forEach(s=>g.fillRect(...s));
+      g.fillStyle='#e8eef5';for(let i=0;i<W;i+=30)g.fillRect(i,HH/2-1,15,2);
+      g.fillStyle='#232733';[[8,64,W/2-40,HH/2-90],[W/2+32,64,W/2-40,HH/2-90],[8,HH/2+30,W/2-40,HH/2-94],[W/2+32,HH/2+30,W/2-40,HH/2-94]].forEach(b=>{g.fillRect(...b);g.fillStyle='#ffd54f22';for(let x=b[0]+8;x<b[0]+b[2]-8;x+=18)for(let y=b[1]+8;y<b[1]+b[3]-8;y+=16)if((x*y)%7<2)g.fillRect(x,y,7,6);g.fillStyle='#232733';});
+      people.forEach(p=>{g.save();g.translate(p.x,p.y);g.fillStyle='#a87b4f';g.fillRect(-13,-8,26,16);g.strokeStyle='#7a5530';g.strokeRect(-13,-8,26,16);
+        g.fillStyle=p.st==='ok'?'#e67e22':'#5d6d7e';g.fillRect(-11,-6,18,12);g.fillStyle='#f1c7a0';g.beginPath();g.arc(9,0,4.5,0,7);g.fill();g.fillStyle='#444';g.beginPath();g.arc(9,0,4.6,Math.PI*.5,Math.PI*1.5);g.fill();g.restore();});
+      // obscurité + lampe
+      const d=dark.getContext('2d');d.globalCompositeOperation='source-over';d.clearRect(0,0,W,HH);d.fillStyle='rgba(4,6,14,.86)';d.fillRect(0,0,W,HH);d.globalCompositeOperation='destination-out';
+      const hole=(x,y,r,a)=>{const gr=d.createRadialGradient(x,y,r*.2,x,y,r);gr.addColorStop(0,`rgba(0,0,0,${a})`);gr.addColorStop(1,'rgba(0,0,0,0)');d.fillStyle=gr;d.beginPath();d.arc(x,y,r,0,7);d.fill();};
+      lamps.forEach(l=>hole(l.x,l.y,34,.55));hole(L.x,L.y,62,1);g.drawImage(dark,0,0,W,HH);
+      lamps.forEach(l=>{g.fillStyle='#ffe08a';g.beginPath();g.arc(l.x,l.y,2.5,0,7);g.fill();});
+      people.forEach(p=>{if(p.st!=='wait')return;const lit=Math.hypot(p.x-L.x,p.y-L.y)<62;
+        if(p.puff<0){p.puff=rnd(1.6,2.4);fx.push({x:p.x+12,y:p.y-4,txt:'💨',c:'#fff',l:.9});}
+        if(lit){g.fillStyle='rgba(0,0,0,.5)';g.fillRect(p.x-14,p.y-17,28,5);g.fillStyle=p.cold>50?'#4fc3f7':p.cold>25?'#ffb347':'#ff5252';g.fillRect(p.x-14,p.y-17,28*p.cold/100,5);
+          if(p.help>0){g.strokeStyle='#ffd54f';g.lineWidth=3;g.beginPath();g.arc(p.x,p.y,17,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,p.help/.7));g.stroke();}}});
+      g.strokeStyle='rgba(255,240,180,.35)';g.lineWidth=1.5;g.beginPath();g.arc(L.x,L.y,62,0,7);g.stroke();g.font='16px sans-serif';g.textAlign='center';g.fillText('🔦',L.x,L.y+6);
+      drawSnow(dt);}
+    fxDraw(dt);msgDraw(dt);requestAnimationFrame(loop);};
+  requestAnimationFrame(loop);
+  $('frGo').onclick=()=>{$('frGo').remove();run=true;last=performance.now();};
+  window.__fr=()=>({people,L,temp,wood,wins,score,W});
 }
 function testQuiz(title,t,done){
   const pool=t[3]==='cpp'?QUIZ_CPP:t[3]==='gd'?QUIZ_GD:QUIZ.concat(QUIZ_GD,QUIZ_CPP);
@@ -2999,7 +3079,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794662918';
+const BUILD_ID='1794664088';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3013,8 +3093,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.2', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.3', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.17.3',d:'14 novembre',items:[['🥶','Plan Grand Froid revu','Nouvelle mission de nuit : promène ta lampe torche dans les rues sombres pour repérer les personnes à la rue et leur apporter une couverture à temps.'],['☕','Il fait froid !','Pendant le Grand Froid, l\'énergie baisse plus vite. Une boisson chaude (toutes les 4 h) protège du froid pendant 3 h.'],['🖤','Et de l\'autre côté…','Tenir le squat : referme les fenêtres et nourris le brasero pour rester au chaud.',1]]},
  {v:'1.17.2',d:'14 novembre',items:[['🎄','Mission spéciale du marché de Noël','Un nouveau mini-jeu vu du dessus : repère dans la foule ceux qui tractent pour les raccompagner à la sortie, et interpelle les voleurs avant qu\'ils filent. Attention aux innocents !'],['🖤','Et de l\'autre côté…','Glisse dans la foule pour distribuer un maximum de tracts, sans te faire attraper.',1]]},
  {v:'1.17',d:'14 novembre',items:[['📅','Événements nationaux','Deux fois par semaine, un événement touche tout le monde pendant 48 h : Tour de France, Plan Grand Froid, élections, marchés de Noël… Une bannière apparaît au-dessus des actions.'],['🎯','Missions spéciales','Chaque phase a sa mission : réussis-la pour gagner moral, motivation et un tampon de collection. ⭐ Bonus ×1,5 quand l\'événement tombe à sa vraie date !'],['🤝','Objectif collectif','Une jauge commune pour toute la caserne : si elle est remplie, tout le monde gagne un bonus, même ceux qui n\'ont pas joué.']]},
  {v:'1.16.3',d:'13 novembre',items:[['⬆️','Statuts','De sympathisant à meneur : la réputation fait évoluer son statut dans le milieu.',1],['❗','Imprévus','Journalistes, contrôles, rumeurs de descente… à toi de décider.',1],['🏁','Une fin à choisir','Au sommet, deux voies possibles. Et un nouveau trophée caché.',1]]},
