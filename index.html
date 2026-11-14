@@ -1383,7 +1383,7 @@ function openGuide(){
   sec('🎓 Avancement en unité',`<p>Une commission tous les <b>${SBOARD_EVERY} jours</b> après l'affectation, ouverte <b>${SBOARD_HOURS} h</b>. Les instructions (📘) réussies sont comptées au total depuis l'affectation. En GD, la qualification <b>OPJ</b> est aussi exigée pour tous les grades à partir de MDL-chef.</p>`+
     tb(['Grade','Exp.','Disc.','Motiv.','Forme','Instr.','Ret.'],[1,2,3].map(k=>{const c=SPROMO[k];return [SGRADES[k],c.exp,c.disc,c.motiv,dash(c.forme),c.instr,c.ret];})))+
   sec('⭐ Spécialités & OPJ',`<p>Depuis 🎓 Carrière. Une seule spécialité par carrière, ${SPEC_DAYS_MIN} jours d'ancienneté minimum. En cas d'échec à une sélection : nouvelle tentative 24 h plus tard.</p>`+
-    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':' rép.'})`).join(' + ')]))+
+    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):' rép.'})`).join(' + ')]))+
     `<p class="gnote">⚖️ <b>OPJ</b> (GD) : dès le grade de Gendarme, expérience ${OPJ_REQ.exp}, ${OPJ_REQ.instr} instructions réussies. Examen de 10 questions de procédure pénale, 7 bonnes réponses pour réussir (sinon 48 h d'attente). Débloque 🔎 Enquête. <b>En GD, l'OPJ est obligatoire pour passer MDL-chef.</b></p>`)+
   sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
     tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
@@ -2670,9 +2670,9 @@ function runTests(title,tests,onEnd){
   let i=0,res=[];
   const next=()=>{if(i>=tests.length)return onEnd(res);const t=tests[i];
     const done=(score,ok)=>{res.push({name:t[2],score,ok});i++;
-      $('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
+      $('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
       $('tNext').onclick=next;};
-    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
+    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
   next();
 }
 function testTap(title,t,done){
@@ -2736,7 +2736,7 @@ const NEV={
  elec:{e:'🗳️',n:'Élections',d:'Jour de scrutin : bureaux de vote, urnes et soirée des résultats.',m:{gav:['Accueil devant le bureau de vote','quiz',3],ecole:['Cours de droit électoral','quiz',3],GD:['Sécurisation des bureaux de vote','quiz',3,'cpp'],GM:['Renfort au soir des résultats','pave',9],GR:['Escorte des procès-verbaux','tap',85],reb:['Collage d\'affiches sauvages','tap',75]}},
  chasse:{e:'🚗',n:'Chassé-croisé des vacances',d:'Bouchons record sur les autoroutes, tout le monde part en même temps.',real:[7,25,8,20],m:{gav:['Point prévention sur l\'aire d\'autoroute','quiz',3,'gd'],ecole:['Contrôle routier encadré','quiz',3,'gd'],GD:['Repérer les excès de vitesse','cibles',7],GM:['Renfort sur l\'autoroute','tap',80],GR:['Escorte officielle vers les vacances','tap',85],reb:['Opération péage gratuit','tap',75]}},
  musique:{e:'🎵',n:'Fête de la musique',d:'Concerts dans toutes les rues jusqu\'au bout de la nuit.',real:[6,21,6,21],m:{gav:['Prévention dans la foule','quiz',3],ecole:['Fanfare de l\'école','cibles',6],GD:['Patrouille de nuit','cibles',6],GM:['Maintien de l\'ordre en fin de soirée','pave',9],GR:['Concert de la Musique de la Garde','cibles',7],reb:['Sound-system sauvage','tap',75]}},
- noel:{e:'🎄',n:'Marchés de Noël',d:'Foule, vin chaud et Vigipirate renforcé.',real:[11,22,12,31],season:[11,12],m:{gav:['Patrouille au marché de Noël','cibles',6],ecole:['Exercice anti-vol à l\'étalage','quiz',3],GD:['Sécurisation du marché','cibles',7],GM:['Dispositif Vigipirate','pave',9],GR:['Garde d\'honneur de Noël','tap',85],reb:['Tag du Père Noël rebelle','tap',75]}},
+ noel:{e:'🎄',n:'Marchés de Noël',d:'Foule, vin chaud et Vigipirate renforcé.',real:[11,22,12,31],season:[11,12],m:{gav:['Patrouille au marché de Noël','marche',10,'gend'],ecole:['Exercice au marché de Noël','marche',12,'gend'],GD:['Sécurisation du marché de Noël','marche',15,'gend'],GM:['Dispositif Vigipirate au marché','marche',15,'gend'],GR:['Patrouille au marché de Noël','marche',15,'gend'],reb:['Tractage au marché de Noël','marche',30,'reb']}},
  nouvelan:{e:'🎆',n:'Réveillon du Nouvel An',d:'La nuit la plus longue de l\'année pour les forces de l\'ordre.',real:[12,31,1,1],fixed:[12,31],m:{gav:['Prévention alcool au volant','quiz',3,'gd'],ecole:['Garde de la caserne au réveillon','tap',80],GD:['Contrôles d\'alcoolémie','cibles',7],GM:['Nuit de la Saint-Sylvestre','pave',10],GR:['Escorte des vœux officiels','tap',85],reb:['Pétards à minuit','tap',75]}},
  sommet:{e:'🌍',n:'Sommet international',d:'Des chefs d\'État arrivent : sécurité maximale.',m:{gav:['Filtrage des accès','quiz',3],ecole:['Exercice de protection rapprochée','cibles',6],GD:['Périmètre de sécurité','cibles',7],GM:['Face au contre-sommet','pave',10],GR:['Escorte des chefs d\'État','tap',90],reb:['Grand rassemblement du contre-sommet','tap',80]}},
  crue:{e:'🌊',n:'Inondations',d:'La rivière déborde : plan ORSEC déclenché.',m:{gav:['Aide aux sinistrés','tap',70],ecole:['Renfort plan ORSEC','tap',80],GD:['Évacuation des riverains','quiz',3],GM:['Renfort sur la zone inondée','tap',85],GR:['Patrouille à cheval sur les digues','tap',85],reb:['Solidarité avec les sinistrés','tap',70]}},
@@ -2785,7 +2785,7 @@ function openNev(){const s=S,g=nevGroup(s),E=nevAt(Date.now());
   const mBtn=st.done?`<p>✅ <b>Mission accomplie.</b> ${ME&&ME.pseudo?(st.contrib?'Ta participation compte dans la jauge.':'Envoi de ta participation…'):'Inscris-toi à la caserne 👥 pour compter dans la jauge.'}</p>`
     :st.next>now?`<button class="primary" disabled>🔁 Nouvel essai dans ${Math.ceil((st.next-now)/M_)} min</button>`:`<button class="primary" data-a="nevGo">🎯 Lancer la mission</button>`;
   sheet(`<div id="nevSheet"></div><h3>${E.ev.e} ${E.ev.n}</h3>${E.gold?'<p style="color:#e0b84b;font-weight:700">⭐ Édition officielle : c\'est la vraie date ! Récompenses ×1,5.</p>':''}<p>${E.ev.d}</p><p style="opacity:.8;font-size:13px">⏳ Encore ${nevDur(E.end-now)}</p>
-   <div class="card" style="margin:8px 0;padding:10px"><b>🎯 Ta mission : ${M[0]}</b><br><small>${{tap:`Épreuve d'endurance : ${M[2]} répétitions en 10 s`,cibles:`Épreuve de précision : ${M[2]}/10`,quiz:`Épreuve de connaissances : ${M[2]}/5`,pave:`Épreuve au tonfa : ${M[2]}/15`}[M[1]]}</small>${mBtn}</div>
+   <div class="card" style="margin:8px 0;padding:10px"><b>🎯 Ta mission : ${M[0]}</b><br><small>${{tap:`Épreuve d'endurance : ${M[2]} répétitions en 10 s`,cibles:`Épreuve de précision : ${M[2]}/10`,quiz:`Épreuve de connaissances : ${M[2]}/5`,pave:`Épreuve au tonfa : ${M[2]}/15`,marche:M[3]==='reb'?`Mini-jeu du marché : ${M[2]} tracts en 45 s`:`Mini-jeu du marché : ${M[2]} points en 45 s`}[M[1]]}</small>${mBtn}</div>
    <b>🤝 Objectif collectif</b>${P?bar('👮 La caserne',P.gend,P.gend_target,'#3b6fd8',P.gend_names)+(showReb?bar('🖤 De l\'autre côté',P.reb,P.reb_target,'#c8102e',P.reb_names):''):'<p><small>Chargement…</small></p>'}
    <p style="font-size:12px;opacity:.75">Si l'objectif de ton camp est atteint, tout le monde y gagne un bonus, même ceux qui n'ont pas joué.</p>
    ${Object.keys(col).length?`<p><b>🗂️ Ta collection</b><br>${NEV_K.filter(k=>col[k]).map(k=>`${NEV[k].e}${col[k]>1?'×'+col[k]:''}`).join(' ')}</p>`:''}
@@ -2802,6 +2802,86 @@ function nevGo(){const s=S,g=nevGroup(s),E=nevAt(Date.now());if(!E||!g)return cl
     render();nevSync();});}
 setInterval(()=>{if(!document.hidden&&S){nevKey='';renderNev();}},60000);
 setInterval(()=>{if(!document.hidden&&S)nevSync();},5*60000);setTimeout(()=>{if(S)nevSync();},3000);
+function testMarche(title,t,done){
+  const REB=t[3]==='reb',DUR=45;
+  sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : ${REB?'glisse le doigt pour déplacer ton rebelle 🖤 dans la foule. Chaque passant frôlé reçoit un tract. Évite les gendarmes 👮, ils te sortent du marché !':'touche un rebelle qui tracte 🖤 pour le raccompagner à la sortie (+1). Repère les voleurs 🥷 qui collent les passants et interpelle-les avant qu\'ils filent (+3). Ne contrôle pas les innocents (−1) !'} Objectif : ${t[1]} ${REB?'tracts':'points'} en ${DUR} s.</p>
+    <div style="position:relative"><canvas id="mkC" style="width:100%;height:340px;border-radius:16px;touch-action:none;display:block;background:#dfe6ea"></canvas>
+    <button class="primary" id="mkGo" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:12px 26px">▶️ Commencer</button></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="mkT">⏱ ${DUR} s</span><span id="mkS">${REB?'📄 0 tract':'⭐ 0 point'}</span></div>`,true);
+  const C=$('mkC'),dpr=window.devicePixelRatio||1,W=C.clientWidth||330,HH=340;C.width=W*dpr;C.height=HH*dpr;const g=C.getContext('2d');g.scale(dpr,dpr);
+  const TOP=58,BOT=HH-58,SK=['#f1c7a0','#e0ac80','#c68b5e','#8d5a3b','#f5d6b8'],HAIR=['#2b1d14','#6b3e1f','#c9a15a','#1a1a1a','#a0522d','#888'],COATS=['#c0392b','#2e86c1','#27ae60','#8e44ad','#d35400','#7f8c8d','#16a085','#b03a6b','#f1c40f'];
+  let P=[],fx=[],score=0,left=DUR,run=false,fin=false,last=0,acc=0,spawnP=0,spawnR=1.5,spawnT=6,msg='',msgT=0;
+  const rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)];
+  const person=(type)=>{const fromL=Math.random()<.5,sp=type==='thief'?rnd(45,60):type==='reb'?rnd(22,34):rnd(28,55);
+    return {type,x:fromL?-14:W+14,y:rnd(TOP+16,BOT-16),vx:fromL?sp:-sp,vy:0,wob:rnd(0,6),sk:pick(SK),hair:pick(HAIR),coat:type==='reb'?'#151515':type==='thief'?'#3a3f47':pick(COATS),r:9,st:'walk',t:0,got:false};};
+  for(let i=0;i<10;i++){const p=person('p');p.x=rnd(10,W-10);P.push(p);}
+  const me=REB?{x:W/2,y:(TOP+BOT)/2,tx:W/2,ty:(TOP+BOT)/2,stun:0}:{x:W/2,y:BOT-12,tgt:null,esc:null};
+  const cops=REB?[0,1,2].slice(0,t[1]>15?3:2).map(i=>({x:W*(.2+.6*i/2),y:TOP+20+i*40,tx:rnd(20,W-20),ty:rnd(TOP+15,BOT-15),chase:false})):[];
+  const say=(m)=>{msg=m;msgT=1.4;};
+  const addS=(n,x,y)=>{score+=n;fx.push({x,y,txt:(n>0?'+':'')+n,c:n>0?'#1e8449':'#c0392b',l:1});$('mkS').textContent=REB?`📄 ${score} tract${score>1?'s':''}`:`⭐ ${score} point${Math.abs(score)>1?'s':''}`;};
+  const drawPerson=(p,a=1)=>{g.save();g.globalAlpha=a;g.translate(p.x,p.y);const dir=Math.sign(p.vx||1);
+    g.fillStyle='rgba(0,0,0,.15)';g.beginPath();g.ellipse(2,3,p.r+2,p.r-1,0,0,7);g.fill();
+    g.fillStyle=p.coat;g.beginPath();g.ellipse(0,0,p.r*.75,p.r+1,0,0,7);g.fill();// épaules (vue de dessus)
+    g.fillStyle=p.sk;g.beginPath();g.arc(dir*1.5,0,p.r*.55,0,7);g.fill();
+    if(p.type==='thief'){g.fillStyle='#222';g.beginPath();g.arc(dir*1.5,0,p.r*.58,0,7);g.fill();}
+    else if(p.type==='reb'){g.fillStyle='#ff5fa2';g.beginPath();g.arc(dir*1.5-dir*2,0,p.r*.5,Math.PI*.5,Math.PI*1.5,dir>0);g.fill();g.fillStyle='#fff';g.fillRect(dir*(p.r*.7)-2,-6,5,7);g.fillStyle='#2e8b57';g.fillRect(dir*(p.r*.7)-2,-6,5,2);}
+    else{g.fillStyle=p.hair;g.beginPath();g.arc(dir*1.5-dir*1.5,0,p.r*.5,Math.PI*.5,Math.PI*1.5,dir>0);g.fill();}
+    if(p.got){g.fillStyle='#fff';g.fillRect(-p.r-2,-p.r-4,6,7);g.strokeStyle='#ff5fa2';g.strokeRect(-p.r-2,-p.r-4,6,7);}
+    if(p.st==='steal'||p.st==='flee'){g.font='13px sans-serif';g.textAlign='center';g.fillText('💰',0,-p.r-4);}
+    if(p.robbed>0){g.font='13px sans-serif';g.textAlign='center';g.fillText('❗',0,-p.r-4);}
+    g.restore();};
+  const drawCop=(c,big)=>{g.save();g.translate(c.x,c.y);g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(2,3,12,9,0,0,7);g.fill();
+    g.fillStyle='#1b3a8c';g.beginPath();g.ellipse(0,0,8,11,0,0,7);g.fill();g.fillStyle='#0f1f4d';g.beginPath();g.arc(0,0,6.2,0,7);g.fill();g.fillStyle='#d4af37';g.fillRect(-1.5,-6,3,3);
+    if(big){g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(0,0,14,0,7);g.stroke();}g.restore();};
+  const drawMe=()=>{if(REB){const p={x:me.x,y:me.y,vx:me.tx-me.x||1,r:11,coat:'#151515',sk:'#f1c7a0',type:'reb'};g.save();if(me.stun>0)g.globalAlpha=.4;g.strokeStyle='#ff5fa2';g.lineWidth=3;g.beginPath();g.arc(me.x,me.y,16,0,7);g.stroke();g.restore();drawPerson(p,me.stun>0?.45:1);}else drawCop(me,true);};
+  const drawDecor=(tm)=>{g.fillStyle='#e9eef1';g.fillRect(0,0,W,HH);g.fillStyle='#cfd8dc';g.fillRect(0,TOP,W,BOT-TOP);
+    for(let i=0;i<30;i++){g.fillStyle='rgba(255,255,255,.7)';g.beginPath();g.arc((i*97)%W,TOP+((i*53)%(BOT-TOP)),1.6,0,7);g.fill();}
+    const cw=Math.max(54,W/6);for(let x=4;x<W;x+=cw+6){for(const y of [4,BOT+6]){g.fillStyle='#8b5a2b';g.fillRect(x,y,cw,TOP-12);g.fillStyle='#a8703a';for(let k=0;k<4;k++)g.fillRect(x,y+k*(TOP-12)/4,cw,2);
+      g.fillStyle='#fff';g.fillRect(x,y===4?y+TOP-18:y,cw,6);g.fillStyle='#c0392b';for(let k=0;k<cw;k+=10)g.fillRect(x+k,y===4?y+TOP-18:y,5,6);}}
+    for(const y of [TOP-2,BOT+2])for(let x=6;x<W;x+=14){const on=((x/14|0)+(tm*3|0))%3;g.fillStyle=['#ffd54f','#ff5252','#69f0ae'][on];g.beginPath();g.arc(x,y,2.6,0,7);g.fill();}
+    g.fillStyle='rgba(46,139,87,.85)';g.font='bold 11px sans-serif';g.textAlign='left';g.fillText('⬅ SORTIE',4,TOP+12);g.textAlign='right';g.fillText('SORTIE ➡',W-4,TOP+12);};
+  const pos=e=>{const b=C.getBoundingClientRect();return [(e.clientX-b.left)*W/b.width,(e.clientY-b.top)*HH/b.height];};
+  C.addEventListener('pointerdown',e=>{e.preventDefault();if(!run||fin)return;const [x,y]=pos(e);
+    if(REB){me.tx=x;me.ty=y;me.drag=true;return;}
+    if(me.esc)return say('Il raccompagne déjà quelqu\'un…');
+    let best=null,bd=26*26;P.forEach(p=>{if(p.st==='out')return;const d=(p.x-x)**2+(p.y-y)**2;if(d<bd){bd=d;best=p;}});
+    if(!best)return;
+    if(best.type==='p'){addS(-1,best.x,best.y);say('🙅 Contrôle d\'un innocent !');best.flag=1.2;return;}
+    if(best.caught)return;best.caught=true;me.tgt=best;});
+  C.addEventListener('pointermove',e=>{e.preventDefault();if(REB&&me.drag){const [x,y]=pos(e);me.tx=x;me.ty=y;}});
+  const up=()=>{me.drag=false;};C.addEventListener('pointerup',up);C.addEventListener('pointercancel',up);
+  const mv=(o,tx,ty,sp,dt)=>{const dx=tx-o.x,dy=ty-o.y,d=Math.hypot(dx,dy)||1,s=Math.min(d,sp*dt);o.x+=dx/d*s;o.y+=dy/d*s;return d;};
+  const loop=now=>{if(!C.isConnected)return;const dt=Math.min(.05,(now-last)/1000||0);last=now;const tm=now/1000;
+    if(run&&!fin){acc+=dt;if(acc>=1){acc-=1;left--;$('mkT').textContent=`⏱ ${left} s`;if(left<=0){fin=true;setTimeout(()=>{if(C.isConnected)done(score,score>=t[1]);},700);}}
+      spawnP-=dt;if(spawnP<=0){P.push(person('p'));spawnP=REB?rnd(.35,.7):rnd(.5,.9);}
+      if(!REB){spawnR-=dt;if(spawnR<=0){P.push(person('reb'));spawnR=rnd(1.8,2.8);}spawnT-=dt;if(spawnT<=0){const th=person('thief');th.vx*=.6;P.push(th);spawnT=rnd(6,9);}}}
+    // passants / rebelles / voleurs
+    P.forEach(p=>{p.wob+=dt*2;if(p.flag)p.flag=Math.max(0,p.flag-dt);if(p.robbed)p.robbed=Math.max(0,p.robbed-dt);
+      if(p.st==='esc'){const ex=p.x<W/2?-20:W+20;mv(p,ex,p.y,150,dt);if(Math.abs(p.x-ex)<2)p.st='out';return;}
+      if(p.type==='thief'){if(p.st==='walk'){p.t+=dt;if(!p.mark&&p.t>1){p.mark=P.filter(q=>q.type==='p'&&!q.robbedBy).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];if(p.mark)p.mark.robbedBy=p;}
+          if(p.mark){const d=mv(p,p.mark.x-Math.sign(p.mark.vx)*10,p.mark.y,70,dt);if(d<12){p.st='steal';p.t=0;}}else{p.x+=p.vx*dt;}}
+        else if(p.st==='steal'){p.t+=dt;if(p.mark){p.x=p.mark.x-Math.sign(p.mark.vx)*10;p.y=p.mark.y;}if(p.t>1.3){p.st='flee';if(p.mark)p.mark.robbed=2;p.vx=(p.x<W/2?-1:1)*95;}}
+        else if(p.st==='flee'){p.x+=p.vx*dt;if(p.x<-20||p.x>W+20){p.st='out';if(!REB&&!fin)say('💨 Le voleur s\'est échappé…');}}
+        return;}
+      p.x+=p.vx*dt;p.y+=Math.sin(p.wob)*6*dt;p.y=Math.max(TOP+12,Math.min(BOT-12,p.y));
+      if(p.type==='reb'&&Math.random()<dt*1.2){const q=P.find(q=>q.type==='p'&&!q.got&&Math.hypot(q.x-p.x,q.y-p.y)<28);if(q){q.got=true;fx.push({x:q.x,y:q.y-10,txt:'📄',c:'#000',l:.8});}}
+      if(p.x<-30||p.x>W+30)p.st='out';});
+    // gendarme joueur
+    if(!REB){if(me.tgt&&!me.esc){const o=me.tgt;if(o.st==='out'){me.tgt=null;}else{const d=mv(me,o.x,o.y,o.type==='thief'?260:220,dt);if(d<14){if(o.type==='thief'){addS(3,o.x,o.y);say('🥷 Voleur interpellé !');o.st='out';if(o.mark)o.mark.robbed=0;me.tgt=null;}else{o.st='esc';me.esc=o;me.tgt=null;addS(1,o.x,o.y);}}}}
+      if(me.esc){const o=me.esc;me.x=o.x+(o.x<W/2?12:-12);me.y=o.y;if(o.st==='out'){me.esc=null;me.x=Math.max(14,Math.min(W-14,me.x));}}}
+    else{if(me.stun>0){me.stun-=dt;}else{mv(me,me.tx,me.ty,165,dt);me.y=Math.max(TOP+10,Math.min(BOT-10,me.y));
+        if(run&&!fin)P.forEach(q=>{if(q.type==='p'&&!q.got&&Math.hypot(q.x-me.x,q.y-me.y)<20){q.got=true;addS(1,q.x,q.y);}});}
+      cops.forEach(c=>{const d=Math.hypot(me.x-c.x,me.y-c.y);c.chase=me.stun<=0&&d<75;
+        if(c.chase)mv(c,me.x,me.y,run?118:0,dt);else{if(mv(c,c.tx,c.ty,run?45:0,dt)<4){c.tx=rnd(20,W-20);c.ty=rnd(TOP+15,BOT-15);}}
+        if(run&&!fin&&me.stun<=0&&d<15){me.stun=2.5;say('👮 Contrôlé ! Sorti du marché…');me.x=me.x<W/2?16:W-16;me.tx=me.x;me.ty=me.y;c.tx=rnd(20,W-20);}});}
+    P=P.filter(p=>p.st!=='out');
+    drawDecor(tm);P.forEach(p=>{drawPerson(p);if(p.flag){g.strokeStyle='#c0392b';g.lineWidth=2;g.beginPath();g.arc(p.x,p.y,13,0,7);g.stroke();}});cops.forEach(c=>drawCop(c,false));drawMe();
+    fx.forEach(f=>{f.l-=dt;f.y-=dt*25;g.globalAlpha=Math.max(0,f.l);g.fillStyle=f.c;g.font='bold 14px sans-serif';g.textAlign='center';g.fillText(f.txt,f.x,f.y);g.globalAlpha=1;});fx=fx.filter(f=>f.l>0);
+    if(msgT>0){msgT-=dt;g.fillStyle='rgba(0,0,0,.6)';g.font='bold 13px sans-serif';const w=g.measureText(msg).width+16;g.fillRect(W/2-w/2,HH/2-14,w,26);g.fillStyle='#fff';g.textAlign='center';g.fillText(msg,W/2,HH/2+4);}
+    requestAnimationFrame(loop);};
+  requestAnimationFrame(loop);
+  $('mkGo').onclick=()=>{$('mkGo').remove();run=true;last=performance.now();};
+}
 function testQuiz(title,t,done){
   const pool=t[3]==='cpp'?QUIZ_CPP:t[3]==='gd'?QUIZ_GD:QUIZ.concat(QUIZ_GD,QUIZ_CPP);
   const qs=pool.slice().sort(()=>Math.random()-.5).slice(0,5);let i=0,sc=0;
@@ -2919,7 +2999,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794661769';
+const BUILD_ID='1794662918';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -2933,8 +3013,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.1', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.2', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.17.2',d:'14 novembre',items:[['🎄','Mission spéciale du marché de Noël','Un nouveau mini-jeu vu du dessus : repère dans la foule ceux qui tractent pour les raccompagner à la sortie, et interpelle les voleurs avant qu\'ils filent. Attention aux innocents !'],['🖤','Et de l\'autre côté…','Glisse dans la foule pour distribuer un maximum de tracts, sans te faire attraper.',1]]},
  {v:'1.17',d:'14 novembre',items:[['📅','Événements nationaux','Deux fois par semaine, un événement touche tout le monde pendant 48 h : Tour de France, Plan Grand Froid, élections, marchés de Noël… Une bannière apparaît au-dessus des actions.'],['🎯','Missions spéciales','Chaque phase a sa mission : réussis-la pour gagner moral, motivation et un tampon de collection. ⭐ Bonus ×1,5 quand l\'événement tombe à sa vraie date !'],['🤝','Objectif collectif','Une jauge commune pour toute la caserne : si elle est remplie, tout le monde gagne un bonus, même ceux qui n\'ont pas joué.']]},
  {v:'1.16.3',d:'13 novembre',items:[['⬆️','Statuts','De sympathisant à meneur : la réputation fait évoluer son statut dans le milieu.',1],['❗','Imprévus','Journalistes, contrôles, rumeurs de descente… à toi de décider.',1],['🏁','Une fin à choisir','Au sommet, deux voies possibles. Et un nouveau trophée caché.',1]]},
  {v:'1.16.2',d:'13 novembre',items:[['🏖️','Permission','Absent quelques jours ? Pose une permission depuis ⚙️ : 1 à 3 jours de pause, jauges et progression figées, série de présence conservée.']]},
