@@ -456,19 +456,21 @@ function step(s,dt){
 
   /* --- besoins --- */
   const COLD=nevCold(t)&&!(s.hotUntil>t)?1.3:1;
-  s.food  =clamp(s.food  -(sl?2.5:busy?10:7)*h);
-  s.energy=clamp(s.energy+(sl&&(s.recupUntil||0)>t?40:sl?(s.bedByPlayer?(hourOf(t)>=8&&hourOf(t)<20?25:15):12):-((busy?9:5)+(s.lateNight?6:0))*COLD)*h);
-  s.moral =clamp(s.moral -(sl?0.8:s.phoneMode?1.5:DUTY?4:3)*h-(MIS&&!(t-(s._fam||0)<12*H)?1.2*h:0));
-  s.tenue =clamp(s.tenue -(sl?0.5:busy?6:3)*(isRebel(s)?1.5:1)*h);
-  s.forme =clamp(s.forme -0.4*h);
+  /* veille : au-delà de 24 h sans ouvrir le jeu, l'usure est divisée par trois */
+  const AW=(s.lastSeen&&t-s.lastSeen>24*H)?0.35:1,ha=h*AW;
+  s.food  =clamp(s.food  -(sl?2.5:busy?10:7)*ha);
+  s.energy=clamp(s.energy+(sl&&(s.recupUntil||0)>t?40*h:sl?(s.bedByPlayer?(hourOf(t)>=8&&hourOf(t)<20?25:15):12)*h:-((busy?9:5)+(s.lateNight?6:0))*COLD*ha));
+  s.moral =clamp(s.moral -(sl?0.8:s.phoneMode?1.5:DUTY?4:3)*ha-(MIS&&!(t-(s._fam||0)<12*H)?1.2*ha:0));
+  s.tenue =clamp(s.tenue -(sl?0.5:busy?6:3)*(isRebel(s)?1.5:1)*ha);
+  s.forme =clamp(s.forme -0.4*ha);
   s.malbouffe=Math.max(0,s.malbouffe-h/12);
 
   /* --- carrière --- */
   let dm=sl?-0.25:-0.6;
   if(s.moral<30)dm-=1.2;
   if(s.moral>=60&&s.forme>=60)dm+=1;
-  s.motiv=clamp(s.motiv+dm*h);
-  s.disc=clamp(s.disc-(isRebel(s)?0.6:0.3)*h);
+  s.motiv=clamp(s.motiv+dm*(dm<0?ha:h));
+  s.disc=clamp(s.disc-(isRebel(s)?0.6:0.3)*ha);
   if(isRebel(s)&&!AUT){if(s.motiv>55.5&&t-(s._capHint||0)>12*H){s._capHint=t;log(s,'🤔 Il traîne des pieds… on dirait qu\'il a d\'autres projets en tête.','',t);events.push('capHint');}s.motiv=Math.min(s.motiv,55);}
   if(AUT)s.discr=clamp((s.discr||0)+(sl?1.2:0.4)*h);
 
@@ -480,7 +482,7 @@ function step(s,dt){
       log(s,MIS?`Personne ne s'est occupé de son repas : il a vidé ${['deux rations de combat 🥫','le stock de barres de céréales de l\'escadron 🍫','un sachet de bonbons du car 🍬'][Math.floor(rnd(s)*3)]}.`:ECO?`Il a craqué au distributeur du foyer : ${['3 barres chocolatées 🍫','un paquet de chips XXL 🥔','4 canettes de soda 🥤','une pile de gaufres 🧇'][Math.floor(rnd(s)*4)]}.`:`Personne ne lui a préparé à manger : il s'est fait livrer ${what}.`,'bad');events.push('junk');
     }
     s.phoneMode=s.moral<30;
-    if(s.phoneMode&&t-s.lastScroll>6*H){
+    if(s.phoneMode&&t-s.lastScroll>(AW<1?12:6)*H){
       s.lastScroll=t;s.motiv=clamp(s.motiv-4);
       log(s,(ECO?['📱 Seul dans sa chambre, il se demande s\'il ne va pas démissionner de l\'école.','📱 Un copain de lycée lui vante sa vie « sans rassemblement à l\'aube ».','📱 Il a regardé comment rompre son contrat d\'élève…']:['📱 Il passe des heures sur son téléphone… et regarde des offres de reconversion.','📱 Un ancien GAV lui vante le privé : « on gagne plus et on dort la nuit ».','📱 Il a téléchargé une appli de recherche d\'emploi.'])[Math.floor(rnd(s)*3)],'bad');
     }
@@ -522,7 +524,7 @@ function step(s,dt){
   if(s.energy<=5&&!sl)dh-=3;
   if(s.malbouffe>=4)dh-=2;
   if(dh===0&&!s.sick)dh=3;
-  s.health=clamp(s.health+dh*h);
+  s.health=clamp(s.health+dh*(dh<0?ha:h));
 
   if(s.health<=0)return endGame(s,'sante');
   if(s.motiv<=0)return endGame(s,ECO?'demission':AUT?'range':'reconv');
@@ -2398,7 +2400,7 @@ function wbShow(){const w=wbPending;if(!w)return;wbPending=null;const days=Math.
     ${w.bonus?'<p>🎁 <b>Prime de retour</b> déjà incluse : faim +20, énergie +20, moral +15, tenue +10, santé +10.</p>':''}
     ${w.logs.length?`<p><b>📓 Au journal</b><br><small>${w.logs.map(l=>'• '+esc(l.txt)).join('<br>')}</small></p>`:''}
     ${w.evs.length?`<p><b>📅 Événements pendant ton absence</b><br><small>${w.evs.join(' · ')}</small></p>`:''}
-    <p style="font-size:12px;opacity:.75">Astuce : avant de partir plusieurs jours, pose une 🏖️ permission dans ⚙️ pour mettre le jeu en pause.</p>
+    <p style="font-size:12px;opacity:.75">😴 Au-delà de 24 h sans toi, ta recrue s'use trois fois moins vite. Astuce : avant de partir plusieurs jours, pose une 🏖️ permission dans ⚙️ pour mettre le jeu en pause.</p>
     <button class="primary" data-o="close">C'est reparti !</button>`,true);}
 /* ======================= SAUVEGARDE EN LIGNE ======================= */
 const CLOUD_AT='gendargotchi-cloud-at',CLOUD_OK='gendargotchi-cloud-ok';let cloudBusy=false,cloudLast=0,cloudOk=false,cloudInfo=null;
@@ -3162,7 +3164,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794776141';
+const BUILD_ID='1794776572';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3176,9 +3178,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.9', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.10', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
- {v:'1.17.9',d:'15 novembre',items:[['👋','De retour ?','Après 2 jours sans jouer, un résumé t\'attend (jauges, journal, événements manqués) avec une prime de retour pour repartir du bon pied (une fois par semaine).']]},
+ {v:'1.17.10',d:'15 novembre',items:[['😴','Mode veille','Au-delà de 24 h sans ouvrir le jeu, ta recrue s\'use trois fois moins vite : une absence coûte toujours, mais un week-end ne suffit plus à tout perdre.'],['👋','De retour ?','Après 2 jours sans jouer, un résumé t\'attend (jauges, journal, événements manqués) avec une prime de retour pour repartir du bon pied (une fois par semaine).']]},
  {v:'1.17.8',d:'15 novembre',items:[['☁️','Sauvegarde en ligne','Si tu es inscrit à la caserne, ta partie est maintenant copiée en ligne automatiquement. Nouveau téléphone ou données effacées ? « Retrouver mon pseudo » avec ton 🔑 code de récupération, et ta recrue revient. Pense à noter ton code (👥 → mon code de récupération) !'],['🤝','Jauge collective','L\'objectif collectif des événements est plus accessible (la moitié des joueurs actifs), et la bannière indique combien de participants il manque.']]},
  {v:'1.17.3',d:'14 novembre',items:[['🥶','Plan Grand Froid revu','Nouvelle mission de nuit : promène ta lampe torche dans les rues sombres pour repérer les personnes à la rue et leur apporter une couverture à temps.'],['☕','Il fait froid !','Pendant le Grand Froid, l\'énergie baisse plus vite. Une boisson chaude (toutes les 4 h) protège du froid pendant 3 h.'],['🖤','Et de l\'autre côté…','Tenir le squat : referme les fenêtres et nourris le brasero pour rester au chaud.',1]]},
  {v:'1.17.2',d:'14 novembre',items:[['🎄','Mission spéciale du marché de Noël','Un nouveau mini-jeu vu du dessus : repère dans la foule ceux qui tractent pour les raccompagner à la sortie, et interpelle les voleurs avant qu\'ils filent. Attention aux innocents !'],['🖤','Et de l\'autre côté…','Glisse dans la foule pour distribuer un maximum de tracts, sans te faire attraper.',1]]},
@@ -3284,7 +3286,7 @@ document.addEventListener('click',async e=>{
 function tick(){
   if(!S)return;
   const wb=wbBefore(S);
-  const before=S.stage;simulate(S,Date.now());if(wb)wbAfter(S,wb);
+  const before=S.stage;simulate(S,Date.now());if(!document.hidden)S.lastSeen=Date.now();if(wb)wbAfter(S,wb);
   const dch=checkDaily(S);
   const ch=handleEvents()||before!==S.stage||dch;saveLocal();if(ch)saveRemote();
 }
