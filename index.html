@@ -192,6 +192,7 @@
   .row{display:flex;gap:8px}
   .menu{background:var(--card);border-radius:12px;width:38px;height:38px;font-size:18px;flex:none}
   /* ----- accueil ----- */
+  .sheet.top{z-index:80}
   #home{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;gap:16px;padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
     background:radial-gradient(circle at 50% 28%,#3550a8 0%,#1b2a66 38%,#0f1730 75%);overflow:hidden;transition:opacity .35s}
   #home.hide{opacity:0;pointer-events:none}
@@ -800,7 +801,7 @@ async function saveRemote(){
   try{await ref().set(JSON.parse(JSON.stringify(S)));}catch(e){if(e&&['invalid_argument','revoked','not_granted'].includes(e.code))db=null;}
   writing=false;if(writeAgain){writeAgain=false;saveRemote();}
 }
-function save(){saveLocal();saveRemote();}
+function save(){saveLocal();saveRemote();if(typeof cloudSave==='function')cloudSave();}
 function pick(l,r){
   if(!l)return r;if(!r)return l;
   if(l.gid===r.gid)return l.t>=r.t?l:r;
@@ -1406,8 +1407,8 @@ function openGuide(){
 function toast(t){const e=$('toast');e.textContent=T(t);e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('show'),2600);}
 function fx(emoji,n=1){const sc=$('scene');for(let i=0;i<n;i++){const f=document.createElement('span');f.className='fx';f.textContent=emoji;f.style.left=(38+Math.random()*22)+'%';f.style.top=(40+Math.random()*18)+'%';f.style.animationDelay=(i*.12)+'s';sc.appendChild(f);setTimeout(()=>f.remove(),1700+i*120);}}
 function jump(){const p=$('pet');p.classList.remove('jump');void p.offsetWidth;p.classList.add('jump');}
-function sheet(html,center){const sh=$('sheet');$('panel').innerHTML=T(html);sh.classList.toggle('center',!!center);sh.classList.add('show');}
-function closeSheet(){$('sheet').classList.remove('show');}
+function sheet(html,center){const sh=$('sheet');sh.classList.toggle('top',!$('home').classList.contains('hide'));$('panel').innerHTML=T(html);sh.classList.toggle('center',!!center);sh.classList.add('show');}
+function closeSheet(){$('sheet').classList.remove('show','top');}
 const cool=(last,h)=>S.t-last<h*H;
 function refuses(p=.75){
   if(!isRebel(S)||S.stage!=='gav'||Math.random()>=p)return false;
@@ -1625,6 +1626,7 @@ function act(a){
   case 'menu':
     return sheet(`<h3>Options</h3><p>Ta partie est sauvegardée automatiquement.</p>
       ${S&&!['egg','over','choix','affect'].includes(S.stage)?`<button class="opt" data-o="leave"><span class="e">🏖️</span><span>${S.leave?'En permission':'Poser une permission'}<small>${S.leave?'Le jeu est en pause jusqu\'à son retour':'1 à 3 jours de pause : jauges et progression figées'}</small></span></button>`:''}
+      <button class="opt" data-o="cloud"><span class="e">☁️</span><span>Sauvegarde en ligne<small>${ME&&ME.pseudo?'Ta partie est copiée sur la caserne':'Inscris-toi à la caserne pour l\'activer'}</small></span></button>
       <button class="opt" data-o="feedback"><span class="e">💡</span><span>Boîte à idées / signaler un bug<small>Envoyé uniquement au créateur du jeu</small></span></button>
       ${IS_ADMIN?`<button class="opt" data-o="fbadmin"><span class="e">📥</span><span>Retours des joueurs${fbNew?` <b style="color:#f3c74b">(${fbNew} nouveau${fbNew>1?'x':''})</b>`:''}<small>Visible par toi seul (admin)</small></span></button>`:''}
       <button class="opt" data-o="news"><span class="e">🆕</span><span>Quoi de neuf ?<small>Les dernières nouveautés du jeu (version ${APP_VERSION})</small></span></button>
@@ -1660,6 +1662,8 @@ function option(o){
   if(k==='guide'){openGuide();return;}
   if(k==='news'){closeSheet();openNews(true);return;}
   if(k==='feedback')return openFeedback();
+  if(k==='cloud')return openCloud();if(k==='cloudNow'){return cloudSave(true).then(ok=>{toast(ok?'☁️ Partie sauvegardée en ligne ✔':'Sauvegarde impossible pour le moment.');openCloud();});}
+  if(k==='cloudAsk')return cloudInfo&&cloudOffer(cloudInfo);if(k==='cloudLoad')return cloudLoad();if(k==='cloudKeep'){cloudSetOk();closeSheet();cloudSave(true).then(ok=>toast(ok?'☁️ Partie de ce téléphone sauvegardée en ligne':'Sauvegarde impossible pour le moment.'));return;}
   if(k==='leave'){closeSheet();return S.leave?toast('Il est déjà en permission 🏖️'):openLeave();}
   if(k==='fbadmin')return openFbAdmin();
   if(k==='resetok'){closeSheet();S=newGame();lastLook='';actKey='';log(S,'Un nouvel œuf est arrivé à la brigade.');save();render();return;}
@@ -1995,7 +1999,7 @@ function askName(){
     <input type="text" id="firstIn" maxlength="16" placeholder="Prénom (facultatif)" style="text-transform:none">
     <input type="text" id="nameIn" maxlength="16" placeholder="NOM">
     <div class="row"><button class="primary ghost" id="nameRnd" style="flex:0 0 auto;width:auto">🎲 Idée</button><button class="primary" id="nameOk">Bienvenue à la brigade !</button></div>`;
-  $('sheet').classList.add('center');$('sheet').classList.add('show');
+  $('sheet').classList.add('center');$('sheet').classList.add('show');$('sheet').classList.toggle('top',!$('home').classList.contains('hide'));
   $('nameRnd').addEventListener('click',()=>{$('firstIn').value=pick(PRENOMS[F?'F':'M']);$('nameIn').value=pick(NOMS);});
   const go=()=>{
     const v=$('nameIn').value.trim().toUpperCase();if(!v)return toast('Donne-lui au moins un nom de famille !');
@@ -2288,7 +2292,7 @@ function askPseudo(err){
     <button class="primary" data-cas="savePseudo">Valider</button>
     <button class="primary ghost" data-cas="recover">🔑 J'ai déjà un pseudo (autre appareil)</button>
     <button class="cancel" data-cas="close">Plus tard</button>`;
-  $('sheet').classList.add('center');$('sheet').classList.add('show');
+  $('sheet').classList.add('center');$('sheet').classList.add('show');$('sheet').classList.toggle('top',!$('home').classList.contains('hide'));
   setTimeout(()=>{const i=$('pseudoIn');i&&i.focus();},100);
 }
 function fmtCode(c){return (c||'').match(/.{1,6}/g).join('-');}
@@ -2300,7 +2304,7 @@ function showCode(){
     <button class="primary" data-cas="copyCode">📋 Copier le code</button>
     <p style="font-size:12px;color:#ffb3b3">Ne le partage avec personne : il donne accès à ton pseudo.</p>
     <button class="cancel" data-cas="rank">Retour</button>`;
-  $('sheet').classList.add('center');$('sheet').classList.add('show');
+  $('sheet').classList.add('center');$('sheet').classList.add('show');$('sheet').classList.toggle('top',!$('home').classList.contains('hide'));
 }
 function askRecover(err){
   $('panel').innerHTML=`<h3>🔑 Retrouver mon pseudo</h3>
@@ -2311,12 +2315,12 @@ function askRecover(err){
     <button class="primary" data-cas="doRecover">Récupérer</button>
     <p style="font-size:12px">Code perdu ? Demande à l'administrateur du jeu de libérer ton pseudo.</p>
     <button class="cancel" data-cas="pseudo">Retour</button>`;
-  $('sheet').classList.add('center');$('sheet').classList.add('show');
+  $('sheet').classList.add('center');$('sheet').classList.add('show');$('sheet').classList.toggle('top',!$('home').classList.contains('hide'));
 }
 async function doRecover(){
   const p=($('recPseudo').value||'').trim(),c=($('recCode').value||'').toLowerCase().replace(/[^0-9a-f]/g,'');
   if(!p||c.length<20)return askRecover('Indique ton pseudo et le code complet.');
-  try{const {data}=await rpc('recover_player',{p_pseudo:p,p_secret:c});ME={id:data.id,secret:c,pseudo:data.pseudo};myAdmin=null;saveMe();toast(`Content de te revoir, ${data.pseudo} !`);openCaserne('rank');}
+  try{const {data}=await rpc('recover_player',{p_pseudo:p,p_secret:c});ME={id:data.id,secret:c,pseudo:data.pseudo};myAdmin=null;saveMe();cloudOk=false;toast(`Content de te revoir, ${data.pseudo} !`);try{const r=await rpc('cloud_info',{p_id:ME.id,p_secret:ME.secret});cloudInfo=r.data;}catch(_){cloudInfo=null;}if(cloudInfo)return cloudOffer(cloudInfo);cloudSetOk();cloudSave(true);openCaserne('rank');}
   catch(e){askRecover(errFr(e));}
 }
 async function savePseudo(){
@@ -2373,6 +2377,61 @@ document.addEventListener('click',e=>{
   if(k==='copyCode'){try{navigator.clipboard.writeText(fmtCode(ME.secret)).then(()=>toast('Code copié ✔'),()=>toast('Copie impossible : sélectionne le code et copie-le à la main.'));}catch(er){toast('Copie impossible : sélectionne le code et copie-le à la main.');}return;}
   openCaserne(k);
 });
+/* ======================= SAUVEGARDE EN LIGNE ======================= */
+const CLOUD_AT='gendargotchi-cloud-at',CLOUD_OK='gendargotchi-cloud-ok';let cloudBusy=false,cloudLast=0,cloudOk=false,cloudInfo=null;
+try{cloudLast=+localStorage.getItem(CLOUD_AT)||0;cloudOk=!!(ME&&ME.id)&&localStorage.getItem(CLOUD_OK)===ME.id;}catch(e){}
+function cloudSetOk(){cloudOk=true;try{localStorage.setItem(CLOUD_OK,ME.id);}catch(e){}}
+function cloudWorth(s){return s&&!(s.stage==='egg'&&!s.name&&(s.hatch||0)<5);}
+async function cloudSave(force){
+  if(!ME||!ME.pseudo||!ME.secret||!cloudOk||!cloudWorth(S)||cloudBusy)return false;
+  if(!force&&Date.now()-cloudLast<10*M)return false;
+  cloudBusy=true;
+  try{await rpc('cloud_save',{p_id:ME.id,p_secret:ME.secret,p_data:JSON.parse(JSON.stringify(S)),p_ver:APP_VERSION});cloudLast=Date.now();try{localStorage.setItem(CLOUD_AT,String(cloudLast));}catch(e){}cloudBusy=false;return true;}
+  catch(e){cloudBusy=false;return false;}
+}
+const cloudDate=ts=>{const d=new Date(ts);return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
+/* au démarrage / après « retrouver mon pseudo » : on ne pousse rien tant qu'on ne sait pas s'il existe déjà une sauvegarde */
+async function cloudInit(ask){
+  if(!ME||!ME.pseudo||!ME.secret)return;
+  try{const {data}=await rpc('cloud_info',{p_id:ME.id,p_secret:ME.secret});cloudInfo=data;
+    if(!data){cloudSetOk();cloudSave(true);return;}
+    if(cloudOk){cloudSave();return;}
+    const localWorth=cloudWorth(S)&&S.stage!=='over';
+    if(!localWorth||ask)return cloudOffer(data);
+    cloudOffer(data);
+  }catch(e){}
+}
+function cloudOffer(info){
+  const loc=cloudWorth(S)?homeLabel(S):null;
+  sheet(`<h3>☁️ Sauvegarde en ligne trouvée</h3>
+    <div class="card" style="line-height:1.5">Recrue <b>${esc(info.recrue||'sans nom')}</b><br><small>Sauvegardée le ${cloudDate(info.at)}</small></div>
+    ${loc?`<p>Ce téléphone a aussi une partie : <b>${loc}</b>. Laquelle garder ?</p>`:'<p>Tu peux la récupérer sur ce téléphone.</p>'}
+    <button class="primary gold" data-o="cloudLoad">📥 Récupérer la sauvegarde en ligne</button>
+    ${loc?`<button class="primary ghost" data-o="cloudKeep">📱 Garder la partie de ce téléphone</button><p style="font-size:12px;opacity:.75">Garder celle du téléphone remplacera la sauvegarde en ligne.</p>`:`<button class="cancel" data-o="close">Plus tard</button>`}`,true);
+}
+async function cloudLoad(){
+  if(!ME||!ME.secret)return;
+  try{const {data}=await rpc('cloud_load',{p_id:ME.id,p_secret:ME.secret});
+    if(!data||!data.data)return toast('Aucune sauvegarde en ligne.');
+    cloudSetOk();closeSheet();S=null;start(data.data);saveLocal();cloudLast=Date.now();try{localStorage.setItem(CLOUD_AT,String(cloudLast));}catch(e){}
+    hideHome();toast(`☁️ Partie récupérée : ${S.name||'ta recrue'} !`);
+  }catch(e){toast(errFr(e));}
+}
+async function openCloud(){
+  if(!ME||!ME.pseudo)return sheet(`<h3>☁️ Sauvegarde en ligne</h3><p>Inscris-toi d'abord à la caserne 👥 (choisis un pseudo) : ta partie sera ensuite copiée automatiquement en ligne.</p><button class="primary" data-o="close">OK</button>`,true);
+  sheet(`<h3>☁️ Sauvegarde en ligne</h3><p><small>Chargement…</small></p>`,true);
+  try{const {data}=await rpc('cloud_info',{p_id:ME.id,p_secret:ME.secret});cloudInfo=data;}catch(e){}
+  if(!$('panel'))return;const i=cloudInfo;
+  sheet(`<h3>☁️ Sauvegarde en ligne</h3>
+    <p>Ta partie est copiée automatiquement sur la caserne (toutes les 10 min environ et quand tu quittes le jeu).</p>
+    <div class="card" style="line-height:1.5">${i?`Dernière sauvegarde : <b>${cloudDate(i.at)}</b><br><small>Recrue ${esc(i.recrue||'sans nom')}</small>`:'Aucune sauvegarde en ligne pour l\'instant.'}</div>
+    ${cloudOk||!i?`<button class="primary" data-o="cloudNow">☁️ Sauvegarder maintenant</button>`:''}
+    ${i?`<button class="primary ghost" data-o="cloudAsk">📥 Récupérer la sauvegarde en ligne</button>`:''}
+    <p style="font-size:12px;opacity:.8">📱 <b>Nouveau téléphone ou données effacées ?</b> Ouvre 👥 la caserne → « Retrouver mon pseudo » avec ton 🔑 code de récupération : ta partie te sera proposée.</p>
+    <button class="cancel" data-o="close">Fermer</button>`,true);
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&Date.now()-cloudLast>60000)cloudSave(true);});
+setTimeout(()=>cloudInit(),4000);
 /* ======================= BINÔME EN DIFFÉRÉ ======================= */
 const DUO_SPORT_GOAL=220, DUO_SPORT_EXPLOIT=260;
 Object.assign(ERR_FR,{binome_soi_meme:'Tu ne peux pas faire équipe avec toi-même !',deja_fait_aujourdhui:'Vous avez déjà fait cette activité en binôme aujourd\'hui. Rendez-vous demain !',trop_d_invitations:'Trop d\'invitations en attente : attends que tes collègues répondent.',binome_expire:'Cette invitation a expiré (24 h).',binome_termine:'Ce binôme est déjà terminé.',deja_joue:'Tu as déjà fait ta part.',joueur_introuvable:'Joueur introuvable.'});
@@ -2512,7 +2571,7 @@ function duoPlay(d){
     const qs=duoQuestions(d.seed);let i=0,score=0;
     const show=()=>{const q=qs[i];
       $('panel').innerHTML=`<h3>🤝 Révision avec ${esc(mate)} — ${i+1}/5</h3><p>${esc(q.q)}</p>${q.a.map((a,j)=>`<button class="opt" data-dq="${j}">${esc(a)}</button>`).join('')}`;
-      $('sheet').classList.add('center');$('sheet').classList.add('show');
+      $('sheet').classList.add('center');$('sheet').classList.add('show');$('sheet').classList.toggle('top',!$('home').classList.contains('hide'));
       $('panel').querySelectorAll('[data-dq]').forEach(b=>b.addEventListener('click',()=>{
         const j=+b.dataset.dq;$('panel').querySelectorAll('[data-dq]').forEach((x,k)=>{x.disabled=true;if(k===q.c)x.classList.add('right');else if(k===j)x.classList.add('wrong');});
         if(j===q.c)score++;setTimeout(()=>{i++;i<5?show():finish(score);},700);
@@ -2522,7 +2581,7 @@ function duoPlay(d){
     let taps=0,left=10,running=false,timer=0,done=false;const MF=d.kind==='manif',REB=s.stage==='autre';
     $('panel').innerHTML=(MF?`<h3>${REB?'📢 Manif face à':'🛡️ Maintien de l\'ordre face à'} ${esc(mate)}</h3><p>${REB?'Poussez la ligne de boucliers !':'Tenez la ligne face au cortège !'} Tape le plus vite possible pendant 10 secondes : celui qui pousse le plus l'emporte.</p>`:`<h3>🤝 Sport avec ${esc(mate)}</h3><p>Objectif commun : ${DUO_SPORT_GOAL} répétitions à deux. Tape le plus vite possible pendant 10 secondes !</p>`)+`
       <button class="tapzone" id="tap"><span id="tapN">GO !</span><small id="tapT" style="font-size:15px">10 s</small></button>`;
-    $('sheet').classList.add('center');$('sheet').classList.add('show');
+    $('sheet').classList.add('center');$('sheet').classList.add('show');$('sheet').classList.toggle('top',!$('home').classList.contains('hide'));
     $('tap').addEventListener('pointerdown',e=>{e.preventDefault();if(done)return;
       if(!running){running=true;timer=setInterval(()=>{if(!$('tapT')){clearInterval(timer);done=true;return;}left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(timer);done=true;finish(Math.min(200,taps));}},1000);}
       taps++;$('tapN').textContent=taps;});
@@ -2779,11 +2838,11 @@ function renderNev(){const el=$('nevBar');if(!el)return;const s=S,g=nevGroup(s),
   const st=E&&g?nevState(s,E):null,P=E&&nevProg[E.id],side=nevSide(g);
   const key=E&&g?[E.id,st.done,(s.hotUntil||0)>Date.now(),(s.hotCd||0)>Date.now(),P?P[side]:'',Math.floor((E.end-Date.now())/H)].join('|'):'';if(key===nevKey)return;nevKey=key;
   if(!key){el.innerHTML='';el.style.display='none';return;}el.style.display='';
-  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>${E.k==='froid'?`<button class="nevHot" data-a="hot" ${(s.hotCd||0)>Date.now()?'disabled':''}>☕ ${(s.hotUntil||0)>Date.now()?'Au chaud ✓':(s.hotCd||0)>Date.now()?'Boisson chaude (dans '+nevDur(s.hotCd-Date.now())+')':'Boisson chaude'}</button>`:''}`;}
+  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}${P&&P[side]<P[side+'_target']?`<br>🤝 Il manque ${P[side+'_target']-P[side]} participant${P[side+'_target']-P[side]>1?'s':''} !`:P?'<br>🤝 Objectif collectif atteint !':''}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>${E.k==='froid'?`<button class="nevHot" data-a="hot" ${(s.hotCd||0)>Date.now()?'disabled':''}>☕ ${(s.hotUntil||0)>Date.now()?'Au chaud ✓':(s.hotCd||0)>Date.now()?'Boisson chaude (dans '+nevDur(s.hotCd-Date.now())+')':'Boisson chaude'}</button>`:''}`;}
 function openNev(){const s=S,g=nevGroup(s),E=nevAt(Date.now());
   if(!E||!g){const N=nevNext(Date.now());return sheet(`<h3>📅 Événements nationaux</h3><p>Aucun événement en cours.${N?` Prochain : ${NEV[N.k].e} dans ${nevDur(N.start-Date.now())}.`:''}</p><button class="primary" data-o="close">OK</button>`,true);}
   tick();const st=nevState(s,E),M=E.ev.m[g],side=nevSide(g),P=nevProg[E.id],now=Date.now();
-  const bar=(lab,c,t,col,names)=>`<div style="margin:6px 0"><div class="row" style="justify-content:space-between;font-size:13px;font-weight:600"><span>${lab}</span><span>${c}/${t}${c>=t?' ✅':''}</span></div><div style="height:12px;border-radius:7px;background:rgba(127,127,127,.25);overflow:hidden"><div style="height:100%;width:${Math.min(100,c/t*100)}%;background:${col}"></div></div>${names&&names.length?`<small style="opacity:.7">${names.map(esc).join(', ')}</small>`:''}</div>`;
+  const bar=(lab,c,t,col,names)=>`<div style="margin:6px 0"><div class="row" style="justify-content:space-between;font-size:13px;font-weight:600"><span>${lab}</span><span>${c}/${t}${c>=t?' ✅':''}</span></div><div style="height:12px;border-radius:7px;background:rgba(127,127,127,.25);overflow:hidden"><div style="height:100%;width:${Math.min(100,c/t*100)}%;background:${col}"></div></div>${c<t?`<small style="color:#ffd54f;font-weight:600">Il manque ${t-c} participant${t-c>1?'s':''} !</small><br>`:''}${names&&names.length?`<small style="opacity:.7">${names.map(esc).join(', ')}</small>`:''}</div>`;
   const showReb=side==='reb'||rebelSeen();
   const col=s.nevCol||{};
   const mBtn=st.done?`<p>✅ <b>Mission accomplie.</b> ${ME&&ME.pseudo?(st.contrib?'Ta participation compte dans la jauge.':'Envoi de ta participation…'):'Inscris-toi à la caserne 👥 pour compter dans la jauge.'}</p>`
@@ -3080,7 +3139,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794696018';
+const BUILD_ID='1794775530';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3094,8 +3153,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.7', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.8', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.17.8',d:'15 novembre',items:[['☁️','Sauvegarde en ligne','Si tu es inscrit à la caserne, ta partie est maintenant copiée en ligne automatiquement. Nouveau téléphone ou données effacées ? « Retrouver mon pseudo » avec ton 🔑 code de récupération, et ta recrue revient. Pense à noter ton code (👥 → mon code de récupération) !'],['🤝','Jauge collective','L\'objectif collectif des événements est plus accessible (la moitié des joueurs actifs), et la bannière indique combien de participants il manque.']]},
  {v:'1.17.3',d:'14 novembre',items:[['🥶','Plan Grand Froid revu','Nouvelle mission de nuit : promène ta lampe torche dans les rues sombres pour repérer les personnes à la rue et leur apporter une couverture à temps.'],['☕','Il fait froid !','Pendant le Grand Froid, l\'énergie baisse plus vite. Une boisson chaude (toutes les 4 h) protège du froid pendant 3 h.'],['🖤','Et de l\'autre côté…','Tenir le squat : referme les fenêtres et nourris le brasero pour rester au chaud.',1]]},
  {v:'1.17.2',d:'14 novembre',items:[['🎄','Mission spéciale du marché de Noël','Un nouveau mini-jeu vu du dessus : repère dans la foule ceux qui tractent pour les raccompagner à la sortie, et interpelle les voleurs avant qu\'ils filent. Attention aux innocents !'],['🖤','Et de l\'autre côté…','Glisse dans la foule pour distribuer un maximum de tracts, sans te faire attraper.',1]]},
  {v:'1.17',d:'14 novembre',items:[['📅','Événements nationaux','Deux fois par semaine, un événement touche tout le monde pendant 48 h : Tour de France, Plan Grand Froid, élections, marchés de Noël… Une bannière apparaît au-dessus des actions.'],['🎯','Missions spéciales','Chaque phase a sa mission : réussis-la pour gagner moral, motivation et un tampon de collection. ⭐ Bonus ×1,5 quand l\'événement tombe à sa vraie date !'],['🤝','Objectif collectif','Une jauge commune pour toute la caserne : si elle est remplie, tout le monde gagne un bonus, même ceux qui n\'ont pas joué.']]},
@@ -3216,13 +3276,14 @@ function showHome(confirmNew){
     ?`<div class="card" style="text-align:center;line-height:1.45">Une partie est en cours :<br><b>${homeLabel(S)}</b><br>La remplacer par un nouvel œuf ?</div>
        <div class="row"><button class="primary ghost" data-h="back">Non</button><button class="primary" style="background:var(--danger)" data-h="newok">Oui, nouvelle partie</button></div>`
     :(has?`<button class="primary gold" style="animation:none" data-h="cont">▶ Continuer<small>${homeLabel(S)}</small></button>`:'')
-     +`<button class="primary" data-h="new">✨ Nouvelle partie</button>`;
+     +`<button class="primary" data-h="new">✨ Nouvelle partie</button>`+(has?'':`<button class="primary ghost" data-h="cloud">☁️ Récupérer ma partie<small>Nouveau téléphone ? Avec ton pseudo et ton code</small></button>`);
   renderHomeNews();
 }
 function hideHome(){$('home').classList.add('hide');render();if(S&&S.stage==='gav'&&!S.name)askName();}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;const k=b.dataset.h;
   if(k==='cont'){hideHome();return;}
   if(k==='back'){showHome();return;}
+  if(k==='cloud'){if(ME&&ME.pseudo){rpc('cloud_info',{p_id:ME.id,p_secret:ME.secret}).then(r=>r.data?cloudOffer(r.data):toast('Aucune sauvegarde en ligne pour ce pseudo.')).catch(er=>toast(errFr(er)));return;}return askRecover();}
   if(k==='new'){if(S&&(S.stage!=='egg'||S.hatch>5||S.name)&&S.stage!=='over')return showHome(true);}
   if(k==='new'||k==='newok'){S=newGame();lastLook='';actKey='';lastBg=null;log(S,'Un œuf mystérieux a été déposé à la brigade…');save();hideHome();toast('🥚 Nouvelle partie : couve ton œuf !');}
 });
