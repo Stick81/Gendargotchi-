@@ -389,7 +389,7 @@ const FEM_RULES=[
  [FW('Un gendarme adjoint volontaire'),'Une gendarme adjointe volontaire'],[FW('un gendarme adjoint volontaire'),'une gendarme adjointe volontaire'],
  [FW('Gendarme adjoint volontaire'),'Gendarme adjointe volontaire'],[FW('gendarme adjoint volontaire'),'gendarme adjointe volontaire'],
  [FW('Admis'),'Admise'],[FW('admis'),'admise'],[FW('ADMIS'),'ADMISE'],[FW('Promu'),'Promue'],[FW('promu'),'promue'],
- [FW('(endormi|fatigué|rincé|réformé|déclaré|habillé|réveillé|déçu|envoyé|remis|relevé|effondré|Épuisé|épuisé|prêt|Prêt|Parti|parti|renvoyé|sauvegardé|fier|seul)'),'$&e'],
+ [FW('(endormi|fatigué|rincé|réformé|déclaré|habillé|réveillé|déçu|envoyé|remis|relevé|effondré|Épuisé|épuisé|prêt|Prêt|Parti|parti|renvoyé|sauvegardé|fier|seul|couché|tombé)'),'$&e'],
  [FW('grognon'),'grognonne'],[/-le(?![\p{L}])/gu,'-la'],[FW('le (présenter|recadrer|féliciter|motiver)'),m=>'la'+m.slice(2)],[FW('Le (présenter|recadrer|féliciter)'),m=>'La'+m.slice(2)],
  [FW('Le GAV'),'La GAV'],[FW('au GAV'),'à la GAV'],[FW('du GAV'),'de la GAV'],
 ];
@@ -2377,6 +2377,29 @@ document.addEventListener('click',e=>{
   if(k==='copyCode'){try{navigator.clipboard.writeText(fmtCode(ME.secret)).then(()=>toast('Code copié ✔'),()=>toast('Copie impossible : sélectionne le code et copie-le à la main.'));}catch(er){toast('Copie impossible : sélectionne le code et copie-le à la main.');}return;}
   openCaserne(k);
 });
+/* ======================= RETOUR APRÈS ABSENCE ======================= */
+const WB_GAP=48*H,WB_CD=7*D;let wbPending=null;
+function wbBefore(s){if(!s||s.leave||['egg','over','choix','affect'].includes(s.stage))return null;const gap=Date.now()-(s.t||Date.now());if(gap<WB_GAP)return null;
+  return {t0:s.t,gap,stats:{food:s.food,energy:s.energy,moral:s.moral,tenue:s.tenue,health:s.health},nlog:s.log.length,lastLogT:(s.log[s.log.length-1]||{}).t||0,stage:s.stage};}
+function wbAfter(s,b){if(!b)return;
+  const evs=[];for(let n=Math.floor((b.t0-NEV_MON)/(7*D))*2;nevStart(n)<Date.now();n++){const st=nevStart(n);if(st+NEV_LEN>b.t0){const k=nevKind(n);evs.push(NEV[k].e+' '+NEV[k].n);}}
+  const F=nevFixed(b.t0+D);if(F&&F.start>b.t0&&F.start<Date.now())evs.push(F.ev.e+' '+F.ev.n);
+  const logs=s.log.filter(l=>l.t>b.lastLogT).slice(-5);
+  let bonus=false;if(s.stage!=='over'&&(Date.now()-(s.wbLast||0))>WB_CD){bonus=true;s.wbLast=Date.now();
+    s.food=clamp(s.food+20);s.energy=clamp(s.energy+20);s.moral=clamp(s.moral+15);s.tenue=clamp(s.tenue+10);s.health=clamp(s.health+10);
+    log(s,'🎁 Prime de retour : faim +20, énergie +20, moral +15, tenue +10, santé +10. Content de te revoir !','good');}
+  wbPending={...b,evs,logs,bonus,now:{food:s.food,energy:s.energy,moral:s.moral,tenue:s.tenue,health:s.health},over:s.stage==='over'};
+  if($('home').classList.contains('hide'))setTimeout(wbShow,700);}
+function wbShow(){const w=wbPending;if(!w)return;wbPending=null;const days=Math.floor(w.gap/D),hrs=Math.round((w.gap%D)/H);
+  const L=[['food','🍽️','Faim'],['energy','⚡','Énergie'],['moral','😊','Moral'],['tenue','👔','Tenue'],['health','❤️','Santé']];
+  const row=([k,e,n])=>{const a=Math.round(w.stats[k]||0),c=Math.round(w.now[k]||0),d=c-a;return `<div class="crit" style="grid-template-columns:24px 1fr auto"><span>${e}</span><span>${n}</span><span><small style="opacity:.6">${a} →</small> <b>${c}</b> <small style="color:${d>=0?'#7ee787':'#ff9b9b'}">${d>=0?'+':''}${d}</small></span></div>`;};
+  sheet(`<h3>👋 Content de te revoir !</h3><p>Tu n'as pas joué depuis <b>${days} jour${days>1?'s':''}${hrs?` et ${hrs} h`:''}</b>. Voici ce qui s'est passé :</p>
+    ${w.over?'<p>😢 Ta recrue n\'a pas tenu sans toi… La partie est terminée.</p>':`<div class="card" style="padding:8px 10px">${L.map(row).join('')}</div>`}
+    ${w.bonus?'<p>🎁 <b>Prime de retour</b> déjà incluse : faim +20, énergie +20, moral +15, tenue +10, santé +10.</p>':''}
+    ${w.logs.length?`<p><b>📓 Au journal</b><br><small>${w.logs.map(l=>'• '+esc(l.txt)).join('<br>')}</small></p>`:''}
+    ${w.evs.length?`<p><b>📅 Événements pendant ton absence</b><br><small>${w.evs.join(' · ')}</small></p>`:''}
+    <p style="font-size:12px;opacity:.75">Astuce : avant de partir plusieurs jours, pose une 🏖️ permission dans ⚙️ pour mettre le jeu en pause.</p>
+    <button class="primary" data-o="close">C'est reparti !</button>`,true);}
 /* ======================= SAUVEGARDE EN LIGNE ======================= */
 const CLOUD_AT='gendargotchi-cloud-at',CLOUD_OK='gendargotchi-cloud-ok';let cloudBusy=false,cloudLast=0,cloudOk=false,cloudInfo=null;
 try{cloudLast=+localStorage.getItem(CLOUD_AT)||0;cloudOk=!!(ME&&ME.id)&&localStorage.getItem(CLOUD_OK)===ME.id;}catch(e){}
@@ -3139,7 +3162,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794775530';
+const BUILD_ID='1794776141';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3153,8 +3176,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.8', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.9', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.17.9',d:'15 novembre',items:[['👋','De retour ?','Après 2 jours sans jouer, un résumé t\'attend (jauges, journal, événements manqués) avec une prime de retour pour repartir du bon pied (une fois par semaine).']]},
  {v:'1.17.8',d:'15 novembre',items:[['☁️','Sauvegarde en ligne','Si tu es inscrit à la caserne, ta partie est maintenant copiée en ligne automatiquement. Nouveau téléphone ou données effacées ? « Retrouver mon pseudo » avec ton 🔑 code de récupération, et ta recrue revient. Pense à noter ton code (👥 → mon code de récupération) !'],['🤝','Jauge collective','L\'objectif collectif des événements est plus accessible (la moitié des joueurs actifs), et la bannière indique combien de participants il manque.']]},
  {v:'1.17.3',d:'14 novembre',items:[['🥶','Plan Grand Froid revu','Nouvelle mission de nuit : promène ta lampe torche dans les rues sombres pour repérer les personnes à la rue et leur apporter une couverture à temps.'],['☕','Il fait froid !','Pendant le Grand Froid, l\'énergie baisse plus vite. Une boisson chaude (toutes les 4 h) protège du froid pendant 3 h.'],['🖤','Et de l\'autre côté…','Tenir le squat : referme les fenêtres et nourris le brasero pour rester au chaud.',1]]},
  {v:'1.17.2',d:'14 novembre',items:[['🎄','Mission spéciale du marché de Noël','Un nouveau mini-jeu vu du dessus : repère dans la foule ceux qui tractent pour les raccompagner à la sortie, et interpelle les voleurs avant qu\'ils filent. Attention aux innocents !'],['🖤','Et de l\'autre côté…','Glisse dans la foule pour distribuer un maximum de tracts, sans te faire attraper.',1]]},
@@ -3259,7 +3283,8 @@ document.addEventListener('click',async e=>{
 });
 function tick(){
   if(!S)return;
-  const before=S.stage;simulate(S,Date.now());
+  const wb=wbBefore(S);
+  const before=S.stage;simulate(S,Date.now());if(wb)wbAfter(S,wb);
   const dch=checkDaily(S);
   const ch=handleEvents()||before!==S.stage||dch;saveLocal();if(ch)saveRemote();
 }
@@ -3279,7 +3304,7 @@ function showHome(confirmNew){
      +`<button class="primary" data-h="new">✨ Nouvelle partie</button>`+(has?'':`<button class="primary ghost" data-h="cloud">☁️ Récupérer ma partie<small>Nouveau téléphone ? Avec ton pseudo et ton code</small></button>`);
   renderHomeNews();
 }
-function hideHome(){$('home').classList.add('hide');render();if(S&&S.stage==='gav'&&!S.name)askName();}
+function hideHome(){$('home').classList.add('hide');render();if(wbPending)setTimeout(wbShow,500);if(S&&S.stage==='gav'&&!S.name)askName();}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;const k=b.dataset.h;
   if(k==='cont'){hideHome();return;}
   if(k==='back'){showHome();return;}
