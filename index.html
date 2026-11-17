@@ -1750,7 +1750,7 @@ function sportTap(){
   $('tap').addEventListener('pointerdown',e=>{
     e.preventDefault();
     if(!running){running=true;timer=setInterval(()=>{if(!$('tapT')){clearInterval(timer);return;}left--;$('tapT').textContent=left+' s';if(left<=0){clearInterval(timer);$('tap').disabled=true;
-      sportReward(taps/3,`🏃 Sprint : ${taps} répétitions`,taps>=60?'Performance de commando ! 💪':taps>=35?'Belle séance ! 👍':'Séance un peu molle… 😅',`${taps} répétitions`);}},1000);}
+      sportSubmit('sprint',taps);sportReward(taps/3,`🏃 Sprint : ${taps} répétitions`,taps>=60?'Performance de commando ! 💪':taps>=35?'Belle séance ! 👍':'Séance un peu molle… 😅',`${taps} répétitions`);}},1000);}
     taps++;$('tapN').textContent=taps;
   });
 }
@@ -1770,7 +1770,7 @@ function sportPompes(){
     if(v>=80){ok++;speed=Math.min(170,speed+4);fx('💪');}else{bad++;}
     v=0;$('tapN').textContent=ok;$('pOk').textContent=ok;$('pBad').textContent=bad;});
   function end(){done=true;clearInterval(timer);cancelAnimationFrame(raf);$('tap').disabled=true;
-    sportReward(ok*1.1,`💪 Pompes : ${ok} valides, ${bad} ratées`,ok>=18?'Pompes de légionnaire ! 💪':ok>=11?'Belle série ! 👍':'Il faudra muscler tout ça… 😅',`${ok} pompes valides (${bad} ratées)`);}
+    sportSubmit('pompes',ok);sportReward(ok*1.1,`💪 Pompes : ${ok} valides, ${bad} ratées`,ok>=18?'Pompes de légionnaire ! 💪':ok>=11?'Belle série ! 👍':'Il faudra muscler tout ça… 😅',`${ok} pompes valides (${bad} ratées)`);}
 }
 function sportParcours(){
   const s=S,sx=sexOf(s)==='F'?'fille':'garcon',me=imgSrc(`${s.look&&LOOK_IMG.has(s.look+'_'+sx+'_treillis')?s.look+'_':''}${sx}_treillis`);
@@ -2254,6 +2254,24 @@ let updCasBtn=function(){const b=$('casBtn');if(!b)return;b.innerHTML='👥'+(on
 setInterval(()=>{if(!document.hidden)heartbeat();},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});
 
+/* ======================= CLASSEMENT SPORT (semaine) ======================= */
+async function sportSubmit(kind,score){
+  if(!ME||!ME.pseudo||!ME.secret||!score)return;
+  try{const {data}=await rpc('sport_submit',{p_id:ME.id,p_secret:ME.secret,p_kind:kind,p_score:Math.round(score)});
+    if(data&&data.improved){const r=data.rank;toast(`🏋️ Record de la semaine (${kind==='sprint'?'sprint':'pompes'}) : ${data.best} · ${r===1?'👑 1er de la caserne !':r+'ᵉ du classement'}`);if(r===1)sfx('ding');}
+  }catch(e){}
+}
+async function loadSport(){
+  try{const {data}=await rpc('sport_board',{});const B=data||{};
+    const wk=(B.week||'').split('-S')[1];
+    const list=(arr,unit)=>arr&&arr.length?arr.map((r,i)=>`<div class="crit" style="grid-template-columns:30px 1fr auto${r.pseudo===ME.pseudo?';background:#ffffff14;border-radius:8px':''}"><span>${i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1)+'.'}</span><span>${esc(r.pseudo||'?')}${r.pseudo===ME.pseudo?' <small>(toi)</small>':''}</span><span><b>${r.best}</b> <small>${unit}</small></span></div>`).join(''):'<p class="sub" style="font-size:12.5px">Personne cette semaine : à toi de poser le premier score !</p>';
+    const rec=(r,unit)=>r?`<small>🏆 Record de la caserne : <b>${r.best}</b> ${unit} par ${esc(r.pseudo||'?')}</small>`:'';
+    $('casBody').innerHTML=`<p style="font-size:12.5px;margin:6px 0">Classement de la semaine${wk?' '+wk:''} · remise à zéro le lundi. Seul ton meilleur score compte, et ça n'influence pas le jeu : juste la gloire 😎</p>
+      <h4 style="margin:10px 0 4px">👟 Sprint <small>(10 s)</small></h4>${list(B.sprint,'rép.')}${rec(B.rec_sprint,'rép.')}
+      <h4 style="margin:14px 0 4px">💪 Pompes <small>(30 s)</small></h4>${list(B.pompes,'pompes')}${rec(B.rec_pompes,'pompes')}
+      <p class="sub" style="font-size:11.5px;margin-top:10px">Fais du sport avec ta recrue (bouton 🏃) pour entrer au classement.</p>`;
+  }catch(e){$('casBody').innerHTML=`<p>${esc(errFr(e))}</p>`;}
+}
 let casTab='rank',casPoll=0;
 function myStats(s){if(!s)return {};const d=s.daily||{};
   return {stage:s.stage==='autre'&&s.derive?'derive':s.stage,sub:s.sub||null,sex:sexOf(s),grade:s.stage==='gav'?GRADES[s.rank||0]:s.stage==='service'?SGRADES[s.srank||0]:'',
@@ -2295,7 +2313,7 @@ async function openProfile(id){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-prof]');if(b){e.preventDefault();openProfile(b.dataset.prof);}});
 function casShell(inner){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3>
-    <div class="row">${[['rank','🏆'],['duo','🤝 Binôme'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
+    <div class="row">${[['rank','🏆'],['sport','🏋️'],['duo','🤝 Binôme'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
     <div id="casBody">${inner}</div>
     <p style="font-size:11.5px">Connecté en tant que <b>${esc(ME&&ME.pseudo||'?')}</b> · <a href="#" data-cas="pseudo" style="color:var(--gold)">changer de pseudo</a> · <a href="#" data-cas="code" style="color:var(--gold)">🔑 mon code de récupération</a></p>
     <button class="cancel" data-cas="close">Fermer</button>`;
@@ -2307,7 +2325,7 @@ function openCaserne(tab){
   if(!ME||!ME.pseudo)return askPseudo();
   heartbeat(true);
   casShell('<p>Chargement…</p>');
-  if(casTab==='rank')loadRank();else if(casTab==='duo')loadDuo();else if(casTab==='online')loadOnline();else{loadMsgs();casPoll=setInterval(()=>{if($('sheet').classList.contains('show')&&$('msgList'))loadMsgs(true);else clearInterval(casPoll);},8000);}
+  if(casTab==='rank')loadRank();else if(casTab==='sport')loadSport();else if(casTab==='duo')loadDuo();else if(casTab==='online')loadOnline();else{loadMsgs();casPoll=setInterval(()=>{if($('sheet').classList.contains('show')&&$('msgList'))loadMsgs(true);else clearInterval(casPoll);},8000);}
 }
 function askPseudo(err){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3><p>Choisis ton pseudo pour apparaître dans le classement et discuter avec les autres joueurs.</p>
@@ -3267,7 +3285,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794780465';
+const BUILD_ID='1794948928';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3281,8 +3299,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.13', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.14', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
  {v:'1.17.12',d:'15 novembre',items:[['🔊','Des sons !','Petits bruitages pour les actions, les mini-jeux, les médailles, les passages de grade et les événements. Ça se coupe dans ⚙️ → Sons. (Pas de son si le téléphone est en mode silencieux.)']]},
  {v:'1.17.11',d:'15 novembre',items:[['🌊','Inondations revues','Nouvelle mission : guide la barque dans le quartier inondé pour évacuer les habitants réfugiés sur les toits, en évitant les débris.'],['🖤','Et de l\'autre côté…','Monte un mur de sacs de sable devant le squat avant que l\'eau n\'arrive, en rythme !',1]]},
  {v:'1.17.10',d:'15 novembre',items:[['😴','Mode veille','Au-delà de 24 h sans ouvrir le jeu, ta recrue s\'use trois fois moins vite : une absence coûte toujours, mais un week-end ne suffit plus à tout perdre.'],['👋','De retour ?','Après 2 jours sans jouer, un résumé t\'attend (jauges, journal, événements manqués) avec une prime de retour pour repartir du bon pied (une fois par semaine).']]},
