@@ -2259,7 +2259,7 @@ async function sportSubmit(kind,score){
   if(!ME||!ME.pseudo||!ME.secret||!score)return;
   try{const {data}=await rpc('sport_submit',{p_id:ME.id,p_secret:ME.secret,p_kind:kind,p_score:Math.round(score)});
     if(data&&data.improved){const r=data.rank;toast(`🏋️ Record de la semaine (${kind==='sprint'?'sprint':'pompes'}) : ${data.best} · ${r===1?'👑 1er de la caserne !':r+'ᵉ du classement'}`);if(r===1)sfx('ding');}
-  }catch(e){}
+  }catch(e){toast('🏋️ Score non enregistré au classement ('+errFr(e)+')');}
 }
 async function loadSport(){
   try{const {data}=await rpc('sport_board',{});const B=data||{};
@@ -3285,7 +3285,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1794948928';
+const BUILD_ID='1795007265';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3299,7 +3299,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.14', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.15', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
  {v:'1.17.12',d:'15 novembre',items:[['🔊','Des sons !','Petits bruitages pour les actions, les mini-jeux, les médailles, les passages de grade et les événements. Ça se coupe dans ⚙️ → Sons. (Pas de son si le téléphone est en mode silencieux.)']]},
