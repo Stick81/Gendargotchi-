@@ -582,9 +582,9 @@ function step(s,dt){
     log(s,`📋 Commission d'avancement close : il n'a pas été présenté au grade de ${GRADES[s.board.k]}. Prochaine chance dans quelques jours.`,'bad',s.board.until);
     s.board=null;s.retardsSince=0;s.motiv=clamp(s.motiv-5);events.push('boardmiss');
   }
-  for(let k=1;k<=3;k++){
+  if((s.rank||0)<3&&!s.board){const k=Math.floor((t+dt-s.born)/(BOARD_EVERY*D));
     const x=s.born+k*BOARD_EVERY*D;
-    if(t<x&&t+dt>=x&&(s.rank||0)<3&&!s.board){
+    if(k>=1&&t<x&&t+dt>=x){
       const nk=(s.rank||0)+1;
       s.board={k:nk,until:x+BOARD_HOURS*H};
       log(s,`📋 Commission d'avancement ouverte ! Tu as 24 h pour le présenter au grade de ${GRADES[nk]}.`,'good',x);events.push('board');
@@ -1636,7 +1636,7 @@ function act(a){
       <div>${c.map(x=>`<div class="crit"><span>${x[1]?'✅':'❌'}</span><span>${x[0]}</span><span>${x[2]}</span></div>`).join('')}</div>
       ${s.concoursCd>s.t?`<p>⏳ Nouvelle tentative possible dans ${fmtDur(s.concoursCd-s.t)}.</p>`:''}
       <p>Retards : ${s.retards} · En poste depuis ${fmtDur(s.t-s.born)}</p>
-      <p>Grade : <b>${GRADES[s.rank||0]}</b>. ${s.board&&s.board.until>s.t?`🎖️ Commission d'avancement ouverte (clôture dans ${fmtDur(s.board.until-s.t)}).`:(s.rank||0)<3?(()=>{const n=[1,2,3].map(k=>s.born+k*BOARD_EVERY*D).find(x=>x>s.t);return n?`Prochaine commission d'avancement dans ${fmtDur(n-s.t)}.`:'Plus de commission prévue avant le concours.';})():''}</p>
+      <p>Grade : <b>${GRADES[s.rank||0]}</b>. ${s.board&&s.board.until>s.t?`🎖️ Commission d'avancement ouverte (clôture dans ${fmtDur(s.board.until-s.t)}).`:(s.rank||0)<3?(()=>{const n=s.born+(Math.floor((s.t-s.born)/(BOARD_EVERY*D))+1)*BOARD_EVERY*D;return `Prochaine commission d'avancement dans ${fmtDur(n-s.t)}.`;})():''}</p>
       <button class="primary" data-o="close">Fermer</button>`);}
   case 'concours':return concours();
   case 'board':{
@@ -1674,7 +1674,7 @@ function option(o){
   if(k==='promote'){
     if(!s.board||s.board.until<=s.t||!promoCrit(s,s.board.k).every(x=>x[1])){closeSheet();return toast('Trop tard ou conditions non remplies.');}
     if(isRebel(s)&&Math.random()<.5){closeSheet();return refuses(1);}
-    const k=s.board.k;s.rank=k;s.board=null;s.retardsSince=0;s.motiv=clamp(s.motiv+10);s.moral=clamp(s.moral+15);
+    const k=Math.min(3,Math.max(s.board.k,(s.rank||0)+1));s.rank=k;s.board=null;s.retardsSince=0;s.motiv=clamp(s.motiv+10);s.moral=clamp(s.moral+15);
     log(s,`🎖️ Promu ${GRADES[k]} par la commission d'avancement !`,'good');announce(s,'grade',GRADES[k]);
     s.saluteUntil=s.t+5*M;
     const salK=imgKeys(s,{salute:true})[0],salSrc=IMG_INLINE[salK]||`perso/${salK}.png`;
@@ -2529,7 +2529,9 @@ async function claimGifts(){
   try{const {data}=await rpc('claim_gifts',{p_id:ME.id,p_secret:ME.secret});
     if(!Array.isArray(data)||!data.length)return;
     const NM={energy:'énergie',food:'faim',moral:'moral',motiv:'motivation',health:'santé',tenue:'tenue',forme:'forme',disc:'discipline'};
-    for(const g of data){S[g.field]=clamp((S[g.field]||0)+g.amount);
+    for(const g of data){
+      if(g.field==='rank'){if(S.stage==='gav'&&(S.rank||0)<3){S.rank=Math.min(3,(S.rank||0)+Math.max(1,g.amount));S.board=null;const txt=`🎖️ ${g.reason||'Décision du commandement'} : promu ${GRADES[S.rank]} !`;log(S,txt,'good');announce(S,'grade',GRADES[S.rank]);toast(txt);sfx('up');}continue;}
+      S[g.field]=clamp((S[g.field]||0)+g.amount);
       const txt=`🎁 ${g.reason||'Cadeau du commandement'} : ${g.amount>0?'+':''}${g.amount} ${NM[g.field]||g.field}.`;log(S,txt,'good');toast(txt);}
     save();render();
   }catch(e){}
@@ -3285,7 +3287,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795007265';
+const BUILD_ID='1795379127';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3299,7 +3301,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.15', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.16', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
  {v:'1.17.12',d:'15 novembre',items:[['🔊','Des sons !','Petits bruitages pour les actions, les mini-jeux, les médailles, les passages de grade et les événements. Ça se coupe dans ⚙️ → Sons. (Pas de son si le téléphone est en mode silencieux.)']]},
