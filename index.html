@@ -2865,13 +2865,13 @@ function testPave(title,t,done){
 }
 // ===== Événements nationaux =====
 const NEV={
- tdf:{e:'🚴',n:'Tour de France',d:'La caravane et le peloton traversent la région : foule au bord des routes !',real:[7,1,7,27],m:{gav:['Signaleur au carrefour','tap',70],ecole:['Renfort circulation (exercice)','quiz',3,'gd'],GD:['Gestion de la circulation','quiz',3,'gd'],GM:['Sécurisation de la ligne d\'arrivée','pave',9],GR:['Escorte moto du peloton','tap',85],reb:['Banderole au bord de la route','tap',75]}},
- j14:{e:'🇫🇷',n:'14 Juillet',d:'Fête nationale : défilé le matin, feu d\'artifice le soir.',real:[7,13,7,14],m:{gav:['Défilé au pas','cibles',6],ecole:['Répétition du défilé','cibles',7],GD:['Sécurisation du feu d\'artifice','cibles',6],GM:['Défilé sur les Champs-Élysées','cibles',7],GR:['Escorte présidentielle','tap',85],reb:['Pétards pendant le feu d\'artifice','tap',75]}},
- froid:{e:'🥶',n:'Plan Grand Froid',d:'Températures négatives : tout le monde est mobilisé pour les plus fragiles.',real:[12,1,2,28],season:[11,12,1,2],m:{gav:['Maraude de nuit avec la mairie','froid',7,'gend'],ecole:['Maraude de nuit (exercice)','froid',8,'gend'],GD:['Maraude de nuit','froid',10,'gend'],GM:['Renfort maraude de nuit','froid',10,'gend'],GR:['Maraude de nuit','froid',10,'gend'],reb:['Tenir le squat','froid',28,'reb']}},
+ tdf:{e:'🚴',n:'Tour de France',d:'La caravane et le peloton traversent la région : foule au bord des routes !',real:[7,1,7,27],realOnly:1,m:{gav:['Signaleur au carrefour','tap',70],ecole:['Renfort circulation (exercice)','quiz',3,'gd'],GD:['Gestion de la circulation','quiz',3,'gd'],GM:['Sécurisation de la ligne d\'arrivée','pave',9],GR:['Escorte moto du peloton','tap',85],reb:['Banderole au bord de la route','tap',75]}},
+ j14:{e:'🇫🇷',n:'14 Juillet',d:'Fête nationale : défilé le matin, feu d\'artifice le soir.',real:[7,13,7,14],fixed:[7,13],m:{gav:['Défilé au pas','cibles',6],ecole:['Répétition du défilé','cibles',7],GD:['Sécurisation du feu d\'artifice','cibles',6],GM:['Défilé sur les Champs-Élysées','cibles',7],GR:['Escorte présidentielle','tap',85],reb:['Pétards pendant le feu d\'artifice','tap',75]}},
+ froid:{e:'🥶',n:'Plan Grand Froid',d:'Températures négatives : tout le monde est mobilisé pour les plus fragiles.',real:[11,1,3,15],season:[11,12,1,2],realOnly:1,m:{gav:['Maraude de nuit avec la mairie','froid',7,'gend'],ecole:['Maraude de nuit (exercice)','froid',8,'gend'],GD:['Maraude de nuit','froid',10,'gend'],GM:['Renfort maraude de nuit','froid',10,'gend'],GR:['Maraude de nuit','froid',10,'gend'],reb:['Tenir le squat','froid',28,'reb']}},
  elec:{e:'🗳️',n:'Élections',d:'Jour de scrutin : bureaux de vote, urnes et soirée des résultats.',m:{gav:['Accueil devant le bureau de vote','quiz',3],ecole:['Cours de droit électoral','quiz',3],GD:['Sécurisation des bureaux de vote','quiz',3,'cpp'],GM:['Renfort au soir des résultats','pave',9],GR:['Escorte des procès-verbaux','tap',85],reb:['Collage d\'affiches sauvages','tap',75]}},
- chasse:{e:'🚗',n:'Chassé-croisé des vacances',d:'Bouchons record sur les autoroutes, tout le monde part en même temps.',real:[7,25,8,20],m:{gav:['Point prévention sur l\'aire d\'autoroute','quiz',3,'gd'],ecole:['Contrôle routier encadré','quiz',3,'gd'],GD:['Repérer les excès de vitesse','cibles',7],GM:['Renfort sur l\'autoroute','tap',80],GR:['Escorte officielle vers les vacances','tap',85],reb:['Opération péage gratuit','tap',75]}},
- musique:{e:'🎵',n:'Fête de la musique',d:'Concerts dans toutes les rues jusqu\'au bout de la nuit.',real:[6,21,6,21],m:{gav:['Prévention dans la foule','quiz',3],ecole:['Fanfare de l\'école','cibles',6],GD:['Patrouille de nuit','cibles',6],GM:['Maintien de l\'ordre en fin de soirée','pave',9],GR:['Concert de la Musique de la Garde','cibles',7],reb:['Sound-system sauvage','tap',75]}},
- noel:{e:'🎄',n:'Marchés de Noël',d:'Foule, vin chaud et Vigipirate renforcé.',real:[11,22,12,31],season:[11,12],m:{gav:['Patrouille au marché de Noël','marche',10,'gend'],ecole:['Exercice au marché de Noël','marche',12,'gend'],GD:['Sécurisation du marché de Noël','marche',15,'gend'],GM:['Dispositif Vigipirate au marché','marche',15,'gend'],GR:['Patrouille au marché de Noël','marche',15,'gend'],reb:['Tractage au marché de Noël','marche',30,'reb']}},
+ chasse:{e:'🚗',n:'Chassé-croisé des vacances',d:'Bouchons record sur les autoroutes, tout le monde part en même temps.',real:[7,25,8,20],realOnly:1,m:{gav:['Point prévention sur l\'aire d\'autoroute','quiz',3,'gd'],ecole:['Contrôle routier encadré','quiz',3,'gd'],GD:['Repérer les excès de vitesse','cibles',7],GM:['Renfort sur l\'autoroute','tap',80],GR:['Escorte officielle vers les vacances','tap',85],reb:['Opération péage gratuit','tap',75]}},
+ musique:{e:'🎵',n:'Fête de la musique',d:'Concerts dans toutes les rues jusqu\'au bout de la nuit.',real:[6,20,6,21],fixed:[6,20],m:{gav:['Prévention dans la foule','quiz',3],ecole:['Fanfare de l\'école','cibles',6],GD:['Patrouille de nuit','cibles',6],GM:['Maintien de l\'ordre en fin de soirée','pave',9],GR:['Concert de la Musique de la Garde','cibles',7],reb:['Sound-system sauvage','tap',75]}},
+ noel:{e:'🎄',n:'Marchés de Noël',d:'Foule, vin chaud et Vigipirate renforcé.',real:[11,13,12,31],season:[11,12],realOnly:1,m:{gav:['Patrouille au marché de Noël','marche',10,'gend'],ecole:['Exercice au marché de Noël','marche',12,'gend'],GD:['Sécurisation du marché de Noël','marche',15,'gend'],GM:['Dispositif Vigipirate au marché','marche',15,'gend'],GR:['Patrouille au marché de Noël','marche',15,'gend'],reb:['Tractage au marché de Noël','marche',30,'reb']}},
  nouvelan:{e:'🎆',n:'Réveillon du Nouvel An',d:'La nuit la plus longue de l\'année pour les forces de l\'ordre.',real:[12,31,1,1],fixed:[12,31],m:{gav:['Prévention alcool au volant','quiz',3,'gd'],ecole:['Garde de la caserne au réveillon','tap',80],GD:['Contrôles d\'alcoolémie','cibles',7],GM:['Nuit de la Saint-Sylvestre','pave',10],GR:['Escorte des vœux officiels','tap',85],reb:['Pétards à minuit','tap',75]}},
  sommet:{e:'🌍',n:'Sommet international',d:'Des chefs d\'État arrivent : sécurité maximale.',m:{gav:['Filtrage des accès','quiz',3],ecole:['Exercice de protection rapprochée','cibles',6],GD:['Périmètre de sécurité','cibles',7],GM:['Face au contre-sommet','pave',10],GR:['Escorte des chefs d\'État','tap',90],reb:['Grand rassemblement du contre-sommet','tap',80]}},
  crue:{e:'🌊',n:'Inondations',d:'La rivière déborde : plan ORSEC déclenché.',m:{gav:['Évacuation en barque avec les pompiers','crue',9,'gend'],ecole:['Renfort plan ORSEC : évacuation','crue',11,'gend'],GD:['Évacuation des riverains en barque','crue',13,'gend'],GM:['Renfort sur la zone inondée','crue',13,'gend'],GR:['Évacuation en barque','crue',13,'gend'],reb:['Sacs de sable au squat','crue',12,'reb']}},
@@ -2883,13 +2883,16 @@ function nevStart(n){return NEV_MON+Math.floor(n/2)*7*D+NEV_SLOT[n%2];}
 function nevReal(ev,ts){if(!ev.real)return false;const d=new Date(ts),m=d.getMonth()+1,j=d.getDate(),v=m*100+j,a=ev.real[0]*100+ev.real[1],b=ev.real[2]*100+ev.real[3];return a<=b?v>=a&&v<=b:v>=a||v<=b;}
 function nevBase(n){const L=NEV_K.length,c=Math.floor(n/L),bag=NEV_K.slice();for(let i=L-1;i>0;i--){const j=Math.floor(nevHash(c*31+i)*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}return bag[((n%L)+L)%L];}
 const NEV_MEMO={},NEV_N0=5928;/* calcul séquentiel depuis le lancement : un même événement ne revient pas avant 2 créneaux (≈ une semaine) */
+const NEV_GAP={match:4};/* écart minimal en créneaux (défaut 2) ; match : 2 semaines */
+const nevOK=(k,prev,ts)=>!NEV[k].fixed&&(!NEV[k].realOnly||nevReal(NEV[k],ts))&&!prev.slice(0,NEV_GAP[k]||2).includes(k);
 function nevPick(n,prev){const ts=nevStart(n),real=NEV_K.filter(k=>!NEV[k].fixed&&nevReal(NEV[k],ts));
-  if(real.length&&nevHash(n*7+3)<.45){const k=real[Math.floor(nevHash(n*13+5)*real.length)];if(!prev.includes(k))return k;}
-  for(let o=0;o<6;o++){const k=nevBase(n+o);if(!prev.includes(k)&&!NEV[k].fixed)return k;}return nevBase(n);}
-function nevKind(n){if(n<NEV_N0)return nevBase(n);if(NEV_MEMO[n])return NEV_MEMO[n];
+  if(real.length&&nevHash(n*7+3)<.45){const k=real[Math.floor(nevHash(n*13+5)*real.length)];if(nevOK(k,prev,ts))return k;}
+  for(let o=0;o<NEV_K.length*2;o++){const k=nevBase(n+o);if(nevOK(k,prev,ts))return k;}return 'froid';}
+const NEV_PIN={5933:'noel',5934:'froid',5935:'crue',5936:'noel',5937:'match',5938:'sommet'};/* créneaux déjà annoncés */
+function nevKind(n){if(NEV_PIN[n])return NEV_PIN[n];if(n<NEV_N0)return nevBase(n);if(NEV_MEMO[n])return NEV_MEMO[n];
   let s=NEV_N0;while(NEV_MEMO[s]&&s<n)s++;
-  for(let i=s;i<=n;i++){if(!NEV_MEMO[i])NEV_MEMO[i]=nevPick(i,[nevKind(i-1),nevKind(i-2)]);}return NEV_MEMO[n];}
-function nevFixed(ts){for(const k in NEV){const f=NEV[k].fixed;if(!f)continue;const y=new Date(ts).getUTCFullYear();for(const yy of [y-1,y]){const st=Date.UTC(yy,f[0]-1,f[1])+11*H;if(ts>=st&&ts<st+NEV_LEN)return {n:-1,id:'ev9'+yy,k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:true};}}return null;}
+  for(let i=s;i<=n;i++){if(!NEV_MEMO[i])NEV_MEMO[i]=nevPick(i,[nevKind(i-1),nevKind(i-2),nevKind(i-3),nevKind(i-4)]);}return NEV_MEMO[n];}
+function nevFixed(ts){for(const k in NEV){const f=NEV[k].fixed;if(!f)continue;const y=new Date(ts).getUTCFullYear();for(const yy of [y-1,y]){const st=Date.UTC(yy,f[0]-1,f[1])+11*H;if(ts>=st&&ts<st+NEV_LEN)return {n:-1,id:'ev9'+String(yy%100)+String(NEV_K.indexOf(k)).padStart(2,'0'),k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:true};}}return null;}
 function nevAt(ts){const F=nevFixed(ts);if(F)return F;const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2+1;n>=w*2-2;n--){const st=nevStart(n);if(ts>=st&&ts<st+NEV_LEN){const k=nevKind(n);return {n,id:'ev'+n,k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:nevReal(NEV[k],st)};}}return null;}
 function nevNext(ts){const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2;n<w*2+6;n++){const st=nevStart(n);if(st>ts)return {n,start:st,k:nevKind(n)};}return null;}
 function nevLast(ts){const F=nevFixed(ts-NEV_LEN);if(F&&F.end<=ts&&F.end>ts-4*D)return F;const w=Math.floor((ts-NEV_MON)/(7*D));for(let n=w*2+1;n>=w*2-4;n--){const st=nevStart(n);if(st+NEV_LEN<=ts){const k=nevKind(n);return {n,id:'ev'+n,k,ev:NEV[k],start:st,end:st+NEV_LEN,gold:nevReal(NEV[k],st)};}}return null;}
@@ -3383,7 +3386,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795385397';
+const BUILD_ID='1795385713';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3397,7 +3400,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.21', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.22', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.17.21',d:'23 novembre',items:[['⚽','Jour de match revu','Une petite cinématique d\'arrivée au stade, puis une nouvelle mission en tribune : éteins les fumigènes et sépare les bagarres avant qu\'elles éclatent, sans embêter les supporters qui chantent.'],['🖤','Et de l\'autre côté…','Allume un maximum de fumigènes avec tes copains en tribune… sans te faire prendre dans le projecteur des stadiers.',1]]},
  {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
