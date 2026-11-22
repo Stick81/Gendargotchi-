@@ -2868,7 +2868,7 @@ const NEV={
  tdf:{e:'🚴',n:'Tour de France',d:'La caravane et le peloton traversent la région : foule au bord des routes !',real:[7,1,7,27],realOnly:1,m:{gav:['Signaleur au carrefour','tap',70],ecole:['Renfort circulation (exercice)','quiz',3,'gd'],GD:['Gestion de la circulation','quiz',3,'gd'],GM:['Sécurisation de la ligne d\'arrivée','pave',9],GR:['Escorte moto du peloton','tap',85],reb:['Banderole au bord de la route','tap',75]}},
  j14:{e:'🇫🇷',n:'14 Juillet',d:'Fête nationale : défilé le matin, feu d\'artifice le soir.',real:[7,13,7,14],fixed:[7,13],m:{gav:['Défilé au pas','cibles',6],ecole:['Répétition du défilé','cibles',7],GD:['Sécurisation du feu d\'artifice','cibles',6],GM:['Défilé sur les Champs-Élysées','cibles',7],GR:['Escorte présidentielle','tap',85],reb:['Pétards pendant le feu d\'artifice','tap',75]}},
  froid:{e:'🥶',n:'Plan Grand Froid',d:'Températures négatives : tout le monde est mobilisé pour les plus fragiles.',real:[11,1,3,15],season:[11,12,1,2],realOnly:1,m:{gav:['Maraude de nuit avec la mairie','froid',7,'gend'],ecole:['Maraude de nuit (exercice)','froid',8,'gend'],GD:['Maraude de nuit','froid',10,'gend'],GM:['Renfort maraude de nuit','froid',10,'gend'],GR:['Maraude de nuit','froid',10,'gend'],reb:['Tenir le squat','froid',28,'reb']}},
- elec:{e:'🗳️',n:'Élections',d:'Jour de scrutin : bureaux de vote, urnes et soirée des résultats.',m:{gav:['Accueil devant le bureau de vote','quiz',3],ecole:['Cours de droit électoral','quiz',3],GD:['Sécurisation des bureaux de vote','quiz',3,'cpp'],GM:['Renfort au soir des résultats','pave',9],GR:['Escorte des procès-verbaux','tap',85],reb:['Collage d\'affiches sauvages','tap',75]}},
+ elec:{e:'🗳️',n:'Élections',d:'Jour de scrutin : bureaux de vote, urnes et soirée des résultats.',realOnly:1,m:{gav:['Accueil devant le bureau de vote','quiz',3],ecole:['Cours de droit électoral','quiz',3],GD:['Sécurisation des bureaux de vote','quiz',3,'cpp'],GM:['Renfort au soir des résultats','pave',9],GR:['Escorte des procès-verbaux','tap',85],reb:['Collage d\'affiches sauvages','tap',75]}},
  chasse:{e:'🚗',n:'Chassé-croisé des vacances',d:'Bouchons record sur les autoroutes, tout le monde part en même temps.',real:[7,25,8,20],realOnly:1,m:{gav:['Point prévention sur l\'aire d\'autoroute','quiz',3,'gd'],ecole:['Contrôle routier encadré','quiz',3,'gd'],GD:['Repérer les excès de vitesse','cibles',7],GM:['Renfort sur l\'autoroute','tap',80],GR:['Escorte officielle vers les vacances','tap',85],reb:['Opération péage gratuit','tap',75]}},
  musique:{e:'🎵',n:'Fête de la musique',d:'Concerts dans toutes les rues jusqu\'au bout de la nuit.',real:[6,20,6,21],fixed:[6,20],m:{gav:['Prévention dans la foule','quiz',3],ecole:['Fanfare de l\'école','cibles',6],GD:['Patrouille de nuit','cibles',6],GM:['Maintien de l\'ordre en fin de soirée','pave',9],GR:['Concert de la Musique de la Garde','cibles',7],reb:['Sound-system sauvage','tap',75]}},
  noel:{e:'🎄',n:'Marchés de Noël',d:'Foule, vin chaud et Vigipirate renforcé.',real:[11,13,12,31],season:[11,12],realOnly:1,m:{gav:['Patrouille au marché de Noël','marche',10,'gend'],ecole:['Exercice au marché de Noël','marche',12,'gend'],GD:['Sécurisation du marché de Noël','marche',15,'gend'],GM:['Dispositif Vigipirate au marché','marche',15,'gend'],GR:['Patrouille au marché de Noël','marche',15,'gend'],reb:['Tractage au marché de Noël','marche',30,'reb']}},
@@ -3386,7 +3386,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795385713';
+const BUILD_ID='1795385863';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3400,7 +3400,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.22', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.23', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.17.21',d:'23 novembre',items:[['⚽','Jour de match revu','Une petite cinématique d\'arrivée au stade, puis une nouvelle mission en tribune : éteins les fumigènes et sépare les bagarres avant qu\'elles éclatent, sans embêter les supporters qui chantent.'],['🖤','Et de l\'autre côté…','Allume un maximum de fumigènes avec tes copains en tribune… sans te faire prendre dans le projecteur des stadiers.',1]]},
  {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
