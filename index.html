@@ -1467,7 +1467,7 @@ function openGuide(){
   sec('🎓 Avancement en unité',`<p>Une commission tous les <b>${SBOARD_EVERY} jours</b> après l'affectation, ouverte <b>${SBOARD_HOURS} h</b>. Les instructions (📘) réussies sont comptées au total depuis l'affectation. En GD, la qualification <b>OPJ</b> est aussi exigée pour tous les grades à partir de MDL-chef.</p>`+
     tb(['Grade','Exp.','Disc.','Motiv.','Forme','Instr.','Ret.'],[1,2,3].map(k=>{const c=SPROMO[k];return [SGRADES[k],c.exp,c.disc,c.motiv,dash(c.forme),c.instr,c.ret];})))+
   sec('⭐ Spécialités & OPJ',`<p>Depuis 🎓 Carrière. Une seule spécialité par carrière, ${SPEC_DAYS_MIN} jours d'ancienneté minimum. En cas d'échec à une sélection : nouvelle tentative 24 h plus tard.</p>`+
-    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>t[0]==='moto'?`${t[2]} (rattraper le fuyard)`:`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):t[0]==='neige'?(t[3]==='reb'?' bonshommes':' voitures'):t[0]==='soldes'?(t[3]==='reb'?' affiches':' vols'):' rép.'})`).join(' + ')]))+
+    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>t[0]==='moto'?`${t[2]} (rattraper le fuyard)`:`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):t[0]==='controle'?' infractions':t[0]==='neige'?(t[3]==='reb'?' bonshommes':' voitures'):t[0]==='soldes'?(t[3]==='reb'?' affiches':' vols'):' rép.'})`).join(' + ')]))+
     `<p class="gnote">⚖️ <b>OPJ</b> (GD) : dès le grade de Gendarme, expérience ${OPJ_REQ.exp}, ${OPJ_REQ.instr} instructions réussies. Examen de 10 questions de procédure pénale, 7 bonnes réponses pour réussir (sinon 48 h d'attente). Débloque 🔎 Enquête. <b>En GD, l'OPJ est obligatoire pour passer MDL-chef.</b></p>`)+
   sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
     tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
@@ -1658,6 +1658,11 @@ function act(a){
     if(s.energy<25)return toast('Trop fatigué pour partir en patrouille.');
     if(s.tenue<30)return toast('Pas question de sortir dans cette tenue ! 👔');
     if(s.food<15)return toast("Il a le ventre vide, fais-le manger d'abord.");
+    if((CTX==='gd'||s.stage==='gav')&&!s.ctrlPick){const cd=(s.ctrlCd||0)>s.t;return sheet(`<h3>🚓 Sortie</h3><p>Que fait ${esc(nm(s))} ?</p>
+      <button class="opt" data-o="patrolGo"><span class="e">🚓</span><span>Patrouille de secteur<small>15 minutes, il revient avec son compte rendu</small></span></button>
+      <button class="opt" data-o="ctrlGo" ${cd?'disabled':''}><span class="e">🚧</span><span>Contrôle routier<small>${cd?`Prochain contrôle dans ${fmtDur(s.ctrlCd-s.t)}`:'Mini-jeu : repère les infractions. Gros bonus d\'expérience'}</small></span></button>
+      <button class="cancel" data-o="close">Annuler</button>`);}
+    s.ctrlPick=0;
     if(refuses(.7))return;
     dailyEvent(s,'patrol');s.patrolSet=CTX==='gd'?'gd':CTX==='gm_om'?'om':CTX==='gm_rf'?'rf':'gav';s.patrolIdx=Math.floor(rnd(s)*((s.patrolSet==='gav'?PATROLS:PATROL_SETS[s.patrolSet]).length));s.busyUntil=s.t+15*M;log(s,'🚓 Parti en patrouille pour 15 minutes.');toast('En route ! Retour dans 15 minutes 🚓');lastLook='';break;
   case 'talk':
@@ -1727,6 +1732,12 @@ function option(o){
   if(k==='spromote')return doSPromote();
   if(k==='opjExam')return opjExam();
   if(k==='specTry')return specTry(v);
+  if(k==='patrolGo'){closeSheet();s.ctrlPick=1;return act('patrol');}
+  if(k==='ctrlGo'){if((s.ctrlCd||0)>s.t)return;if(refuses(.7))return;dailyEvent(s,'patrol');s.ctrlCd=s.t+3*H;save();
+    return runTests('🚧 Contrôle routier',[['controle',5,'Contrôle routier']],res=>{const r=res[0],SVC=s.stage==='service',b=r.ok?1:.4;
+      if(SVC)s.exp=clamp((s.exp||0)+12*b);else s.comp=clamp(s.comp+12*b);s.disc=clamp(s.disc+6*b);if(s.moral>=40)s.motiv=clamp(s.motiv+6*b);s.moral=clamp(s.moral+(r.ok?5:-2));s.energy=clamp(s.energy-8);
+      log(s,r.ok?`🚧 Contrôle routier : ${r.score} infractions relevées. Belle opération !`:`🚧 Contrôle routier : ${r.score} infraction${r.score>1?'s':''} seulement, pas mal sont passés entre les mailles.`,r.ok?'good':'');save();render();
+      sheet(`<h3>🚧 Fin du contrôle</h3><p>${r.ok?'✅':'➖'} ${r.score} infraction${r.score>1?'s':''} relevée${r.score>1?'s':''}.</p><p class="sub">${SVC?'Expérience':'Compétence'} +${Math.round(12*b)}, discipline +${Math.round(6*b)}. Prochain contrôle possible dans 3 h.</p><button class="primary" data-o="close">OK</button>`);});}
   if(k==='daily'){openDaily();return;}
   if(k==='chest'){openChest();return;}
   if(k==='qday'){openQDay();return;}
@@ -2947,9 +2958,9 @@ function runTests(title,tests,onEnd){
   let i=0,res=[];
   const next=()=>{if(i>=tests.length)return onEnd(res);const t=tests[i];
     const done=(score,ok)=>{res.push({name:t[2],score,ok});i++;
-      sfx(ok?'win':'fail');if(ok)campAdd(5,'epreuve');$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} ${t[0]==='moto'?`(${score} pts, ${ok?'fuyard intercepté':'le fuyard s\'est échappé'})`:`(${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):t[0]==='neige'?(t[3]==='reb'?' bonshommes':' voitures'):t[0]==='soldes'?(t[3]==='reb'?' affiches':' vols'):' rép.'}, il fallait ${t[1]})`}</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
+      sfx(ok?'win':'fail');if(ok)campAdd(5,'epreuve');$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} ${t[0]==='moto'?`(${score} pts, ${ok?'fuyard intercepté':'le fuyard s\'est échappé'})`:`(${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):t[0]==='controle'?' infractions':t[0]==='neige'?(t[3]==='reb'?' bonshommes':' voitures'):t[0]==='soldes'?(t[3]==='reb'?' affiches':' vols'):' rép.'}, il fallait ${t[1]})`}</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
       $('tNext').onclick=next;};
-    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='froid')testFroid(title,t,done);else if(t[0]==='crue')testCrue(title,t,done);else if(t[0]==='stade')testStade(title,t,done);else if(t[0]==='moto')testMoto(title,t,done);else if(t[0]==='neige')testNeige(title,t,done);else if(t[0]==='soldes')testSoldes(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
+    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='froid')testFroid(title,t,done);else if(t[0]==='crue')testCrue(title,t,done);else if(t[0]==='stade')testStade(title,t,done);else if(t[0]==='moto')testMoto(title,t,done);else if(t[0]==='controle')testControle(title,t,done);else if(t[0]==='neige')testNeige(title,t,done);else if(t[0]==='soldes')testSoldes(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
   next();
 }
 function testTap(title,t,done){
@@ -3014,7 +3025,7 @@ const NEV={
  chasse:{e:'🚗',n:'Chassé-croisé des vacances',d:'Bouchons record sur les autoroutes, tout le monde part en même temps.',real:[7,25,8,20],realOnly:1,m:{gav:['Point prévention sur l\'aire d\'autoroute','quiz',3,'gd'],ecole:['Contrôle routier encadré','quiz',3,'gd'],GD:['Repérer les excès de vitesse','cibles',7],GM:['Renfort sur l\'autoroute','tap',80],GR:['Escorte officielle vers les vacances','tap',85],reb:['Opération péage gratuit','tap',75]}},
  musique:{e:'🎵',n:'Fête de la musique',d:'Concerts dans toutes les rues jusqu\'au bout de la nuit.',real:[6,20,6,21],fixed:[6,20],m:{gav:['Prévention dans la foule','quiz',3],ecole:['Fanfare de l\'école','cibles',6],GD:['Patrouille de nuit','cibles',6],GM:['Maintien de l\'ordre en fin de soirée','pave',9],GR:['Concert de la Musique de la Garde','cibles',7],reb:['Sound-system sauvage','tap',75]}},
  noel:{e:'🎄',n:'Marchés de Noël',d:'Foule, vin chaud et Vigipirate renforcé.',real:[11,13,12,31],season:[11,12],realOnly:1,m:{gav:['Patrouille au marché de Noël','marche',10,'gend'],ecole:['Exercice au marché de Noël','marche',12,'gend'],GD:['Sécurisation du marché de Noël','marche',15,'gend'],GM:['Dispositif Vigipirate au marché','marche',15,'gend'],GR:['Patrouille au marché de Noël','marche',15,'gend'],reb:['Tractage au marché de Noël','marche',30,'reb']}},
- nouvelan:{e:'🎆',n:'Réveillon du Nouvel An',d:'La nuit la plus longue de l\'année pour les forces de l\'ordre.',real:[12,31,1,1],fixed:[12,31],m:{gav:['Prévention alcool au volant','quiz',3,'gd'],ecole:['Garde de la caserne au réveillon','tap',80],GD:['Contrôles d\'alcoolémie','cibles',7],GM:['Nuit de la Saint-Sylvestre','pave',10],GR:['Escorte des vœux officiels','tap',85],reb:['Pétards à minuit','tap',75]}},
+ nouvelan:{e:'🎆',n:'Réveillon du Nouvel An',d:'La nuit la plus longue de l\'année pour les forces de l\'ordre.',real:[12,31,1,1],fixed:[12,31],m:{gav:['Prévention alcool au volant','quiz',3,'gd'],ecole:['Garde de la caserne au réveillon','tap',80],GD:['Contrôles d\'alcoolémie','controle',6],GM:['Nuit de la Saint-Sylvestre','pave',10],GR:['Escorte des vœux officiels','tap',85],reb:['Pétards à minuit','tap',75]}},
  sommet:{e:'🌍',n:'Sommet international',d:'Des chefs d\'État arrivent : sécurité maximale.',m:{gav:['Filtrage des accès','quiz',3],ecole:['Exercice de protection rapprochée','cibles',6],GD:['Périmètre de sécurité','cibles',7],GM:['Face au contre-sommet','pave',10],GR:['Escorte des chefs d\'État','tap',90],reb:['Grand rassemblement du contre-sommet','tap',80]}},
  crue:{e:'🌊',n:'Inondations',d:'La rivière déborde : plan ORSEC déclenché.',m:{gav:['Évacuation en barque avec les pompiers','crue',9,'gend'],ecole:['Renfort plan ORSEC : évacuation','crue',11,'gend'],GD:['Évacuation des riverains en barque','crue',13,'gend'],GM:['Renfort sur la zone inondée','crue',13,'gend'],GR:['Évacuation en barque','crue',13,'gend'],reb:['Sacs de sable au squat','crue',12,'reb']}},
  match:{e:'⚽',n:'Jour de match',d:'Stade plein, supporters chauffés à blanc : tout le monde est mobilisé.',m:{gav:['Surveillance de la tribune','stade',12,'gend'],ecole:['Exercice en tribune','stade',15,'gend'],GD:['Sécurisation de la tribune','stade',18,'gend'],GM:['Sécurisation de la tribune','stade',18,'gend'],GR:['Sécurisation de la tribune d\'honneur','stade',18,'gend'],reb:['Fumigènes en tribune','stade',20,'reb']}},
@@ -3622,6 +3633,129 @@ function testMoto(title,t,done){
   $('moGo').onclick=()=>{$('moGo').remove();run=true;last=performance.now();};
   window.__mo=()=>({obs:obs.map(o=>({k:o.k,lx:o.lx,tl:o.tl,d:o.d,hw:o.hw})),px,slot,G,v,horn,score,hits,stun,caught,left,DP,W});
 }
+function ctrlCarParts(c){/* véhicule vu de face, boîte 200 × 160 */
+  const P=[],rr=(x,y,w,h,r)=>`M${x+r} ${y}h${w-2*r}a${r} ${r} 0 0 1 ${r} ${r}v${h-2*r}a${r} ${r} 0 0 1 -${r} ${r}h-${w-2*r}a${r} ${r} 0 0 1 -${r} -${r}v-${h-2*r}a${r} ${r} 0 0 1 ${r} -${r}Z`,
+    ci=(x,y,r)=>`M${x-r} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z`,el=(x,y,rx,ry)=>`M${x-rx} ${y}a${rx} ${ry} 0 1 0 ${2*rx} 0a${rx} ${ry} 0 1 0 ${-2*rx} 0Z`,add=(d,f,o)=>P.push(Object.assign({d,f},o||{}));
+  const W=140*c.w,x0=100-W/2,x1=100+W/2,bt=72-c.h,rt=30-c.h*1.1;
+  add(el(100,140,W*.55,7),'rgba(0,0,0,.28)');
+  add(rr(x0+8,112,22,28,5),'#1b1b1b');add(rr(x1-30,112,22,28,5),'#1b1b1b');
+  const cab=c.van?[x0+10,x1-10,x0+4,x1-4]:[x0+28,x1-28,x0+10,x1-10];
+  add(`M${cab[0]} ${rt}Q100 ${rt-6} ${cab[1]} ${rt}L${cab[3]} ${bt+2}L${cab[2]} ${bt+2}Z`,c.dk);
+  const ws=c.van?[cab[0]+5,cab[1]-5,cab[2]+6,cab[3]-6]:[cab[0]+6,cab[1]-6,cab[2]+8,cab[3]-8];
+  add(`M${ws[0]} ${rt+6}L${ws[1]} ${rt+6}L${ws[3]} ${bt-2}L${ws[2]} ${bt-2}Z`,'#2C3E50');const WSD=`M${ws[0]} ${rt+6}L${ws[1]} ${rt+6}L${ws[3]} ${bt-2}L${ws[2]} ${bt-2}Z`;
+  const hx=100+W*.2,hy=bt-22,px=100-W*.2;
+  if(c.pass){add(ci(px,hy,8),c.sk2);add(`M${px-8} ${hy-2}q8 -12 16 0z`,c.hr2);add(rr(px-11,hy+8,22,14,5),c.sh2);add(`M${px-8} ${hy+9}L${px+7} ${hy+21}`,null,{s:'#333',w:2.5});}
+  add(ci(hx,hy,9),c.sk);add(`M${hx-9} ${hy-2}q9 -14 18 0z`,c.hr);add(rr(hx-12,hy+9,24,15,5),c.sh);
+  if(c.off!=='belt')add(`M${hx+9} ${hy+10}L${hx-6} ${hy+24}`,null,{s:'#222',w:3});
+  if(c.off==='phone'){add(rr(hx+7,hy-8,5,11,1.5),'#111');add(ci(hx+10,hy+4,3.5),c.sk);add(`M${hx+10} ${hy+6}L${hx+9} ${hy+14}`,null,{s:c.sh,w:5});}
+  add(`M${ws[0]+8} ${rt+8}L${ws[0]+24} ${rt+8}L${ws[2]+28} ${bt-4}L${ws[2]+12} ${bt-4}Z`,'rgba(255,255,255,.13)',{glass:1});
+  add(rr(x0-6,bt-12,12,9,3),c.dk);add(rr(x1-6,bt-12,12,9,3),c.dk);
+  add(rr(x0,bt,W,118-bt+6,14),c.col);add(rr(x0,bt,W,6,3),'rgba(255,255,255,.18)');
+  const ly=bt+10;
+  add(`M${x0+6} ${ly}h28l-4 11h-22z`,'#FAEEDA',{s:'#5F5E5A',w:1,lamp:[x0+20,ly+5]});
+  if(c.off==='phare'){add(`M${x1-6} ${ly}h-28l4 11h22z`,'#444441',{s:'#5F5E5A',w:1});add(`M${x1-26} ${ly+1}l5 4l-3 3l6 3M${x1-14} ${ly+1}l-3 5l5 4`,null,{s:'#B4B2A9',w:1});}
+  else add(`M${x1-6} ${ly}h-28l4 11h22z`,'#FAEEDA',{s:'#5F5E5A',w:1,lamp:[x1-20,ly+5]});
+  add(rr(76,ly,48,13,4),'#2C2C2A');add(ci(100,ly+6.5,4),'#B4B2A9');
+  add(rr(x0+4,110,W-8,12,5),c.dk);
+  add(rr(74,112,52,13,2),'#fff',{s:'#5F5E5A',w:.8});add(`M74 112h6v13h-6z`,'#185FA5');add(`M120 112h6v13h-6z`,'#185FA5');
+  if(c.off==='plaque'){add(el(94,119,14,6),'rgba(133,79,11,.9)');add(el(110,117,10,5),'rgba(99,56,6,.85)');add(el(86,115,6,3),'rgba(99,56,6,.8)');}
+  const out=P.map(p=>Object.assign(p,{path:new Path2D(p.d)}));out.ws=new Path2D(WSD);return out;}
+function testControle(title,t,done){
+  const DUR=50,NIGHT=(()=>{const h=new Date().getHours();return h>=20||h<7;})();
+  sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : les voitures arrivent face à toi. Repère les infractions visibles (📱 téléphone, ceinture, phare cassé, plaque illisible) et <b>arrête</b> le véhicule. Une voiture qui zigzague ? Arrête-la et fais souffler 🍺. Tu peux aussi faire un contrôle au hasard : vérifie les papiers (date, plaque, catégorie de permis). Objectif : ${t[1]} infractions en ${DUR} s.${NIGHT?' 🌙 Contrôle de nuit !':''}</p>
+    <div style="position:relative"><canvas id="ctC" style="width:100%;height:400px;border-radius:16px;touch-action:none;display:block;background:#85B7EB"></canvas>
+    <div id="ctDoc" style="display:none;position:absolute;inset:0;border-radius:16px;background:rgba(20,22,28,.94);padding:10px;overflow:auto"></div>
+    <button class="primary" id="ctGo" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:12px 26px">🚧 Mettre en place</button></div>
+    <div class="row" id="ctBtns" style="gap:8px;margin-top:8px"><button class="cancel" id="ctPass" style="flex:1;margin:0">Laisser passer</button><button class="primary" id="ctStop" style="flex:1;margin:0;background:#a32d2d">🛑 Arrêter</button></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="ctT">⏱ ${DUR} s</span><span id="ctS">🚨 0 infraction</span></div>`,true);
+  const C=$('ctC'),dpr=window.devicePixelRatio||1,W=C.clientWidth||330,HH=400;C.width=W*dpr;C.height=HH*dpr;const g=C.getContext('2d');g.scale(dpr,dpr);
+  const rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)],cl=(x,a,b)=>x<a?a:x>b?b:x;
+  let run=false,fin=false,paused=false,last=0,acc=0,left=DUR,score=0,errs=0,fx=[],msg='',msgT=0,T=0,car=null,next=.3,nCar=0,lvl=0;
+  const say=(m,d)=>{msg=m;msgT=d||1.4;};
+  const setS=()=>{$('ctS').textContent=`🚨 ${score} infraction${score>1?'s':''}${errs?` · ❌ ${errs}`:''}`;};
+  const end=()=>{if(fin)return;fin=true;$('ctDoc').style.display='none';setTimeout(()=>{if(C.isConnected)done(score,score>=t[1]);},800);};
+  const pop=(txt,c)=>fx.push({x:W/2,y:HH*.45,txt,c:c||'#fff',l:1.2});
+  const now=new Date(),D2=n=>String(n).padStart(2,'0'),fmt=d=>`${D2(d.getDate())}/${D2(d.getMonth()+1)}/${d.getFullYear()}`,addD=n=>new Date(now.getTime()+n*864e5);
+  const MODELS=[{n:'Citadine',w:.96,h:0},{n:'Citadine',w:1,h:2},{n:'Berline',w:1.05,h:-4},{n:'Break',w:1.04,h:0},{n:'SUV',w:1.08,h:8},{n:'Utilitaire',w:1.1,h:22,van:1}];
+  const COLS=[['#C0392B','#922B21'],['#1F2A36','#121A22'],['#ECEFF1','#B0BEC5'],['#7F8C8D','#5D6D6E'],['#2E86C1','#1F618D'],['#F1C40F','#B7950B'],['#27AE60','#1E8449'],['#8E44AD','#6C3483'],['#D35400','#A04000'],['#F4F6F7','#C8CED3']];
+  const SK=['#F5C4B3','#E0A882','#B9805A','#F2D0B8','#8D5A3B'],HR=['#633806','#2C2C2A','#BA7517','#888780','#E8D9A8'],SH=['#534AB7','#185FA5','#993C1D','#3B6D11','#444441','#D4537E'];
+  const NOMS=['MARTIN','BERNARD','DUBOIS','THOMAS','ROBERT','RICHARD','PETIT','DURAND','LEROY','MOREAU','SIMON','LAURENT','MICHEL','GARCIA','DAVID','FOURNIER'],PRE=['Léa','Hugo','Emma','Lucas','Chloé','Nathan','Inès','Jules','Manon','Louis','Sarah','Théo'];
+  const L3='ABCDEFGHJKLMNPQRSTVWXYZ',plate=()=>`${pick(L3)}${pick(L3)}-${100+Math.floor(Math.random()*900)}-${pick(L3)}${pick(L3)}`;
+  function newCar(){nCar++;const m=pick(MODELS),co=pick(COLS),r=Math.random(),c={...m,col:co[0],dk:co[1],sk:pick(SK),hr:pick(HR),sh:pick(SH),sk2:pick(SK),hr2:pick(HR),sh2:pick(SH),pass:Math.random()<.35,z:0,x:-.3,st:'come',sp:rnd(.30,.36)+lvl*.06,plate:plate()};
+    c.off=r<.36?pick(['phone','belt','phare','plaque']):null;c.zig=!c.off&&r<.48;c.alc=c.zig?rnd(.42,.9):Math.random()<.04?rnd(.26,.4):0;
+    c.paper=!c.off&&!c.zig&&Math.random()<.38?pick(['assur','assurPl','cgPl','cat']):null;
+    c.nom=pick(NOMS);c.pre=pick(PRE);c.parts=ctrlCarParts(c);return c;}
+  /* ---- décor ---- */
+  const HZ=HH*.3,yZ=z=>HZ+(HH*.86-HZ)*Math.pow(z,1.35),sZ=z=>.07+.9*Math.pow(z,1.5),xRoad=(u,z)=>W*.5+u*(W*.08+W*.62*Math.pow(z,1.35));
+  function scene(){
+    g.fillStyle=NIGHT?'#0b1430':'#85B7EB';g.fillRect(0,0,W,HZ);g.fillStyle=NIGHT?'#1d2b4f':'#B5D4F4';g.fillRect(0,HZ*.7,W,HZ*.3);
+    if(NIGHT){g.fillStyle='rgba(255,255,255,.8)';for(let i=0;i<20;i++)g.fillRect((i*61+9)%W,(i*23)%(HZ*.6),1.5,1.5);}
+    g.fillStyle=NIGHT?'#141d2b':'#3B6D11';g.beginPath();g.moveTo(0,HZ);for(let x=0;x<=W;x+=W/7)g.lineTo(x,HZ-10-Math.abs(Math.sin(x*.03))*20);g.lineTo(W,HZ);g.fill();
+    g.fillStyle=NIGHT?'#1b2a17':'#639922';g.fillRect(0,HZ,W,HH-HZ);
+    g.fillStyle=NIGHT?'#2a2e35':'#5F5E5A';g.beginPath();g.moveTo(xRoad(-1,0),HZ);g.lineTo(xRoad(1,0),HZ);g.lineTo(xRoad(1,1.12),HH);g.lineTo(xRoad(-1,1.12),HH);g.fill();
+    g.fillStyle=NIGHT?'#3a3f47':'#888780';g.beginPath();g.moveTo(xRoad(-1,0),HZ);g.lineTo(xRoad(-1.35,0),HZ);g.lineTo(xRoad(-1.7,1.12),HH);g.lineTo(xRoad(-1,1.12),HH);g.fill();
+    g.strokeStyle='#f4f4f4';for(let k=0;k<9;k++){const z1=((k/9)+(T*.12)%(1/9))%1,z2=Math.min(1.1,z1+.04);g.lineWidth=1+5*z1;g.beginPath();g.moveTo(xRoad(-.02,z1),yZ(z1));g.lineTo(xRoad(-.02,z2),yZ(z2));g.stroke();}
+    for(const z of [.45,.6,.75,.9]){const x=xRoad(-1.12,z),y=yZ(z),s=sZ(z)*22;g.fillStyle='#D85A30';g.beginPath();g.moveTo(x-s*.35,y);g.lineTo(x,y-s);g.lineTo(x+s*.35,y);g.fill();g.fillStyle='#fff';g.fillRect(x-s*.17,y-s*.6,s*.34,s*.12);}
+    const vx=W*.15,vy=HH*.42;g.fillStyle='#0C447C';g.beginPath();g.roundRect(vx-34,vy-20,68,40,7);g.fill();g.fillStyle='#185FA5';g.beginPath();g.roundRect(vx-26,vy-32,52,18,5);g.fill();g.fillStyle=NIGHT?'#1d2b4f':'#B5D4F4';g.fillRect(vx-22,vy-29,44,12);
+    g.fillStyle='#85B7EB';g.fillRect(vx-34,vy-2,68,5);g.fillStyle='#fff';g.fillRect(vx-34,vy+3,68,2);g.fillStyle='#2C2C2A';g.fillRect(vx-30,vy+19,12,7);g.fillRect(vx+18,vy+19,12,7);
+    const bl=Math.floor(T*4)%2;g.fillStyle='#378ADD';g.fillRect(vx-16,vy-38,10,6);g.fillRect(vx+6,vy-38,10,6);g.fillStyle=`rgba(55,138,221,${NIGHT?.5:.3})`;g.beginPath();g.arc(bl?vx-11:vx+11,vy-36,NIGHT?22:12,0,7);g.fill();
+}
+  function front(){const gx=W*.075,gy=HH*.97;g.fillStyle='#0C447C';g.fillRect(gx-10,gy-34,9,34);g.fillRect(gx+1,gy-34,9,34);g.fillStyle='#FAC775';g.beginPath();g.roundRect(gx-15,gy-78,30,46,8);g.fill();g.fillStyle='#D3D1C7';g.fillRect(gx-15,gy-62,30,4);g.fillRect(gx-15,gy-50,30,4);
+    g.fillStyle='#F5C4B3';g.beginPath();g.arc(gx,gy-88,10,0,7);g.fill();g.fillStyle='#185FA5';g.beginPath();g.roundRect(gx-11,gy-101,22,9,3);g.fill();g.fillStyle='#0C447C';g.fillRect(gx-12,gy-94,24,4);
+    const raise=car&&car.st==='stop'?1:0;g.strokeStyle='#FAC775';g.lineWidth=7;g.lineCap='round';g.beginPath();g.moveTo(gx+13,gy-70);g.lineTo(gx+30,raise?gy-100:gy-82);g.stroke();g.lineCap='butt';
+    g.strokeStyle='#444';g.lineWidth=2.5;g.beginPath();g.moveTo(gx+31,raise?gy-102:gy-84);g.lineTo(gx+40,raise?gy-122:gy-100);g.stroke();
+    g.fillStyle='#E24B4A';g.strokeStyle='#fff';g.lineWidth=2.5;g.beginPath();g.arc(gx+44,raise?gy-134:gy-110,14,0,7);g.fill();g.stroke();g.fillStyle='#fff';g.font='bold 9px sans-serif';g.textAlign='center';g.fillText('STOP',gx+44,raise?gy-131:gy-107);}
+  function drawCar(c){const z=c.z,s=sZ(z),k=s*1.1,cxp=xRoad(c.x,z)+(c.zig?Math.sin(T*2.6)*W*.06*z:0),by=yZ(z);
+    g.save();g.translate(cxp,by);if(c.zig)g.rotate(Math.sin(T*2.6+.6)*.09);g.scale(k,k);g.translate(-100,-140);
+    for(const p of c.parts){if(p.f){g.fillStyle=p.f;g.fill(p.path);}if(p.s){g.strokeStyle=p.s;g.lineWidth=p.w||1;g.stroke(p.path);}}
+    if(NIGHT){g.fillStyle='rgba(5,10,25,.5)';g.fill(c.parts.ws);}
+    g.fillStyle='#2C2C2A';g.font='bold 9px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(c.off==='plaque'?'':c.plate,100,118.5);g.textBaseline='alphabetic';
+    if(c.off==='plaque'){g.fillStyle='rgba(44,44,42,.35)';g.fillText(c.plate.replace(/[0-9A-Z]/g,(m,i)=>i%2?'?':m),100,122);}
+    if(NIGHT)for(const p of c.parts)if(p.lamp){g.fillStyle='rgba(255,240,190,.35)';g.beginPath();g.arc(p.lamp[0],p.lamp[1],18,0,7);g.fill();g.fillStyle='rgba(255,250,225,.9)';g.beginPath();g.arc(p.lamp[0],p.lamp[1],6,0,7);g.fill();}
+    g.restore();}
+  /* ---- contrôle des papiers ---- */
+  function docs(c){paused=true;const D=$('ctDoc');D.style.display='block';$('ctBtns').style.visibility='hidden';
+    const vp=c.plate,cgPl=c.paper==='cgPl'?plate():vp,asPl=c.paper==='assurPl'?plate():vp,asEnd=c.paper==='assur'?addD(-Math.floor(rnd(3,60))):addD(Math.floor(rnd(20,300))),asStart=new Date(asEnd.getTime()-365*864e5),cat=c.paper==='cat'?'A':pick(['B','B','AM, B','A, B']),perm=2008+Math.floor(Math.random()*16);
+    let tested=false;
+    const card=(bg,hd,ht,body)=>`<div style="background:${bg};border-radius:10px;padding:0 0 8px;margin-bottom:8px;color:#222;font-size:12.5px;line-height:1.45"><div style="background:${hd};border-radius:10px 10px 0 0;padding:4px 10px;font-weight:700;font-size:11.5px;color:${ht}">${body[0]}</div><div style="padding:6px 10px 0">${body[1]}</div></div>`;
+    D.innerHTML=`<div style="color:#fff;font-size:12.5px;margin-bottom:6px;display:flex;justify-content:space-between"><span>🚗 Véhicule : <b style="background:#fff;color:#222;padding:1px 6px;border-radius:3px;border-left:5px solid #185FA5">${vp}</b></span><span>📅 ${fmt(now)}</span></div>
+      <div style="color:#ddd;font-size:12px;margin-bottom:8px">« Bonjour, contrôle routier. Vos papiers, s'il vous plaît. » ${c.zig?'<i>Le conducteur sent l\'alcool…</i>':''}</div>
+      ${card('#F4C0D1','#ED93B1','#4B1528',['🪪 PERMIS DE CONDUIRE',`<b>${c.nom}</b> ${c.pre}<br>Catégorie(s) : <b>${cat}</b> · délivré en ${perm}`])}
+      ${card('#FAEEDA','#FAC775','#412402',['📄 CERTIFICAT D\'IMMATRICULATION',`Immatriculation : <b>${cgPl}</b><br>${c.n} · titulaire : ${c.nom} ${c.pre[0]}.`])}
+      ${card('#E6F1FB','#85B7EB','#042C53',['🛡️ ATTESTATION D\'ASSURANCE',`Véhicule : <b>${asPl}</b><br>Du ${fmt(asStart)} au <b>${fmt(asEnd)}</b>`])}
+      <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px"><button id="ctAlc" style="flex:1;background:#444441;color:#fff;border:0;border-radius:10px;padding:9px;font-weight:600">🍺 Faire souffler</button><span id="ctAlcR" style="color:#fff;font-weight:700;min-width:96px;text-align:center">—</span></div>
+      <div style="display:flex;gap:8px"><button id="ctOk" style="flex:1;background:#EAF3DE;color:#27500A;border:0;border-radius:12px;padding:10px;font-weight:700">✅ En règle</button><button id="ctInf" class="primary" style="flex:1;background:#a32d2d">🚨 Infraction</button></div>`;
+    $('ctAlc').onclick=()=>{if(tested)return;tested=true;$('ctAlcR').textContent='⏳ souffle…';setTimeout(()=>{if(!$('ctAlcR'))return;const v=c.alc;$('ctAlcR').innerHTML=v>=.25?`<span style="color:#ff6b6b">${v.toFixed(2).replace('.',',')} mg/L</span>`:`<span style="color:#7CFC9A">0,00 mg/L</span>`;},1300);};
+    const fault=!!c.paper||c.alc>=.25;
+    const fin2=inf=>{D.style.display='none';$('ctBtns').style.visibility='visible';paused=false;c.st='go';
+      if(inf&&fault){score++;sfx('ding');pop(c.alc>=.25?'🍺 Alcoolémie relevée !':'📄 Infraction relevée !','#7CFC9A');}
+      else if(inf&&!fault){score=Math.max(0,score-1);errs++;sfx('fail');pop('Tout était en règle ! −1','#ff6b6b');}
+      else if(!inf&&fault){errs++;score=Math.max(0,score-1);sfx('fail');pop(c.alc>=.25&&!tested?'Il avait bu… −1':'Une infraction t\'a échappé −1','#ff6b6b');}
+      else pop('Bonne route !','#fff');setS();};
+    $('ctOk').onclick=()=>fin2(false);$('ctInf').onclick=()=>fin2(true);}
+  const stop=()=>{if(!run||fin||paused||!car||car.st!=='come'||car.z<.18)return;car.st='stop';sfx('whistle');};
+  const pass=()=>{if(!run||fin||paused||!car||car.st!=='come')return;car.st='pass';};
+  $('ctStop').onclick=stop;$('ctPass').onclick=pass;
+  C.addEventListener('pointerdown',e=>{e.preventDefault();});
+  const loop=nw=>{if(!C.isConnected)return;const dt=Math.min(.05,(nw-last)/1000||0);last=nw;T+=dt;
+    if(run&&!fin){acc+=dt;if(acc>=1){acc-=1;left--;$('ctT').textContent=`⏱ ${left} s`;if(left<=0)end();}lvl=cl((DUR-left)/DUR,0,1);
+      if(!paused){if(!car){next-=dt;if(next<=0)car=newCar();}
+        else{const c=car;
+          if(c.st==='come'){c.z+=c.sp*dt*(c.z<.2?1.6:1);if(c.z>=1.02){c.st='gone';if(c.off){errs++;score=Math.max(0,score-1);setS();sfx('fail');pop({phone:'📱 Téléphone au volant',belt:'Pas de ceinture',phare:'Phare cassé',plaque:'Plaque illisible'}[c.off]+' : raté −1','#ff6b6b');}else if(c.zig){errs++;score=Math.max(0,score-1);setS();sfx('fail');pop('Il zigzaguait… −1','#ff6b6b');}}}
+          else if(c.st==='pass'){c.z+=dt*1.4;if(c.z>=1.02){c.st='gone';if(c.off){errs++;score=Math.max(0,score-1);setS();sfx('fail');pop('Infraction laissée passer −1','#ff6b6b');}}}
+          else if(c.st==='stop'){c.z+=(.82-c.z)*Math.min(1,dt*3);c.x+=(-.5-c.x)*Math.min(1,dt*2.5);if(Math.abs(c.z-.82)<.02){
+              if(c.off){c.st='go';score++;setS();sfx('ding');pop({phone:'📱 Téléphone au volant',belt:'🔗 Défaut de ceinture',phare:'💡 Feu défectueux',plaque:'🔢 Plaque illisible'}[c.off]+' : relevé !','#7CFC9A');}
+              else docs(c);}}
+          else if(c.st==='go'){c.z+=dt*.9;c.x+=dt*.25;if(c.z>1.35)c.st='gone';}
+          if(c.st==='gone'){car=null;next=rnd(.25,.6);}}}}
+    scene();if(car)drawCar(car);front();
+    if(NIGHT){g.fillStyle='rgba(5,10,30,.35)';g.fillRect(0,0,W,HZ);}
+    fx.forEach(f=>{f.l-=dt;f.y-=dt*22;g.globalAlpha=Math.max(0,Math.min(1,f.l));g.font='bold 14px sans-serif';const w=g.measureText(f.txt).width+16;g.fillStyle='rgba(0,0,0,.6)';g.beginPath();g.roundRect(f.x-w/2,f.y-17,w,24,8);g.fill();g.fillStyle=f.c;g.textAlign='center';g.fillText(f.txt,f.x,f.y);g.globalAlpha=1;});fx=fx.filter(f=>f.l>0);
+    requestAnimationFrame(loop);};
+  requestAnimationFrame(loop);
+  $('ctGo').onclick=()=>{$('ctGo').remove();run=true;last=performance.now();};
+  window.__ct=()=>({car:car&&{z:car.z,st:car.st,off:car.off,zig:car.zig,paper:car.paper,alc:car.alc},paused,score,errs,left});
+}
 function matchIntro(C,g,W,HH,title,mission,done){
   const S=W/360,oy=(HH-220*S)/2;let t0=performance.now(),stop=false,whistled=false;
   const fans=Array.from({length:44},(_,i)=>({x:Math.random()*360,y:182+Math.random()*30,v:10+Math.random()*12,c:['#e74c3c','#3498db','#f1c40f','#ecf0f1'][i%4]}));
@@ -3826,7 +3960,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795814900';
+const BUILD_ID='1795819359';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3840,8 +3974,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.19.3', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.20', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.20',d:'28 novembre',items:[['🚧','Contrôle routier','Nouveau mini-jeu depuis 🚓 Patrouille (en GD et pour les GAV) : repère au volant téléphone, ceinture, phare cassé, plaque illisible ou conduite en zigzag, arrête le véhicule et vérifie les papiers (date d\'assurance, plaque, catégorie de permis) et l\'éthylotest. Une fois toutes les 3 h, gros bonus à la clé. De nuit, c\'est plus dur !']]},
  {v:'1.19',d:'27 novembre',items:[['❄️','Épisode neigeux','Nouvel événement d\'hiver : routes fermées, chasse-neige de sortie. Mission : place tes 2 barrières au bon endroit pour faire demi-tour aux voitures, sans bloquer le chasse-neige.'],['🛍️','Soldes d\'hiver','Pendant la vraie période des soldes : au centre de supervision, repère les pickpockets sur 4 caméras… sans confondre avec ceux qui fouillent leur propre sac.'],['🖤','Et de l\'autre côté…','Bonshommes de neige militants sous le nez de la patrouille, et affiches « Stop conso » sur les vitrines des grandes enseignes, quand le vigile a le dos tourné.',1]]},
  {v:'1.18',d:'27 novembre',items:[['⚔️','La guerre des camps','Gendarmes contre rebelles, chaque semaine ! Missions, épreuves, événements et duels rapportent des points à ton camp. On compare la moyenne par joueur. Le camp vainqueur gagne un bonus et un trophée le lundi.',1],['🎯','Les duels','Défie un joueur de l\'autre camp depuis la caserne (onglet ⚔️) : vous jouez la même épreuve avec le même tirage, chacun dans son rôle. Le meilleur gagne 20 points pour son camp.',1],['🚨','Avis de recherche','Les rebelles les plus connus (réputation 50+) sont affichés aux gendarmes. Un rebelle battu en duel est interpellé : réputation −6 !',1]]},
  {v:'1.17.24',d:'27 novembre',items:[['🎨','Tags en mini-jeu','Repasse le pochoir du doigt avant que la patrouille n\'arrive : plus c\'est propre, plus ça rapporte (et moins on se fait prendre).',1],['🏳️','Banderoles en mini-jeu','Peins le slogan lettre par lettre, dans l\'ordre et sans faute, avant la fin du temps.',1]]},
