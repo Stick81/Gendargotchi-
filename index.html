@@ -3020,7 +3020,7 @@ const nevOK=(k,prev,ts)=>!NEV[k].fixed&&(!NEV[k].realOnly||nevReal(NEV[k],ts))&&
 function nevPick(n,prev){const ts=nevStart(n),real=NEV_K.filter(k=>!NEV[k].fixed&&nevReal(NEV[k],ts));
   if(real.length&&nevHash(n*7+3)<.45){const k=real[Math.floor(nevHash(n*13+5)*real.length)];if(nevOK(k,prev,ts))return k;}
   for(let o=0;o<NEV_K.length*2;o++){const k=nevBase(n+o);if(nevOK(k,prev,ts))return k;}return 'froid';}
-const NEV_PIN={5928:'match',5929:'crue',5930:'froid',5931:'sommet',5932:'crue',5933:'noel',5934:'froid',5935:'crue',5936:'noel',5937:'match',5938:'sommet',5939:'neige'};/* créneaux déjà annoncés */
+const NEV_PIN={5928:'match',5929:'crue',5930:'froid',5931:'sommet',5932:'crue',5933:'noel',5934:'froid',5935:'crue',5936:'noel',5937:'match',5938:'sommet',5939:'neige',5952:'soldes',5956:'soldes'};/* créneaux déjà annoncés */
 function nevKind(n){if(NEV_PIN[n])return NEV_PIN[n];if(n<NEV_N0)return nevBase(n);if(NEV_MEMO[n])return NEV_MEMO[n];
   let s=NEV_N0;while(NEV_MEMO[s]&&s<n)s++;
   for(let i=s;i<=n;i++){if(!NEV_MEMO[i])NEV_MEMO[i]=nevPick(i,[nevKind(i-1),nevKind(i-2),nevKind(i-3),nevKind(i-4)]);}return NEV_MEMO[n];}
@@ -3673,7 +3673,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795812166';
+const BUILD_ID='1795812368';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3687,7 +3687,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.19', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.19.1', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.19',d:'27 novembre',items:[['❄️','Épisode neigeux','Nouvel événement d\'hiver : routes fermées, chasse-neige de sortie. Mission : place tes 2 barrières au bon endroit pour faire demi-tour aux voitures, sans bloquer le chasse-neige.'],['🛍️','Soldes d\'hiver','Pendant la vraie période des soldes : au centre de supervision, repère les pickpockets sur 4 caméras… sans confondre avec ceux qui fouillent leur propre sac.'],['🖤','Et de l\'autre côté…','Bonshommes de neige militants sous le nez de la patrouille, et affiches « Stop conso » sur les vitrines des grandes enseignes, quand le vigile a le dos tourné.',1]]},
  {v:'1.18',d:'27 novembre',items:[['⚔️','La guerre des camps','Gendarmes contre rebelles, chaque semaine ! Missions, épreuves, événements et duels rapportent des points à ton camp. On compare la moyenne par joueur. Le camp vainqueur gagne un bonus et un trophée le lundi.',1],['🎯','Les duels','Défie un joueur de l\'autre camp depuis la caserne (onglet ⚔️) : vous jouez la même épreuve avec le même tirage, chacun dans son rôle. Le meilleur gagne 20 points pour son camp.',1],['🚨','Avis de recherche','Les rebelles les plus connus (réputation 50+) sont affichés aux gendarmes. Un rebelle battu en duel est interpellé : réputation −6 !',1]]},
