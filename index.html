@@ -1467,7 +1467,7 @@ function openGuide(){
   sec('🎓 Avancement en unité',`<p>Une commission tous les <b>${SBOARD_EVERY} jours</b> après l'affectation, ouverte <b>${SBOARD_HOURS} h</b>. Les instructions (📘) réussies sont comptées au total depuis l'affectation. En GD, la qualification <b>OPJ</b> est aussi exigée pour tous les grades à partir de MDL-chef.</p>`+
     tb(['Grade','Exp.','Disc.','Motiv.','Forme','Instr.','Ret.'],[1,2,3].map(k=>{const c=SPROMO[k];return [SGRADES[k],c.exp,c.disc,c.motiv,dash(c.forme),c.instr,c.ret];})))+
   sec('⭐ Spécialités & OPJ',`<p>Depuis 🎓 Carrière. Une seule spécialité par carrière, ${SPEC_DAYS_MIN} jours d'ancienneté minimum. En cas d'échec à une sélection : nouvelle tentative 24 h plus tard.</p>`+
-    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):' rép.'})`).join(' + ')]))+
+    tb(['Spécialité','Prérequis','Sélection'],Object.values(SPECS).map(sp=>[`${sp.e} ${sp.n} (${sp.sub})`,Object.entries(sp.req).map(([k,v])=>k==='srank'?SGRADES[v]:({forme:'Forme',disc:'Disc.',motiv:'Motiv.',moral:'Moral',exp:'Exp.'}[k])+' '+v).join(', '),sp.tests.map(t=>`${t[2]} (${t[1]}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):t[0]==='neige'?(t[3]==='reb'?' bonshommes':' voitures'):t[0]==='soldes'?(t[3]==='reb'?' affiches':' vols'):' rép.'})`).join(' + ')]))+
     `<p class="gnote">⚖️ <b>OPJ</b> (GD) : dès le grade de Gendarme, expérience ${OPJ_REQ.exp}, ${OPJ_REQ.instr} instructions réussies. Examen de 10 questions de procédure pénale, 7 bonnes réponses pour réussir (sinon 48 h d'attente). Débloque 🔎 Enquête. <b>En GD, l'OPJ est obligatoire pour passer MDL-chef.</b></p>`)+
   sec('🤝 Binôme (caserne)',`<p>Chacun fait sa part sous 24 h. Une activité par binôme et par jour.</p>`+
     tb(['Activité','Réussite','Exploit','Échec'],[['📚 Révision (5 questions chacun)','6/10 à deux : motivation +12, moral +6','10/10 : médaille','moins de 6 : moral −8, motivation −5'],['🏃 Sport (10 s de tapotage)',DUO_SPORT_GOAL+' rép. : forme +10, discipline +4','≥ '+DUO_SPORT_EXPLOIT+' : médaille','énergie −10, moral −6']])+
@@ -2935,9 +2935,9 @@ function runTests(title,tests,onEnd){
   let i=0,res=[];
   const next=()=>{if(i>=tests.length)return onEnd(res);const t=tests[i];
     const done=(score,ok)=>{res.push({name:t[2],score,ok});i++;
-      sfx(ok?'win':'fail');if(ok)campAdd(5,'epreuve');$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
+      sfx(ok?'win':'fail');if(ok)campAdd(5,'epreuve');$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):t[0]==='neige'?(t[3]==='reb'?' bonshommes':' voitures'):t[0]==='soldes'?(t[3]==='reb'?' affiches':' vols'):' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
       $('tNext').onclick=next;};
-    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='froid')testFroid(title,t,done);else if(t[0]==='crue')testCrue(title,t,done);else if(t[0]==='stade')testStade(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
+    if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='froid')testFroid(title,t,done);else if(t[0]==='crue')testCrue(title,t,done);else if(t[0]==='stade')testStade(title,t,done);else if(t[0]==='neige')testNeige(title,t,done);else if(t[0]==='soldes')testSoldes(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
   next();
 }
 function testTap(title,t,done){
@@ -3005,7 +3005,9 @@ const NEV={
  nouvelan:{e:'🎆',n:'Réveillon du Nouvel An',d:'La nuit la plus longue de l\'année pour les forces de l\'ordre.',real:[12,31,1,1],fixed:[12,31],m:{gav:['Prévention alcool au volant','quiz',3,'gd'],ecole:['Garde de la caserne au réveillon','tap',80],GD:['Contrôles d\'alcoolémie','cibles',7],GM:['Nuit de la Saint-Sylvestre','pave',10],GR:['Escorte des vœux officiels','tap',85],reb:['Pétards à minuit','tap',75]}},
  sommet:{e:'🌍',n:'Sommet international',d:'Des chefs d\'État arrivent : sécurité maximale.',m:{gav:['Filtrage des accès','quiz',3],ecole:['Exercice de protection rapprochée','cibles',6],GD:['Périmètre de sécurité','cibles',7],GM:['Face au contre-sommet','pave',10],GR:['Escorte des chefs d\'État','tap',90],reb:['Grand rassemblement du contre-sommet','tap',80]}},
  crue:{e:'🌊',n:'Inondations',d:'La rivière déborde : plan ORSEC déclenché.',m:{gav:['Évacuation en barque avec les pompiers','crue',9,'gend'],ecole:['Renfort plan ORSEC : évacuation','crue',11,'gend'],GD:['Évacuation des riverains en barque','crue',13,'gend'],GM:['Renfort sur la zone inondée','crue',13,'gend'],GR:['Évacuation en barque','crue',13,'gend'],reb:['Sacs de sable au squat','crue',12,'reb']}},
- match:{e:'⚽',n:'Jour de match',d:'Stade plein, supporters chauffés à blanc : tout le monde est mobilisé.',m:{gav:['Surveillance de la tribune','stade',12,'gend'],ecole:['Exercice en tribune','stade',15,'gend'],GD:['Sécurisation de la tribune','stade',18,'gend'],GM:['Sécurisation de la tribune','stade',18,'gend'],GR:['Sécurisation de la tribune d\'honneur','stade',18,'gend'],reb:['Fumigènes en tribune','stade',20,'reb']}}
+ match:{e:'⚽',n:'Jour de match',d:'Stade plein, supporters chauffés à blanc : tout le monde est mobilisé.',m:{gav:['Surveillance de la tribune','stade',12,'gend'],ecole:['Exercice en tribune','stade',15,'gend'],GD:['Sécurisation de la tribune','stade',18,'gend'],GM:['Sécurisation de la tribune','stade',18,'gend'],GR:['Sécurisation de la tribune d\'honneur','stade',18,'gend'],reb:['Fumigènes en tribune','stade',20,'reb']}},
+ neige:{e:'❄️',n:'Épisode neigeux',d:'Routes blanches, chasse-neige de sortie : le plan neige est déclenché.',real:[12,1,2,28],realOnly:1,m:{gav:['Fermeture de route avec la DIR','neige',8,'gend'],ecole:['Exercice plan neige','neige',10,'gend'],GD:['Fermeture des routes enneigées','neige',12,'gend'],GM:['Renfort plan neige','neige',12,'gend'],GR:['Fermeture du col','neige',12,'gend'],reb:['Bonhomme de neige militant','neige',5,'reb']}},
+ soldes:{e:'🛍️',n:'Soldes d\'hiver',d:'Ruée dans les magasins : foule, bonnes affaires… et pickpockets.',real:[1,13,2,9],realOnly:1,m:{gav:['Stage au centre de supervision de la mairie','soldes',9,'gend'],ecole:['Exercice de vidéoprotection','soldes',11,'gend'],GD:['Vidéoprotection du centre commercial','soldes',13,'gend'],GM:['Renfort vidéoprotection','soldes',13,'gend'],GR:['Vidéoprotection de la galerie','soldes',13,'gend'],reb:['Collage anti-conso','soldes',16,'reb']}}
 };
 const NEV_K=Object.keys(NEV),NEV_MON=4*D,NEV_LEN=48*H,NEV_SLOT=[11*H,4*D+11*H];// lun. et ven. 11 h UTC
 function nevHash(n){let t=(n*0x9E3779B1+0x6D2B79F5)>>>0;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}
@@ -3018,7 +3020,7 @@ const nevOK=(k,prev,ts)=>!NEV[k].fixed&&(!NEV[k].realOnly||nevReal(NEV[k],ts))&&
 function nevPick(n,prev){const ts=nevStart(n),real=NEV_K.filter(k=>!NEV[k].fixed&&nevReal(NEV[k],ts));
   if(real.length&&nevHash(n*7+3)<.45){const k=real[Math.floor(nevHash(n*13+5)*real.length)];if(nevOK(k,prev,ts))return k;}
   for(let o=0;o<NEV_K.length*2;o++){const k=nevBase(n+o);if(nevOK(k,prev,ts))return k;}return 'froid';}
-const NEV_PIN={5933:'noel',5934:'froid',5935:'crue',5936:'noel',5937:'match',5938:'sommet'};/* créneaux déjà annoncés */
+const NEV_PIN={5928:'match',5929:'crue',5930:'froid',5931:'sommet',5932:'crue',5933:'noel',5934:'froid',5935:'crue',5936:'noel',5937:'match',5938:'sommet',5939:'neige'};/* créneaux déjà annoncés */
 function nevKind(n){if(NEV_PIN[n])return NEV_PIN[n];if(n<NEV_N0)return nevBase(n);if(NEV_MEMO[n])return NEV_MEMO[n];
   let s=NEV_N0;while(NEV_MEMO[s]&&s<n)s++;
   for(let i=s;i<=n;i++){if(!NEV_MEMO[i])NEV_MEMO[i]=nevPick(i,[nevKind(i-1),nevKind(i-2),nevKind(i-3),nevKind(i-4)]);}return NEV_MEMO[n];}
@@ -3312,6 +3314,161 @@ function testCrue(title,t,done){
   $('crGo').onclick=()=>{$('crGo').remove();run=true;last=performance.now();};
   window.__cr=()=>({roofs,boat,logs,chain,score,W});
 }
+function testNeige(title,t,done){
+  const REB=t[3]==='reb',DUR=45;
+  sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : ${REB?'tapote vite pour rouler les boules de neige : 3 boules et la pancarte, et voilà un bonhomme militant ! Quand la patrouille 🔦 arrive, arrête de taper : si elle te voit, le bonhomme en cours est démoli.':'la neige tombe, les routes sont fermées. Tape sur une route pour y poser ou retirer une barrière 🚧 (tu n\'en as que 2). Les voitures font demi-tour devant une barrière… mais laisse passer le chasse-neige 🚜 !'} Objectif : ${t[1]} ${REB?'bonshommes':'voitures détournées'} en ${DUR} s.</p>
+    <div style="position:relative"><canvas id="ngC" style="width:100%;height:340px;border-radius:16px;touch-action:none;display:block;background:#e8f0f7"></canvas>
+    <button class="primary" id="ngGo" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:12px 26px">▶️ Commencer</button></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="ngT">⏱ ${DUR} s</span><span id="ngS">${REB?'⛄ 0 bonhomme':'🚧 0 voiture'}</span></div>`,true);
+  const C=$('ngC'),dpr=window.devicePixelRatio||1,W=C.clientWidth||330,HH=340;C.width=W*dpr;C.height=HH*dpr;const g=C.getContext('2d');g.scale(dpr,dpr);
+  const rnd=(a,b)=>a+Math.random()*(b-a);let run=false,fin=false,last=0,acc=0,left=DUR,score=0,fx=[],msg='',msgT=0,T=0;
+  const say=m=>{msg=m;msgT=1.4;};
+  const setS=()=>{$('ngS').textContent=REB?`⛄ ${score} bonhomme${score>1?'s':''}`:`🚧 ${score} voiture${score>1?'s':''}`;};
+  const pos=e=>{const b=C.getBoundingClientRect();return [(e.clientX-b.left)*W/b.width,(e.clientY-b.top)*HH/b.height];};
+  const end=()=>{if(fin)return;fin=true;setTimeout(()=>{if(C.isConnected)done(score,score>=t[1]);},700);};
+  const pop=(x,y,txt,c)=>fx.push({x,y,txt,c:c||'#fff',l:1});
+  const flakes=Array.from({length:40},()=>({x:Math.random()*W,y:Math.random()*HH,v:rnd(15,35),r:rnd(1,2.4)}));
+  const snow=dt=>{g.fillStyle='rgba(255,255,255,.9)';flakes.forEach(f=>{f.y+=f.v*dt;f.x+=Math.sin(T+f.y/30)*.3;if(f.y>HH){f.y=-4;f.x=Math.random()*W;}g.beginPath();g.arc(f.x,f.y,f.r,0,7);g.fill();});};
+  const msgDraw=dt=>{if(msgT>0){msgT-=dt;g.fillStyle='rgba(0,0,0,.6)';g.font='bold 13px sans-serif';const w=g.measureText(msg).width+16;g.fillRect(W/2-w/2,HH/2-14,w,26);g.fillStyle='#fff';g.textAlign='center';g.fillText(msg,W/2,HH/2+4);}};
+  const fxDraw=dt=>{fx.forEach(f=>{f.l-=dt;f.y-=dt*25;g.globalAlpha=Math.max(0,f.l);g.fillStyle=f.c;g.font='bold 15px sans-serif';g.textAlign='center';g.fillText(f.txt,f.x,f.y);g.globalAlpha=1;});fx=fx.filter(f=>f.l>0);};
+  const cx=W/2,cy=HH/2,RW=54,BD=RW/2+34,U=[[0,-1],[1,0],[0,1],[-1,0]],L=Math.max(W,HH)/2+20;
+  let bar=[false,false,false,false],cars=[],spawn=1,plows=0,miss=0;
+  let ball=0,prog=0,stun=0,pat={ph:'away',t:rnd(2.5,4)},built=[],cd=0;
+  const NEED=[6,5,5];
+  if(!REB){
+    C.addEventListener('pointerdown',e=>{e.preventDefault();if(!run||fin)return;const [x,y]=pos(e),dx=x-cx,dy=y-cy;if(Math.hypot(dx,dy)<RW/2)return;
+      const a=Math.abs(dx)>Math.abs(dy)?(dx>0?1:3):(dy>0?2:0);
+      if(bar[a]){bar[a]=false;}else if(bar.filter(Boolean).length>=2){say('Que 2 barrières : retires-en une !');}else{bar[a]=true;}});
+  } else {
+    C.addEventListener('pointerdown',e=>{e.preventDefault();if(!run||fin||stun>0||cd>0)return;cd=.07;
+      if(pat.ph==='scan'){stun=1.1;ball=0;prog=0;sfx('fail');say('🔦 Repéré ! Le bonhomme est démoli…');return;}
+      prog+=1/NEED[ball];pop(cx+rnd(-30,30),200,'❄️');
+      if(prog>=1){prog=0;ball++;if(ball>=3){ball=0;score++;setS();built.push(T);sfx('ding');say('⛄ Bonhomme militant terminé !');}}});
+  }
+  const carDraw=(c)=>{const [ux,uy]=U[c.arm],side=c.back?-1:1,ox=-uy*RW/4*side,oy=ux*RW/4*side;
+    const x=cx+ux*c.d+ox*(-1),y=cy+uy*c.d+oy*(-1);g.save();g.translate(x,y);g.rotate(Math.atan2(uy,ux)+(c.back?0:Math.PI));
+    if(c.plow){g.fillStyle='#ef8b1c';g.fillRect(-15,-10,30,20);g.fillStyle='#2b2b2b';g.fillRect(-4,-8,10,16);g.fillStyle='#ffd54f';g.fillRect(15,-13,5,26);g.fillStyle=Math.floor(T*6)%2?'#ffb300':'#7a5200';g.fillRect(-2,-3,4,6);}
+    else{g.fillStyle=c.col;g.fillRect(-12,-7,24,14);g.fillStyle='rgba(255,255,255,.55)';g.fillRect(2,-5,6,10);g.fillStyle='#fff';g.fillRect(-8,-6,6,12);}
+    g.restore();};
+  const loop=now=>{if(!C.isConnected)return;const dt=Math.min(.05,(now-last)/1000||0);last=now;T+=dt;
+    if(run&&!fin){acc+=dt;if(acc>=1){acc-=1;left--;$('ngT').textContent=`⏱ ${left} s`;if(left<=0)end();}}
+    const prog01=(DUR-left)/DUR;
+    if(!REB){
+      if(run&&!fin){spawn-=dt;if(spawn<=0){spawn=rnd(1.5,2.1)-prog01*.8;const pl=Math.random()<.16;const busy=cars.filter(c=>!c.back&&c.d>L-40).map(c=>c.arm);let arm=Math.floor(Math.random()*4);if(busy.includes(arm))arm=(arm+1)%4;
+          cars.push({arm,d:L,v:pl?38:rnd(48,62)+prog01*22,plow:pl,back:false,col:['#d63031','#0984e3','#00b894','#6c5ce7','#fdcb6e','#2d3436'][Math.floor(Math.random()*6)]});}
+        cars.forEach(c=>{if(c.back){c.d+=c.v*1.2*dt;return;}c.d-=c.v*dt;
+          if(bar[c.arm]&&c.d<=BD+16){if(c.plow){c.gone=1;score=Math.max(0,score-2);setS();sfx('fail');pop(cx+U[c.arm][0]*BD,cy+U[c.arm][1]*BD-14,'−2','#ff6b6b');say('Le chasse-neige est bloqué ! Ouvre-lui la route');}
+            else{c.back=true;score++;setS();pop(cx+U[c.arm][0]*BD,cy+U[c.arm][1]*BD-14,'+1','#2ecc71');}}
+          else if(!c.plow&&c.d<=RW/2+8){c.gone=1;miss++;sfx('fail');pop(cx,cy-20,'💥','#fff');say('Une voiture s\'est engagée sur la route enneigée !');}
+          else if(c.plow&&c.d<=-L){c.gone=1;}
+          else if(c.plow&&c.d<=0&&!c.ok){c.ok=1;plows++;score++;setS();pop(cx,cy-20,'🚜 +1','#ffd54f');}});
+        cars=cars.filter(c=>!c.gone&&c.d<L+30);}
+      g.fillStyle='#eef4fa';g.fillRect(0,0,W,HH);
+      g.fillStyle='#d6e2ec';for(let i=0;i<14;i++){g.beginPath();g.arc((i*67)%W,(i*41)%HH,18+(i%3)*6,0,7);g.fill();}
+      g.fillStyle='#9aa3ab';g.fillRect(cx-RW/2,0,RW,HH);g.fillRect(0,cy-RW/2,W,RW);
+      g.fillStyle='rgba(255,255,255,.55)';g.fillRect(cx-RW/2,0,6,HH);g.fillRect(cx+RW/2-6,0,6,HH);g.fillRect(0,cy-RW/2,W,6);g.fillRect(0,cy+RW/2-6,W,6);
+      g.strokeStyle='#fff';g.setLineDash([10,10]);g.lineWidth=2;g.beginPath();g.moveTo(cx,0);g.lineTo(cx,cy-RW/2);g.moveTo(cx,cy+RW/2);g.lineTo(cx,HH);g.moveTo(0,cy);g.lineTo(cx-RW/2,cy);g.moveTo(cx+RW/2,cy);g.lineTo(W,cy);g.stroke();g.setLineDash([]);
+      g.fillStyle='#fff';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText('ROUTE ENNEIGÉE',cx,cy+4);
+      U.forEach(([ux,uy],a)=>{const x=cx+ux*BD,y=cy+uy*BD;g.save();g.translate(x,y);if(ux)g.rotate(Math.PI/2);
+        if(bar[a]){for(let k=0;k<6;k++){g.fillStyle=k%2?'#fff':'#e53935';g.fillRect(-RW/2+k*RW/6,-5,RW/6,10);}g.fillStyle='#ffb300';g.beginPath();g.arc(-RW/2,-7,3,0,7);g.arc(RW/2,-7,3,0,7);g.fill();}
+        else{g.strokeStyle='rgba(255,255,255,.7)';g.setLineDash([4,4]);g.strokeRect(-RW/2+2,-5,RW-4,10);g.setLineDash([]);}g.restore();});
+      cars.forEach(carDraw);
+      g.fillStyle='rgba(0,0,0,.5)';g.fillRect(6,HH-24,140,18);g.fillStyle='#fff';g.font='bold 12px sans-serif';g.textAlign='left';g.fillText(`🚧 ${2-bar.filter(Boolean).length} barrière${bar.filter(Boolean).length<1?'s':''} en stock`,10,HH-11);
+      snow(dt);
+    } else {
+      if(run&&!fin){stun=Math.max(0,stun-dt);cd=Math.max(0,cd-dt);pat.t-=dt;
+        if(pat.t<=0){if(pat.ph==='away'){pat.ph='warn';pat.t=Math.max(.55,.9-prog01*.3);}else if(pat.ph==='warn'){pat.ph='scan';pat.t=rnd(1.3,2)+prog01*.4;}else{pat.ph='away';pat.t=rnd(2.2,3.6)-prog01*1;}}}
+      g.fillStyle='#1d2b4f';g.fillRect(0,0,W,HH);g.fillStyle='#fffbe6';g.beginPath();g.arc(W-40,40,14,0,7);g.fill();g.fillStyle='#1d2b4f';g.beginPath();g.arc(W-34,36,13,0,7);g.fill();
+      g.fillStyle='#2e3d63';g.fillRect(20,110,70,130);g.fillRect(W-110,90,90,150);g.fillStyle='#ffd27a';for(let i=0;i<3;i++){g.fillRect(30+i*20,130,10,12);g.fillRect(W-100+i*26,110,12,14);}
+      g.fillStyle='#f3f6fa';g.fillRect(0,240,W,HH-240);
+      built.forEach((b,i)=>{const x=18+i*24,y=HH-22;if(x>W-20)return;g.fillStyle='#fff';g.beginPath();g.arc(x,y,8,0,7);g.arc(x,y-11,6,0,7);g.arc(x,y-20,4,0,7);g.fill();g.fillStyle='#ff5fa2';g.fillRect(x+4,y-26,8,6);});
+      const sz=[30,22,15],by=[232,232-52,232-52-38];
+      for(let i=0;i<3;i++){const r=i<ball?sz[i]:i===ball?sz[i]*Math.max(.15,prog):0;if(!r)continue;g.fillStyle='#fff';g.strokeStyle='#c7d2dc';g.lineWidth=1.5;g.beginPath();g.arc(cx,by[i]+(i===ball?sz[i]-r:0),r,0,7);g.fill();g.stroke();}
+      if(ball===2&&prog>.7){g.fillStyle='#222';g.beginPath();g.arc(cx-5,by[2]-3,2,0,7);g.arc(cx+5,by[2]-3,2,0,7);g.fill();}
+      g.fillStyle='#151515';g.beginPath();g.ellipse(cx-70,230,10,14,0,0,7);g.fill();g.fillStyle='#f1c7a0';g.beginPath();g.arc(cx-70,210,7,0,7);g.fill();g.fillStyle='#ff5fa2';g.beginPath();g.arc(cx-70,208,7,Math.PI,0);g.fill();
+      if(stun>0){g.fillStyle='#fff';g.font='bold 14px sans-serif';g.textAlign='center';g.fillText('😵',cx-70,190);}
+      const gx=W-30,gy=222;
+      if(pat.ph!=='away'){g.fillStyle='#1b3a8c';g.beginPath();g.ellipse(gx,gy,10,15,0,0,7);g.fill();g.fillStyle='#f1c7a0';g.beginPath();g.arc(gx,gy-21,7,0,7);g.fill();g.fillStyle='#0d1b45';g.fillRect(gx-8,gy-30,16,5);
+        if(pat.ph==='warn'){g.fillStyle=Math.floor(T*8)%2?'#ffd54f':'#fff';g.font='bold 18px sans-serif';g.textAlign='center';g.fillText('🔦 !',gx-10,gy-40);}
+        else{g.fillStyle='rgba(255,240,170,.35)';g.beginPath();g.moveTo(gx-8,gy-14);g.lineTo(cx-110,150);g.lineTo(cx-110,250);g.closePath();g.fill();}}
+      g.fillStyle='rgba(0,0,0,.5)';g.fillRect(6,8,128,18);g.fillStyle='#fff';g.font='bold 12px sans-serif';g.textAlign='left';g.fillText(`⛄ boule ${ball+1}/3 · ${Math.round(prog*100)} %`,10,21);
+      snow(dt);
+    }
+    fxDraw(dt);msgDraw(dt);requestAnimationFrame(loop);};
+  requestAnimationFrame(loop);
+  $('ngGo').onclick=()=>{$('ngGo').remove();run=true;last=performance.now();};
+  window.__ng=()=>({cars,bar,score,pat,ball,prog,stun,miss,cx,cy,W});
+}
+function testSoldes(title,t,done){
+  const REB=t[3]==='reb',DUR=45;
+  sheet(`<h3>${title}</h3><p><b>${t[2]}</b> : ${REB?'les vitrines défilent : tape sur les grandes enseignes en soldes pour y coller une affiche « Stop conso ». Pas sur les petits commerces 🥖 ! Et ne colle pas quand le vigile 👀 regarde : 3 fois repéré et c\'est fini.':'tu es au centre de supervision. Surveille les 4 caméras et tape sur l\'écran où un pickpocket 🫳 plonge la main dans le sac d\'un client. Attention : quelqu\'un qui fouille son propre sac, ce n\'est pas un vol. Une fausse alerte coûte un point.'} Objectif : ${t[1]} ${REB?'affiches':'vols repérés'} en ${DUR} s.</p>
+    <div style="position:relative"><canvas id="soC" style="width:100%;height:340px;border-radius:16px;touch-action:none;display:block;background:#2b2b2b"></canvas>
+    <button class="primary" id="soGo" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:12px 26px">▶️ Commencer</button></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="soT">⏱ ${DUR} s</span><span id="soS">${REB?'📄 0 affiche':'🎥 0 vol'}</span></div>`,true);
+  const C=$('soC'),dpr=window.devicePixelRatio||1,W=C.clientWidth||330,HH=340;C.width=W*dpr;C.height=HH*dpr;const g=C.getContext('2d');g.scale(dpr,dpr);
+  const rnd=(a,b)=>a+Math.random()*(b-a);let run=false,fin=false,last=0,acc=0,left=DUR,score=0,fx=[],msg='',msgT=0,T=0;
+  const say=m=>{msg=m;msgT=1.4;};
+  const setS=()=>{$('soS').textContent=REB?`📄 ${score} affiche${score>1?'s':''}`:`🎥 ${score} vol${score>1?'s':''}`;};
+  const pos=e=>{const b=C.getBoundingClientRect();return [(e.clientX-b.left)*W/b.width,(e.clientY-b.top)*HH/b.height];};
+  const end=()=>{if(fin)return;fin=true;setTimeout(()=>{if(C.isConnected)done(score,score>=t[1]);},700);};
+  const pop=(x,y,txt,c)=>fx.push({x,y,txt,c:c||'#fff',l:1});
+  const msgDraw=dt=>{if(msgT>0){msgT-=dt;g.fillStyle='rgba(0,0,0,.65)';g.font='bold 13px sans-serif';const w=g.measureText(msg).width+16;g.fillRect(W/2-w/2,HH/2-14,w,26);g.fillStyle='#fff';g.textAlign='center';g.fillText(msg,W/2,HH/2+4);}};
+  const fxDraw=dt=>{fx.forEach(f=>{f.l-=dt;f.y-=dt*25;g.globalAlpha=Math.max(0,f.l);g.fillStyle=f.c;g.font='bold 15px sans-serif';g.textAlign='center';g.fillText(f.txt,f.x,f.y);g.globalAlpha=1;});fx=fx.filter(f=>f.l>0);};
+  const COL=['#e74c3c','#2e86c1','#f1c40f','#27ae60','#8e44ad','#e67e22'];
+  const pw=(W-12)/2,ph=(HH-12)/2,cams=[0,1,2,3].map(i=>({x:4+(i%2)*(pw+4),y:4+Math.floor(i/2)*(ph+4),ev:null,flash:0,fc:'',ppl:Array.from({length:3},(_,k)=>({x:rnd(15,pw-15),y:ph*.45+k*ph*.17,v:rnd(10,22)*(Math.random()<.5?-1:1),c:COL[Math.floor(Math.random()*6)],bag:Math.random()<.8}))}));
+  let next=1.2,miss=0,shops=[],off=0,vig={ph:'dos',t:rnd(1.8,3)},alert=0,stun=0;
+  const NAMES=['MÉGA-STORE','SOLD\'ISSIME','FASHION -70','HYPER PRIX','TOUT À -50','BIG DEAL'],PET=['Boulangerie','Fleuriste','Librairie','Cordonnier'];
+  const shopW=96,gap=26;
+  const addShop=x=>{const p=Math.random()<.28;shops.push({x,p,name:p?PET[Math.floor(Math.random()*4)]:NAMES[Math.floor(Math.random()*6)],done:false});};
+  if(REB){for(let x=20;x<W+shopW;x+=shopW+gap)addShop(x);}
+  C.addEventListener('pointerdown',e=>{e.preventDefault();if(!run||fin)return;const [x,y]=pos(e);
+    if(!REB){const c=cams.find(c=>x>=c.x&&x<=c.x+pw&&y>=c.y&&y<=c.y+ph);if(!c)return;
+      if(c.ev&&!c.ev.decoy&&!c.ev.hit){c.ev.hit=1;score++;setS();sfx('ding');c.flash=.6;c.fc='rgba(46,204,113,.35)';pop(c.x+pw/2,c.y+ph/2,'🚔 Vol repéré !','#7CFC9A');c.ev.t=Math.min(c.ev.t,.3);}
+      else if(!c.ev||!c.ev.hit){score=Math.max(0,score-1);setS();sfx('fail');c.flash=.6;c.fc='rgba(231,76,60,.35)';pop(c.x+pw/2,c.y+ph/2,c.ev&&c.ev.decoy?'C\'est son sac ! −1':'Fausse alerte −1','#ff6b6b');}}
+    else{if(stun>0||y<70||y>250)return;const s=shops.find(s=>x>=s.x&&x<=s.x+shopW&&!s.done);if(!s)return;
+      if(vig.ph==='face'){alert++;stun=1;sfx('fail');say(alert>=3?'👮 Le vigile t\'a attrapé !':`👀 Repéré par le vigile ! (${alert}/3)`);if(alert>=3)end();return;}
+      s.done=true;if(s.p){score=Math.max(0,score-1);setS();sfx('fail');pop(s.x+shopW/2,140,'Pas les petits commerces ! −1','#ff6b6b');}else{score++;setS();sfx('pop');pop(s.x+shopW/2,140,'+1','#7CFC9A');}}});
+  const human=(x,y,c,arm)=>{g.fillStyle=c;g.beginPath();g.ellipse(x,y,6,8,0,0,7);g.fill();g.fillStyle='#f1c7a0';g.beginPath();g.arc(x,y-11,4.5,0,7);g.fill();if(arm){g.strokeStyle='#f1c7a0';g.lineWidth=2.5;g.beginPath();g.moveTo(x,y-2);g.lineTo(arm[0],arm[1]);g.stroke();}};
+  const loop=now=>{if(!C.isConnected)return;const dt=Math.min(.05,(now-last)/1000||0);last=now;T+=dt;
+    if(run&&!fin){acc+=dt;if(acc>=1){acc-=1;left--;$('soT').textContent=`⏱ ${left} s`;if(left<=0)end();}}
+    const p01=(DUR-left)/DUR;
+    if(!REB){
+      if(run&&!fin){next-=dt;if(next<=0){next=rnd(1.3,2.1)-p01*.6;const free=cams.filter(c=>!c.ev);if(free.length){const c=free[Math.floor(Math.random()*free.length)],decoy=p01>.2&&Math.random()<.3,vi=Math.floor(Math.random()*3);
+            c.ev={decoy,v:vi,th:(vi+1+Math.floor(Math.random()*2))%3,t:rnd(1.9,2.3)-p01*.8,hit:0};}}
+        cams.forEach(c=>{c.flash=Math.max(0,c.flash-dt);if(c.ev){c.ev.t-=dt;if(c.ev.t<=0){if(!c.ev.decoy&&!c.ev.hit){miss++;pop(c.x+pw/2,c.y+ph/2,'Vol passé inaperçu…','#ffd54f');}c.ev=null;}}
+          c.ppl.forEach((p,k)=>{const ev=c.ev;if(ev&&!ev.decoy&&(k===ev.v))return;if(ev&&!ev.decoy&&k===ev.th){const v=c.ppl[ev.v],tx=v.x-14*Math.sign(v.v||1);p.x+=(tx-p.x)*Math.min(1,dt*6);p.y+=(v.y-p.y)*Math.min(1,dt*6);return;}if(ev&&ev.decoy&&k===ev.v)return;
+            p.x+=p.v*dt;if(p.x<10||p.x>pw-10){p.v*=-1;p.x=Math.max(10,Math.min(pw-10,p.x));}});});}
+      g.fillStyle='#1e1e1e';g.fillRect(0,0,W,HH);
+      cams.forEach((c,i)=>{g.save();g.translate(c.x,c.y);g.beginPath();g.rect(0,0,pw,ph);g.clip();
+        g.fillStyle='#4a4f55';g.fillRect(0,0,pw,ph);g.fillStyle='#5a6067';for(let k=0;k<pw;k+=24)g.fillRect(k,ph*.3,12,ph*.7);
+        g.fillStyle='#3a3f45';g.fillRect(0,0,pw,ph*.28);g.fillStyle='#e74c3c';g.fillRect(8,ph*.08,34,ph*.12);g.fillStyle='#fff';g.font='bold 8px sans-serif';g.textAlign='left';g.fillText('-50%',12,ph*.17);
+        c.ppl.forEach((p,k)=>{let arm=null;const ev=c.ev;
+          if(ev&&!ev.decoy&&k===ev.th){const v=c.ppl[ev.v];arm=[v.x+4*Math.sign(v.v||1)*-1,v.y+3];}
+          if(ev&&ev.decoy&&k===ev.v)arm=[p.x+7,p.y+4];
+          human(p.x,p.y,p.c,arm);if(p.bag||(ev&&(k===ev.v))){const bx=ev&&!ev.decoy&&k===ev.v?p.x-6*Math.sign(p.v||1):p.x+7;g.fillStyle='#6d4c2f';g.fillRect(bx-3.5,p.y,7,8);}});
+        g.fillStyle='#97C459';g.font='bold 10px monospace';g.textAlign='left';g.fillText(`CAM ${i+1}`,6,ph-6);g.fillStyle=Math.floor(T*2)%2?'#ff4d4d':'transparent';g.beginPath();g.arc(pw-10,10,3.5,0,7);g.fill();
+        g.fillStyle='rgba(255,255,255,.04)';for(let k=0;k<ph;k+=3)g.fillRect(0,k,pw,1);
+        if(c.flash>0){g.fillStyle=c.fc;g.fillRect(0,0,pw,ph);}g.restore();});
+    } else {
+      if(run&&!fin){stun=Math.max(0,stun-dt);const sp=62+p01*40;off+=sp*dt;shops.forEach(s=>s.x-=sp*dt);shops=shops.filter(s=>s.x>-shopW-10);const lx=shops.length?shops[shops.length-1].x:0;if(lx<W)addShop(lx+shopW+gap);
+        vig.t-=dt;if(vig.t<=0){if(vig.ph==='dos'){vig.ph='turn';vig.t=Math.max(.45,.7-p01*.25);}else if(vig.ph==='turn'){vig.ph='face';vig.t=rnd(1,1.7);}else{vig.ph='dos';vig.t=rnd(1.6,2.8)-p01*.7;}}}
+      g.fillStyle='#d8dde3';g.fillRect(0,0,W,HH);g.fillStyle='#bfc6ce';g.fillRect(0,250,W,HH-250);g.fillStyle='#a9b0b8';for(let k=-(off%40);k<W;k+=40)g.fillRect(k,262,24,4);
+      shops.forEach(s=>{g.fillStyle=s.p?'#5d8a4a':'#b03a2e';g.fillRect(s.x,70,shopW,24);g.fillStyle='#fff';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText(s.name,s.x+shopW/2,86);
+        g.fillStyle=s.p?'#f5e9d0':'#cfe4f5';g.fillRect(s.x,94,shopW,156);g.strokeStyle='#6b7680';g.lineWidth=2;g.strokeRect(s.x,94,shopW,156);
+        if(!s.p){g.fillStyle='#e74c3c';g.font='bold 18px sans-serif';g.fillText('-70%',s.x+shopW/2,130);}else{g.font='22px sans-serif';g.fillText(s.name==='Boulangerie'?'🥖':s.name==='Fleuriste'?'💐':s.name==='Librairie'?'📚':'👞',s.x+shopW/2,140);}
+        if(s.done){g.fillStyle='#fdf3d0';g.fillRect(s.x+22,150,52,64);g.strokeStyle='#8a6d3b';g.strokeRect(s.x+22,150,52,64);g.fillStyle='#2d2d2d';g.font='bold 10px sans-serif';g.fillText('STOP',s.x+48,176);g.fillText('CONSO',s.x+48,192);}});
+      const vx=W-34,vy=292;g.fillStyle='#222';g.beginPath();g.ellipse(vx,vy,11,16,0,0,7);g.fill();g.fillStyle='#f1c7a0';g.beginPath();g.arc(vx,vy-22,8,0,7);g.fill();
+      g.fillStyle='#fff';g.font='bold 7px sans-serif';g.textAlign='center';g.fillText('SÉCURITÉ',vx,vy+2);
+      if(vig.ph==='face'){g.fillStyle='#222';g.beginPath();g.arc(vx-3,vy-23,1.6,0,7);g.arc(vx+3,vy-23,1.6,0,7);g.fill();g.fillStyle='#ff4d4d';g.font='bold 13px sans-serif';g.fillText('👀',vx-30,vy-28);}
+      else{g.fillStyle='#3b2a1a';g.beginPath();g.arc(vx,vy-24,8,Math.PI,0);g.fill();if(vig.ph==='turn'){g.fillStyle=Math.floor(T*10)%2?'#ffd54f':'#fff';g.font='bold 16px sans-serif';g.fillText('!',vx-18,vy-28);}}
+      g.fillStyle='rgba(0,0,0,.55)';g.fillRect(6,8,136,18);g.fillStyle='#fff';g.font='bold 12px sans-serif';g.textAlign='left';g.fillText(`Vigile : ${vig.ph==='face'?'👀 regarde !':'de dos'}  ${'🚨'.repeat(alert)}`,10,21);
+      if(stun>0){g.fillStyle='rgba(255,0,0,.12)';g.fillRect(0,0,W,HH);}
+    }
+    fxDraw(dt);msgDraw(dt);requestAnimationFrame(loop);};
+  requestAnimationFrame(loop);
+  $('soGo').onclick=()=>{$('soGo').remove();run=true;last=performance.now();};
+  window.__so=()=>({cams,shops,vig,score,alert,stun,miss,pw,ph,W});
+}
 function matchIntro(C,g,W,HH,title,mission,done){
   const S=W/360,oy=(HH-220*S)/2;let t0=performance.now(),stop=false,whistled=false;
   const fans=Array.from({length:44},(_,i)=>({x:Math.random()*360,y:182+Math.random()*30,v:10+Math.random()*12,c:['#e74c3c','#3498db','#f1c40f','#ecf0f1'][i%4]}));
@@ -3516,7 +3673,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795811453';
+const BUILD_ID='1795812160';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3530,8 +3687,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.18.2', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.19', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.19',d:'27 novembre',items:[['❄️','Épisode neigeux','Nouvel événement d\'hiver : routes fermées, chasse-neige de sortie. Mission : place tes 2 barrières au bon endroit pour faire demi-tour aux voitures, sans bloquer le chasse-neige.'],['🛍️','Soldes d\'hiver','Pendant la vraie période des soldes : au centre de supervision, repère les pickpockets sur 4 caméras… sans confondre avec ceux qui fouillent leur propre sac.'],['🖤','Et de l\'autre côté…','Bonshommes de neige militants sous le nez de la patrouille, et affiches « Stop conso » sur les vitrines des grandes enseignes, quand le vigile a le dos tourné.',1]]},
  {v:'1.18',d:'27 novembre',items:[['⚔️','La guerre des camps','Gendarmes contre rebelles, chaque semaine ! Missions, épreuves, événements et duels rapportent des points à ton camp. On compare la moyenne par joueur. Le camp vainqueur gagne un bonus et un trophée le lundi.',1],['🎯','Les duels','Défie un joueur de l\'autre camp depuis la caserne (onglet ⚔️) : vous jouez la même épreuve avec le même tirage, chacun dans son rôle. Le meilleur gagne 20 points pour son camp.',1],['🚨','Avis de recherche','Les rebelles les plus connus (réputation 50+) sont affichés aux gendarmes. Un rebelle battu en duel est interpellé : réputation −6 !',1]]},
  {v:'1.17.24',d:'27 novembre',items:[['🎨','Tags en mini-jeu','Repasse le pochoir du doigt avant que la patrouille n\'arrive : plus c\'est propre, plus ça rapporte (et moins on se fait prendre).',1],['🏳️','Banderoles en mini-jeu','Peins le slogan lettre par lettre, dans l\'ordre et sans faute, avant la fin du temps.',1]]},
  {v:'1.17.21',d:'23 novembre',items:[['⚽','Jour de match revu','Une petite cinématique d\'arrivée au stade, puis une nouvelle mission en tribune : éteins les fumigènes et sépare les bagarres avant qu\'elles éclatent, sans embêter les supporters qui chantent.'],['🖤','Et de l\'autre côté…','Allume un maximum de fumigènes avec tes copains en tribune… sans te faire prendre dans le projecteur des stadiers.',1]]},
