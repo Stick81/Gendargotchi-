@@ -118,6 +118,7 @@
 
   .nevBar{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:9px 12px;border:0;border-radius:14px;color:#fff;text-align:left;background:linear-gradient(135deg,#1b3a8c,#3b6fd8 60%,#c8102e);box-shadow:0 3px 10px rgba(0,0,0,.25);font:inherit;cursor:pointer}
   .nevBar .ne{font-size:28px}.nevBar .nt{flex:1;display:flex;flex-direction:column;line-height:1.2}.nevBar .nt small{opacity:.9;font-size:12px}.nevBar .ng{background:rgba(255,255,255,.22);border-radius:10px;padding:3px 8px;font-weight:700;font-size:13px}
+  .campBar{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:8px 12px;border:0;border-radius:14px;color:#fff;text-align:left;background:linear-gradient(90deg,#1b3a8c,#3b2a4a 55%,#6b0f1f);font:inherit;cursor:pointer}.campBar>span:first-child{font-size:22px}.campBar .cb{flex:1;display:flex;flex-direction:column;line-height:1.2}.campBar .cb small{font-size:12px;opacity:.92}.campBar .ng{background:rgba(255,255,255,.2);border-radius:10px;padding:3px 8px;font-weight:700;font-size:12px}
   .nevHot{width:100%;margin:6px 0 0;padding:7px;border:0;border-radius:12px;background:#5a3a22;color:#fff;font:inherit;font-weight:600}.nevHot:disabled{opacity:.6}
   .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
   .actions.one{grid-template-columns:1fr}
@@ -250,6 +251,7 @@
     <div id="extras"></div>
   </div>
 
+  <div id="campBar" style="display:none"></div>
   <div id="nevBar" style="display:none"></div>
   <div id="cards" style="display:grid;gap:10px"></div>
   <div class="actions" id="actions"></div>
@@ -1328,7 +1330,7 @@ function render(){
       <div class="card"><h4>Carrière <span>Concours : ${ok}/5 critères</span></h4>${bars([['🔥','Motivation',s.motiv,'linear-gradient(90deg,#f3964b,#f3c74b)',REQ.motiv],['🏃','Forme',s.forme,'#4fd1c5',REQ.forme],['🎖️','Discipline',s.disc,'#9db4ff',REQ.disc],['📚','Révisions',s.comp,'#c49bff',0,1]])}</div>`;
   }
   $('cards').innerHTML=T(html);
-  renderActions();renderNev();
+  renderActions();renderNev();renderCamp();
   {const b=$('dailyBtn');if(b){const pend=dailyPending(s);b.style.boxShadow=pend?'0 0 0 2px #f3c74b':'';b.style.display=(st==='over'||st==='egg'&&!s.daily)?'none':'';}
    if(s.daily&&s.daily.pendingPopup&&$('home').classList.contains('hide')&&!$('sheet').classList.contains('show')&&st!=='over'){openDaily();}}
   // journal
@@ -1528,9 +1530,9 @@ function act(a){
     switch(a){
     case 'manif':if(s.energy<20)return toast('Trop fatigué pour défiler.');dailyEvent(s,'manif');s.nManif=(s.nManif||0)+1;if(s.nManif>=5)addMedal(s,'r_manif5');s.busyUntil=s.t+20*M;s.energy=clamp(s.energy-10);log(s,'📢 Il part manifester avec le groupe (20 min).');toast('En route pour la manif ! 📢');lastLook='';lastBg=null;save();render();return;
     case 'tag':if(cdA('tagc',1))return;return tagGame(v=>{tick();const ok=v>=80;if(risky(ok?.08:.22))return;s.nTag=(s.nTag||0)+1;if(s.nTag>=10)addMedal(s,'r_tag10');const r=v>=96?8:ok?5:2;s.rep=clamp((s.rep||0)+r);s.discr=clamp((s.discr||0)-(ok?8:14));s.tenue=clamp(s.tenue-6);fx('🎨',2);
-      log(s,`🎨 Tag ${v>=96?'parfait':ok?'réussi':'bâclé'} (${v} %) sur un mur du quartier. Réputation +${r}.`,ok?'good':'');sfx(ok?'win':'fail');sheet(`<h3>${v>=96?'🎨 Chef-d\'œuvre !':ok?'🎨 Tag réussi':'🎨 Tag bâclé…'}</h3><p>${v} % du pochoir. Réputation +${r}, discrétion −${ok?8:14}.</p><button class="primary" data-o="close">OK</button>`,true);save();render();});break;
+      if(ok)campAdd(4,'tag');log(s,`🎨 Tag ${v>=96?'parfait':ok?'réussi':'bâclé'} (${v} %) sur un mur du quartier. Réputation +${r}.`,ok?'good':'');sfx(ok?'win':'fail');sheet(`<h3>${v>=96?'🎨 Chef-d\'œuvre !':ok?'🎨 Tag réussi':'🎨 Tag bâclé…'}</h3><p>${v} % du pochoir. Réputation +${r}, discrétion −${ok?8:14}.</p><button class="primary" data-o="close">OK</button>`,true);save();render();});break;
     case 'banderole':if(cdA('banc',1))return;return banGame((ok,err)=>{tick();dailyEvent(s,'banderole');const r=ok?(err?3:5):1,m=ok?6:2;s.rep=clamp((s.rep||0)+r);s.motiv=clamp(s.motiv+m);s.energy=clamp(s.energy-6);fx('🏳️');sfx(ok?'win':'fail');
-      log(s,ok?`🏳️ Banderole peinte${err?'':' sans faute'} : réputation +${r}, rage +${m}.`:'🏳️ Banderole pas finie à temps…',ok?'good':'');sheet(`<h3>${ok?'🏳️ Banderole prête !':'🏳️ Pas fini à temps…'}</h3><p>Réputation +${r} · rage +${m}${ok&&!err?' · sans faute 👌':''}</p><button class="primary" data-o="close">OK</button>`,true);save();render();});
+      if(ok)campAdd(4,'banderole');log(s,ok?`🏳️ Banderole peinte${err?'':' sans faute'} : réputation +${r}, rage +${m}.`:'🏳️ Banderole pas finie à temps…',ok?'good':'');sheet(`<h3>${ok?'🏳️ Banderole prête !':'🏳️ Pas fini à temps…'}</h3><p>Réputation +${r} · rage +${m}${ok&&!err?' · sans faute 👌':''}</p><button class="primary" data-o="close">OK</button>`,true);save();render();});
     case 'reseaux':if(cdA('resc',2))return;if(risky(.06))return;s.rep=clamp((s.rep||0)+4);s.discr=clamp((s.discr||0)-6);fx('📱');log(s,'📱 Il poste des vidéos de manif : nouveaux abonnés, mais il se fait remarquer.');toast('Réputation +4… et pas que chez ses amis.');break;
     case 'cacher':if(cdA('cachc',3))return;s.discr=clamp((s.discr||0)+25);s.motiv=clamp(s.motiv-4);fx('🕶️');toast('Nouveau look, téléphone éteint : il se fait oublier.');break;
     case 'muscle':if(s.motiv<50)return toast('Pas assez de rage pour ça.');if(s.energy<30)return toast('Trop fatigué.');if(cool(s._musc||0,3))return toast('Trop tôt : les forces de l\'ordre sont encore sur les dents.');return fuiteGame();
@@ -2329,11 +2331,83 @@ async function loadSport(){
       <p class="sub" style="font-size:11.5px;margin-top:10px">Fais du sport avec ta recrue (bouton 🏃) pour entrer au classement.</p>`;
   }catch(e){$('casBody').innerHTML=`<p>${esc(errFr(e))}</p>`;}
 }
+/* ======================= GUERRE DES CAMPS ======================= */
+MEDALS.duel=['🚔','Interpellation en duel'];MEDAL_ART.duel={m:'silver',r:['#1b3a8c','#fff','#c8102e'],sym:'txt',t:'1V1'};
+MEDALS.camp=['🏆','Camp vainqueur'];MEDAL_ART.camp={m:'gold',r:['#1b3a8c','#fff','#1b3a8c'],sym:'star'};
+REBEL_T.r_duel=['😎','Pas vu, pas pris','Gagner un duel contre un gendarme.',{sym:'txt',t:'1V1'}];
+REBEL_T.r_camp=['🏴','Victoire du camp','Gagner la guerre des camps de la semaine avec l\'autre côté.',{sym:'star'}];
+for(const k of ['r_duel','r_camp']){const v=REBEL_T[k];MEDALS[k]=[v[0],v[1]];MEDAL_ART[k]=Object.assign({m:'black',r:['#111','#c8102e','#111']},v[3]);}
+const campSide=s=>!s?null:s.stage==='autre'?'reb':['gav','ecole','service','choix','affect'].includes(s.stage)?'gend':null;
+const CAMP_NAME={gend:'👮 Gendarmes',reb:'🖤 Rebelles'};
+let campB=null,campDefis=[],campBusy=false;
+async function campAdd(pts,reason){const side=campSide(S);if(!ME||!ME.pseudo||!side||!pts)return;try{await rpc('camp_add',{p_id:ME.id,p_secret:ME.secret,p_side:side,p_pts:Math.min(30,Math.round(pts)),p_reason:reason||''});campKey='';}catch(e){}}
+const campAvg=(B,lw)=>lw?[B.lw_gend/B.lwn_gend,B.lw_reb/B.lwn_reb]:[B.gend/B.n_gend,B.reb/B.n_reb];
+async function campSync(){if(campBusy||!S)return;campBusy=true;try{
+  const {data}=await rpc('camp_board',{});campB=data;
+  if(ME&&ME.pseudo){const r=await rpc('defi_list',{p_id:ME.id,p_secret:ME.secret});campDefis=r.data||[];defiResults();}
+  // victoire de la semaine passée
+  const side=campSide(S);if(campB&&side&&(S.campClaim!==campB.last_week)&&(campB.lw_gend+campB.lw_reb)>0){const [g,r]=campAvg(campB,true);const win=g>r?'gend':r>g?'reb':null;S.campClaim=campB.last_week;
+    if(win===side){tick();S.moral=clamp(S.moral+10);if(side==='reb')S.rep=clamp((S.rep||0)+5);else S.motiv=clamp(S.motiv+10);addMedal(S,side==='reb'?'r_camp':'camp');log(S,`🏆 Ton camp a gagné la guerre des camps (${campB.last_week.split('-S')[1]}e semaine) ! Moral +10, ${side==='reb'?'réputation +5':'motivation +10'}.`,'good');toast('🏆 Ton camp a gagné la semaine dernière !');sfx('up');}
+    save();}
+}catch(e){}campBusy=false;campKey='';renderCamp();if(casTab==='camp'&&$('casBody')&&$('caserne')&&!$('caserne').classList.contains('hide'))loadCamp();}
+function defiResults(){const s=S;s.defiSeen=s.defiSeen||[];let msg=null;
+  campDefis.filter(d=>d.status==='done'&&!s.defiSeen.includes(d.id)).forEach(d=>{s.defiSeen.push(d.id);const other=d.mine?d.to_pseudo:d.from_pseudo,side=campSide(s);
+    if(d.winner===ME.pseudo){addMedal(s,side==='reb'?'r_duel':'duel');log(s,side==='reb'?`😎 Duel gagné contre ${other} : pas vu, pas pris !`:`🚔 Duel gagné : ${other} est interpellé !`,'good');msg=`⚔️ Duel gagné contre ${other} !`;}
+    else if(d.winner){if(side==='reb'){s.rep=clamp((s.rep||0)-6);log(s,`🚔 Interpellé par ${other} en duel : réputation −6.`,'bad');}else log(s,`⚔️ Duel perdu contre ${other}…`,'bad');msg=`⚔️ Duel perdu contre ${other}…`;}
+    else log(s,`⚔️ Duel nul contre ${other}.`);});
+  s.defiSeen=s.defiSeen.slice(-60);if(msg){toast(msg);save();}}
+let campKey='';
+function renderCamp(){const el=$('campBar');if(!el)return;const side=campSide(S);if(!side||!campB){el.style.display='none';return;}
+  const [g,r]=campAvg(campB).map(x=>Math.round(x)),inc=campDefis.filter(d=>d.status==='open'&&!d.mine).length,key=[g,r,inc,side].join('|');if(key===campKey)return;campKey=key;el.style.display='';
+  el.innerHTML=`<button class="campBar" data-cas-open="camp"><span>⚔️</span><span class="cb"><b>Guerre des camps</b><small>👮 ${g} – ${r} 🖤 <span style="opacity:.75">(moyenne par joueur)</span></small></span>${inc?`<span class="ng">🎯 ${inc} défi${inc>1?'s':''}</span>`:`<span class="ng">${side==='gend'?(g>=r?'👮 en tête':'à la traîne'):(r>=g?'🖤 en tête':'à la traîne')}</span>`}</button>`;}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-cas-open]');if(b){e.preventDefault();openCaserne(b.dataset.casOpen);return;}
+  const d=e.target.closest('[data-defi-to]');if(d){e.preventDefault();defiPick(d.dataset.defiTo);return;}
+  const a=e.target.closest('[data-defi-ans]');if(a){e.preventDefault();defiAnswer(+a.dataset.defiAns);return;}});
+async function loadCamp(){
+  if(!campB)try{campB=(await rpc('camp_board',{})).data;}catch(e){}
+  if(ME&&ME.pseudo)try{campDefis=(await rpc('defi_list',{p_id:ME.id,p_secret:ME.secret})).data||[];}catch(e){}
+  const B=campB;if(!B||!$('casBody'))return;const side=campSide(S),[g,r]=campAvg(B),[lg,lr]=campAvg(B,true);
+  const bar=(a,b)=>{const t=a+b||1;return `<div style="display:flex;height:14px;border-radius:8px;overflow:hidden;margin:6px 0"><div style="width:${a/t*100}%;background:#3b6fd8"></div><div style="width:${b/t*100}%;background:#c8102e"></div></div>`;};
+  const top=(arr)=>arr&&arr.length?arr.map((x,i)=>`${['🥇','🥈','🥉'][i]} ${esc(x.pseudo)} <small>(${x.pts})</small>`).join('<br>'):'<small>personne encore</small>';
+  const opp=(B.players||[]).filter(p=>side&&p.side&&p.side!==side&&p.pseudo!==ME.pseudo);
+  const wanted=(B.players||[]).filter(p=>p.side==='reb'&&p.rep>=50);
+  const incoming=campDefis.filter(d=>d.status==='open'&&!d.mine),mine=campDefis.filter(d=>d.status==='open'&&d.mine),done=campDefis.filter(d=>d.status!=='open').slice(0,6);
+  const K={stade:'⚽ Stade',marche:'🎄 Marché'};
+  $('casBody').innerHTML=`<p style="font-size:12.5px;margin:6px 0">Semaine ${(B.week||'').split('-S')[1]} · remise à zéro le lundi. Chaque mission, mini-jeu ou duel gagné rapporte des points à ton camp. On compare la <b>moyenne par joueur actif</b>.</p>
+    <div class="card" style="padding:10px"><div class="row" style="justify-content:space-between;font-weight:700"><span>👮 ${Math.round(g)}</span><span>${Math.round(r)} 🖤</span></div>${bar(g,r)}
+      <div class="row" style="justify-content:space-between;font-size:12px;opacity:.8"><span>${B.gend} pts · ${B.n_gend} joueurs</span><span>${B.reb} pts · ${B.n_reb} joueurs</span></div>
+      ${(B.lw_gend+B.lw_reb)?`<p style="font-size:12px;margin:6px 0 0">Semaine dernière : ${lg>lr?'👮 victoire des gendarmes':lr>lg?'🖤 victoire des rebelles':'égalité'} (${Math.round(lg)} – ${Math.round(lr)})</p>`:''}</div>
+    <div class="row" style="gap:10px;align-items:flex-start;margin-top:8px"><div style="flex:1"><b>👮 Top</b><br>${top(B.top_gend)}</div><div style="flex:1"><b>🖤 Top</b><br>${top(B.top_reb)}</div></div>
+    ${!ME||!ME.pseudo?'<p>Inscris-toi à la caserne pour participer.</p>':!side?'<p>Ta recrue ne fait partie d\'aucun camp pour le moment.</p>':`
+    ${incoming.length?`<h4 style="margin:14px 0 4px">🎯 Défis reçus</h4>${incoming.map(d=>`<div class="crit" style="grid-template-columns:1fr auto"><span><b>${esc(d.from_pseudo)}</b> te défie · ${K[d.kind]}<br><small>expire ${fmtDur(Math.max(0,new Date(d.created_at).getTime()+D-Date.now()))}</small></span><button class="primary" style="width:auto;padding:6px 12px" data-defi-ans="${d.id}">Relever</button></div>`).join('')}`:''}
+    ${side==='gend'?`<h4 style="margin:14px 0 4px">🚨 Avis de recherche</h4>${wanted.length?wanted.map(p=>`<div class="crit" style="grid-template-columns:1fr auto"><span><b>${esc(p.pseudo)}</b> <small>réputation ${p.rep}</small></span><button class="primary" style="width:auto;padding:6px 12px" data-defi-to="${esc(p.pseudo)}">Défier</button></div>`).join(''):'<p class="sub" style="font-size:12.5px">Aucun rebelle assez connu pour l\'instant (réputation 50+).</p>'}`:''}
+    <h4 style="margin:14px 0 4px">⚔️ Défier ${side==='gend'?'un rebelle':'un gendarme'}</h4>${opp.length?opp.map(p=>`<div class="crit" style="grid-template-columns:1fr auto"><span>${esc(p.pseudo)}<br><small>${esc(p.phase)}</small></span><button class="primary ghost" style="width:auto;padding:6px 12px" data-defi-to="${esc(p.pseudo)}"${mine.some(d=>d.to_pseudo===p.pseudo)?' disabled':''}>${mine.some(d=>d.to_pseudo===p.pseudo)?'En attente':'Défier'}</button></div>`).join(''):'<p class="sub" style="font-size:12.5px">Personne dans l\'autre camp cette semaine.</p>'}
+    ${done.length?`<h4 style="margin:14px 0 4px">📜 Derniers duels</h4>${done.map(d=>`<div style="font-size:12.5px;margin:3px 0">${K[d.kind]} · ${esc(d.from_pseudo)} vs ${esc(d.to_pseudo)} → ${d.status==='expired'?'⌛ expiré':d.winner?'🏆 '+esc(d.winner):'égalité'}</div>`).join('')}`:''}`}
+    <p class="sub" style="font-size:11.5px;margin-top:10px">Duel : vous jouez la même épreuve (même tirage), chacun dans son camp. Le meilleur score relatif gagne 20 points pour son camp. Un rebelle battu par un gendarme est interpellé (réputation −6).</p>`;
+}
+/* --- duels : même tirage pour les deux joueurs --- */
+function seeded(seed){let a=seed>>>0;return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+const DUEL_REF={stade:{gend:18,reb:20},marche:{gend:15,reb:30}};
+function duelPlay(kind,seed,title,cb){const side=campSide(S),mode=side==='reb'?'reb':'gend',ref=DUEL_REF[kind][mode];const R0=Math.random;Math.random=seeded(seed);
+  const name=kind==='stade'?(mode==='reb'?'Fumigènes en tribune':'Sécurisation de la tribune'):(mode==='reb'?'Tractage au marché':'Sécurisation du marché');
+  const t=[kind,ref,name,mode,'nointro'];const fin=(sc)=>{Math.random=R0;cb(Math.max(0,Math.min(5,sc/ref)),sc);};
+  if(kind==='stade')testStade(title,t,sc=>fin(sc));else testMarche(title,t,sc=>fin(sc));}
+function defiPick(to){sheet(`<h3>⚔️ Défier ${esc(to)}</h3><p>Choisis l'épreuve. Tu joues d'abord, ${esc(to)} aura 24 h pour faire mieux avec exactement le même tirage.</p>
+  <button class="primary" data-defi-go="stade">⚽ Stade</button><button class="primary" data-defi-go="marche">🎄 Marché de Noël</button><button class="cancel" data-o="close">Annuler</button>`,true);
+  $('panel').querySelectorAll('[data-defi-go]').forEach(b=>b.onclick=()=>{const kind=b.dataset.defiGo,seed=Math.floor(Math.random()*1e9);
+    duelPlay(kind,seed,`⚔️ Défi contre ${to}`,async(ratio,sc)=>{try{await rpc('defi_create',{p_id:ME.id,p_secret:ME.secret,p_to:to,p_kind:kind,p_seed:seed,p_score:ratio,p_side:campSide(S)});
+        sheet(`<h3>⚔️ Défi envoyé !</h3><p>Ton score : <b>${sc}</b> (${Math.round(ratio*100)} % de l'objectif). ${esc(to)} a 24 h pour te battre.</p><button class="primary" data-o="close">OK</button>`,true);campSync();}
+      catch(e){sheet(`<h3>Défi impossible</h3><p>${esc(errFr(e))}</p><button class="primary" data-o="close">OK</button>`,true);}});});}
+function defiAnswer(id){const d=campDefis.find(x=>x.id===id);if(!d)return;
+  duelPlay(d.kind,d.seed,`⚔️ Défi de ${d.from_pseudo}`,async(ratio,sc)=>{try{const {data}=await rpc('defi_answer',{p_id:ME.id,p_secret:ME.secret,p_defi:id,p_score:ratio});
+      const won=data.winner===ME.pseudo;sfx(won?'win':'fail');sheet(`<h3>${won?'🏆 Duel gagné !':data.winner?'😓 Duel perdu…':'🤝 Égalité'}</h3><p>Toi : <b>${Math.round(ratio*100)} %</b> · ${esc(d.from_pseudo)} : <b>${Math.round(data.from_score*100)} %</b> de l'objectif.</p>${won?'<p>+20 points pour ton camp !</p>':''}<button class="primary" data-o="close">OK</button>`,true);campSync();}
+    catch(e){sheet(`<h3>Défi impossible</h3><p>${esc(errFr(e))}</p><button class="primary" data-o="close">OK</button>`,true);}});}
+setInterval(()=>{if(!document.hidden&&S)campSync();},5*60000);setTimeout(()=>{if(S)campSync();},5000);
 let casTab='rank',casPoll=0;
 function myStats(s){if(!s)return {};const d=s.daily||{};
   return {stage:s.stage==='autre'&&s.derive?'derive':s.stage,sub:s.sub||null,sex:sexOf(s),grade:s.stage==='gav'?GRADES[s.rank||0]:s.stage==='service'?SGRADES[s.srank||0]:'',
     spec:s.spec||null,opj:!!s.opj,affaires:s.affaires||0,specN:s.specN||0,days:s.born?Math.floor((s.t-s.born)/D):0,
-    medals:(d.medals||[]).filter(k=>!k.startsWith('r_')).length,mlist:(d.medals||[]).filter(k=>!k.startsWith('r_')&&/^[a-zA-Z0-9_]+$/.test(k)).join(',')};}
+    rep:s.stage==='autre'?Math.round(s.rep||0):0,medals:(d.medals||[]).filter(k=>!k.startsWith('r_')).length,mlist:(d.medals||[]).filter(k=>!k.startsWith('r_')&&/^[a-zA-Z0-9_]+$/.test(k)).join(',')};}
 let profBack='rank';
 async function openProfile(id){
   profBack=casTab;casShell('<p>Chargement…</p>');
@@ -2370,7 +2444,7 @@ async function openProfile(id){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-prof]');if(b){e.preventDefault();openProfile(b.dataset.prof);}});
 function casShell(inner){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3>
-    <div class="row">${[['rank','🏆'],['sport','🏋️'],['duo','🤝 Binôme'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
+    <div class="row">${[['rank','🏆'],['camp','⚔️'],['sport','🏋️'],['duo','🤝'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
     <div id="casBody">${inner}</div>
     <p style="font-size:11.5px">Connecté en tant que <b>${esc(ME&&ME.pseudo||'?')}</b> · <a href="#" data-cas="pseudo" style="color:var(--gold)">changer de pseudo</a> · <a href="#" data-cas="code" style="color:var(--gold)">🔑 mon code de récupération</a></p>
     <button class="cancel" data-cas="close">Fermer</button>`;
@@ -2382,7 +2456,7 @@ function openCaserne(tab){
   if(!ME||!ME.pseudo)return askPseudo();
   heartbeat(true);
   casShell('<p>Chargement…</p>');
-  if(casTab==='rank')loadRank();else if(casTab==='sport')loadSport();else if(casTab==='duo')loadDuo();else if(casTab==='online')loadOnline();else{loadMsgs();casPoll=setInterval(()=>{if($('sheet').classList.contains('show')&&$('msgList'))loadMsgs(true);else clearInterval(casPoll);},8000);}
+  if(casTab==='rank')loadRank();else if(casTab==='camp')loadCamp();else if(casTab==='sport')loadSport();else if(casTab==='duo')loadDuo();else if(casTab==='online')loadOnline();else{loadMsgs();casPoll=setInterval(()=>{if($('sheet').classList.contains('show')&&$('msgList'))loadMsgs(true);else clearInterval(casPoll);},8000);}
 }
 function askPseudo(err){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3><p>Choisis ton pseudo pour apparaître dans le classement et discuter avec les autres joueurs.</p>
@@ -2857,7 +2931,7 @@ function runTests(title,tests,onEnd){
   let i=0,res=[];
   const next=()=>{if(i>=tests.length)return onEnd(res);const t=tests[i];
     const done=(score,ok)=>{res.push({name:t[2],score,ok});i++;
-      sfx(ok?'win':'fail');$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
+      sfx(ok?'win':'fail');if(ok)campAdd(5,'epreuve');$('panel').insertAdjacentHTML('beforeend',`<p style="margin-top:8px;font-weight:700">${ok?'✅ Épreuve réussie':'❌ Épreuve échouée'} (${score}${t[0]==='quiz'?'/5':t[0]==='cibles'?'/10':t[0]==='pave'?'/15':t[0]==='marche'?(t[3]==='reb'?' tracts':' pts'):t[0]==='froid'?(t[3]==='reb'?' s au chaud':' aidés'):t[0]==='crue'?(t[3]==='reb'?' sacs':' rescapés'):t[0]==='stade'?(t[3]==='reb'?' fumigènes':' pts'):' rép.'}, il fallait ${t[1]})</p><button class="primary" id="tNext">${i<tests.length?'Épreuve suivante':'Résultat'}</button>`);
       $('tNext').onclick=next;};
     if(t[0]==='tap')testTap(title,t,done);else if(t[0]==='pave')testPave(title,t,done);else if(t[0]==='marche')testMarche(title,t,done);else if(t[0]==='froid')testFroid(title,t,done);else if(t[0]==='crue')testCrue(title,t,done);else if(t[0]==='stade')testStade(title,t,done);else if(t[0]==='cibles')testCibles(title,t,done);else testQuiz(title,t,done);};
   next();
@@ -2957,7 +3031,7 @@ function nevState(s,E){if(!s.nev||s.nev.id!==E.id)s.nev={id:E.id,k:E.k,done:fals
 async function nevLoad(id){if(nevBusy)return;nevBusy=true;try{const {data}=await rpc('event_progress',{p_event:id});nevProg[id]=data;}catch(e){}nevBusy=false;}
 function nevBonus(s,id,side,ev){s.nevClaim=s.nevClaim||[];if(s.nevClaim.includes(id))return;s.nevClaim.push(id);s.nevClaim=s.nevClaim.slice(-12);
   s.moral=clamp(s.moral+8);if(side==='reb')s.rep=clamp((s.rep||0)+3);else s.motiv=clamp(s.motiv+8);
-  log(s,`🤝 ${ev.e} ${ev.n} : objectif collectif atteint ! Bonus pour tout le monde (moral +8, ${side==='reb'?'réputation +3':'motivation +8'}).`,'good');toast(`🤝 Objectif collectif atteint : ${ev.n} !`);fx('🤝',3);}
+  campAdd(15,'jauge');log(s,`🤝 ${ev.e} ${ev.n} : objectif collectif atteint ! Bonus pour tout le monde (moral +8, ${side==='reb'?'réputation +3':'motivation +8'}).`,'good');toast(`🤝 Objectif collectif atteint : ${ev.n} !`);fx('🤝',3);}
 async function nevSync(){const s=S,g=nevGroup(s);if(!g)return;const side=nevSide(g),now=Date.now(),cur=nevAt(now),lst=nevLast(now);
   for(const E of [cur,lst].filter(Boolean)){
     if(s.nev&&s.nev.id===E.id&&s.nev.done&&!s.nev.contrib&&ME&&ME.pseudo){try{const {data}=await rpc('event_contribute',{p_id:ME.id,p_secret:ME.secret,p_event:E.id,p_side:side});s.nev.contrib=true;nevProg[E.id]=data;}catch(e){}}
@@ -2971,12 +3045,12 @@ function renderNev(){const el=$('nevBar');if(!el)return;const s=S,g=nevGroup(s),
   const key=E&&g?[E.id,st.done,(s.hotUntil||0)>Date.now(),(s.hotCd||0)>Date.now(),P?P[side]:'',Math.floor((E.end-Date.now())/H)].join('|'):'';if(key===nevKey)return;nevKey=key;
   if(!key){el.innerHTML='';el.style.display='none';return;}el.style.display='';
   try{if(localStorage.getItem('gendargotchi-sirene')!==E.id){localStorage.setItem('gendargotchi-sirene',E.id);setTimeout(()=>sfx('siren'),400);}}catch(_){}
-  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}${P&&P[side]<P[side+'_target']?`<br>🤝 Il manque ${P[side+'_target']-P[side]} participant${P[side+'_target']-P[side]>1?'s':''} !`:P?'<br>🤝 Objectif collectif atteint !':''}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>${E.k==='froid'?`<button class="nevHot" data-a="hot" ${(s.hotCd||0)>Date.now()?'disabled':''}>☕ ${(s.hotUntil||0)>Date.now()?'Au chaud ✓':(s.hotCd||0)>Date.now()?'Boisson chaude (dans '+nevDur(s.hotCd-Date.now())+')':'Boisson chaude'}</button>`:''}`;}
+  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}${P?`<br>⚔️ Missions : 👮 ${P.gend} – ${P.reb} 🖤`:''}${P&&P[side]<P[side+'_target']?` · 🤝 il manque ${P[side+'_target']-P[side]} participant${P[side+'_target']-P[side]>1?'s':''} !`:P?'<br>🤝 Objectif collectif atteint !':''}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>${E.k==='froid'?`<button class="nevHot" data-a="hot" ${(s.hotCd||0)>Date.now()?'disabled':''}>☕ ${(s.hotUntil||0)>Date.now()?'Au chaud ✓':(s.hotCd||0)>Date.now()?'Boisson chaude (dans '+nevDur(s.hotCd-Date.now())+')':'Boisson chaude'}</button>`:''}`;}
 function openNev(){const s=S,g=nevGroup(s),E=nevAt(Date.now());
   if(!E||!g){const N=nevNext(Date.now());return sheet(`<h3>📅 Événements nationaux</h3><p>Aucun événement en cours.${N?` Prochain : ${NEV[N.k].e} dans ${nevDur(N.start-Date.now())}.`:''}</p><button class="primary" data-o="close">OK</button>`,true);}
   tick();const st=nevState(s,E),M=E.ev.m[g],side=nevSide(g),P=nevProg[E.id],now=Date.now();
   const bar=(lab,c,t,col,names)=>`<div style="margin:6px 0"><div class="row" style="justify-content:space-between;font-size:13px;font-weight:600"><span>${lab}</span><span>${c}/${t}${c>=t?' ✅':''}</span></div><div style="height:12px;border-radius:7px;background:rgba(127,127,127,.25);overflow:hidden"><div style="height:100%;width:${Math.min(100,c/t*100)}%;background:${col}"></div></div>${c<t?`<small style="color:#ffd54f;font-weight:600">Il manque ${t-c} participant${t-c>1?'s':''} !</small><br>`:''}${names&&names.length?`<small style="opacity:.7">${names.map(esc).join(', ')}</small>`:''}</div>`;
-  const showReb=side==='reb'||rebelSeen();
+  const showReb=true;
   const col=s.nevCol||{};
   const mBtn=st.done?`<p>✅ <b>Mission accomplie.</b> ${ME&&ME.pseudo?(st.contrib?'Ta participation compte dans la jauge.':'Envoi de ta participation…'):'Inscris-toi à la caserne 👥 pour compter dans la jauge.'}</p>`
     :st.next>now?`<button class="primary" disabled>🔁 Nouvel essai dans ${Math.ceil((st.next-now)/M_)} min</button>`:`<button class="primary" data-a="nevGo">🎯 Lancer la mission</button>`;
@@ -2993,7 +3067,7 @@ function nevHot(){const s=S;tick();const E=nevAt(Date.now());if(!E||E.k!=='froid
 function nevGo(){const s=S,g=nevGroup(s),E=nevAt(Date.now());if(!E||!g)return closeSheet();const st=nevState(s,E);if(st.done||st.next>Date.now())return;const M=E.ev.m[g];
   runTests(`${E.ev.e} ${E.ev.n}`,[[M[1],M[2],M[0],M[3]]],res=>{const ok=res[0]&&res[0].ok;tick();st.tries++;
     if(!ok){st.next=Date.now()+2*H;log(s,`${E.ev.e} Mission « ${M[0]} » ratée. Nouvel essai possible dans 2 h.`,'bad');save();sheet(`<h3>${E.ev.e} Mission ratée</h3><p>Pas cette fois ! Tu pourras retenter dans 2 heures.</p><button class="primary" data-o="close">OK</button>`,true);render();return;}
-    st.done=true;const k=E.gold?1.5:1,side=nevSide(g);s.nevCol=s.nevCol||{};s.nevCol[E.k]=(s.nevCol[E.k]||0)+1;
+    st.done=true;campAdd(10,'event');const k=E.gold?1.5:1,side=nevSide(g);s.nevCol=s.nevCol||{};s.nevCol[E.k]=(s.nevCol[E.k]||0)+1;
     const mo=Math.round(10*k),b2=Math.round((side==='reb'?6:10)*k);s.moral=clamp(s.moral+mo);if(side==='reb')s.rep=clamp((s.rep||0)+b2);else s.motiv=clamp(s.motiv+b2);
     log(s,`${E.ev.e} Mission « ${M[0]} » accomplie (${E.ev.n}) : moral +${mo}, ${side==='reb'?'réputation':'motivation'} +${b2}.`,'good');fx(E.ev.e,4);save();
     sheet(`<h3>${E.ev.e} Mission accomplie !</h3><p>« ${M[0]} » : réussi !${E.gold?' ⭐ Édition officielle.':''}</p><p>Moral +${mo} · ${side==='reb'?'Réputation':'Motivation'} +${b2} · tampon ${E.ev.e} ajouté à ta collection.</p>${ME&&ME.pseudo?'<p>Ta participation est ajoutée à la jauge collective 🤝</p>':'<p><small>Inscris-toi à la caserne 👥 pour compter dans la jauge collective.</small></p>'}<button class="primary" data-a="nev">Voir la jauge</button>`,true);
@@ -3316,7 +3390,7 @@ function testStade(title,t,done){
     if(stun>0){g.fillStyle='rgba(200,0,0,.15)';g.fillRect(0,0,W,HH);}
     if(msgT>0){msgT-=dt;g.fillStyle='rgba(0,0,0,.6)';g.font='bold 13px sans-serif';const w=g.measureText(msg).width+16;g.fillRect(W/2-w/2,HH/2-14,w,26);g.fillStyle='#fff';g.textAlign='center';g.fillText(msg,W/2,HH/2+4);}
     requestAnimationFrame(loop);};
-  const ev=S&&S.nev;const showIntro=!(ev&&ev.introSeen);if(ev)ev.introSeen=true;
+  const ev=S&&S.nev;const showIntro=t[4]!=='nointro'&&!(ev&&ev.introSeen);if(ev&&t[4]!=='nointro')ev.introSeen=true;
   if(showIntro)matchIntro(C,g,W,HH,'⚽ Jour de match',`Mission : ${t[2]}`,()=>{requestAnimationFrame(loop);startGame();});
   else{requestAnimationFrame(loop);startGame();}
   window.__st=()=>({seats,spot,score,W,stun});
@@ -3438,7 +3512,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795763742';
+const BUILD_ID='1795774417';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3452,8 +3526,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.24', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.18', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.18',d:'27 novembre',items:[['⚔️','La guerre des camps','Gendarmes contre rebelles, chaque semaine ! Missions, épreuves, événements et duels rapportent des points à ton camp. On compare la moyenne par joueur. Le camp vainqueur gagne un bonus et un trophée le lundi.'],['🎯','Les duels','Défie un joueur de l\'autre camp depuis la caserne (onglet ⚔️) : vous jouez la même épreuve avec le même tirage, chacun dans son rôle. Le meilleur gagne 20 points pour son camp.'],['🚨','Avis de recherche','Les rebelles les plus connus (réputation 50+) sont affichés aux gendarmes. Un rebelle battu en duel est interpellé : réputation −6 !']]},
  {v:'1.17.24',d:'27 novembre',items:[['🎨','Tags en mini-jeu','Repasse le pochoir du doigt avant que la patrouille n\'arrive : plus c\'est propre, plus ça rapporte (et moins on se fait prendre).',1],['🏳️','Banderoles en mini-jeu','Peins le slogan lettre par lettre, dans l\'ordre et sans faute, avant la fin du temps.',1]]},
  {v:'1.17.21',d:'23 novembre',items:[['⚽','Jour de match revu','Une petite cinématique d\'arrivée au stade, puis une nouvelle mission en tribune : éteins les fumigènes et sépare les bagarres avant qu\'elles éclatent, sans embêter les supporters qui chantent.'],['🖤','Et de l\'autre côté…','Allume un maximum de fumigènes avec tes copains en tribune… sans te faire prendre dans le projecteur des stadiers.',1]]},
  {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
