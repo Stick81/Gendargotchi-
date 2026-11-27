@@ -775,6 +775,56 @@ function arrest(s,t){
   if(s.casier>=100)endGame(s,'condamne');
 }
 function riskRoll(s,base){return Math.random()<base*(1.15-(s.discr||0)/100);}
+/* ======================= MINI-JEUX DE L'AUTRE CÔTÉ ======================= */
+function tagGame(onEnd){
+  const DUR=14;const SH=[ // Ⓐ : cercle + A
+    ...Array.from({length:40},(_,i)=>{const a=i/40*Math.PI*2;return [.5+.36*Math.cos(a),.5+.36*Math.sin(a)];}),
+    ...Array.from({length:14},(_,i)=>[.5-.2*i/13*1.0- (0),.22+.56*i/13]).map(([x,y],i)=>[.5-.22*(i/13),.22+.56*(i/13)]),
+    ...Array.from({length:14},(_,i)=>[.5+.22*(i/13),.22+.56*(i/13)]),
+    ...Array.from({length:10},(_,i)=>[.36+.28*(i/9),.6])];
+  sheet(`<h3>🎨 Tag</h3><p>Repasse le pochoir <b>Ⓐ</b> du doigt avant que la patrouille 🚓 n'arrive au bout de la rue. Plus c'est propre, plus ça marque les esprits.</p>
+    <canvas id="tgC" style="width:100%;height:300px;border-radius:16px;touch-action:none;display:block;background:#6b6f78"></canvas>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="tgT">🚓 ${DUR} s</span><span id="tgS">🎨 0 %</span></div>`,true);
+  const C=$('tgC'),dpr=window.devicePixelRatio||1,W=C.clientWidth||330,HH=300;C.width=W*dpr;C.height=HH*dpr;const g=C.getContext('2d');g.scale(dpr,dpr);
+  const sz=Math.min(W,HH)*.82,ox=(W-sz)/2,oy=(HH-sz)/2-6;const P=SH.map(([x,y])=>({x:ox+x*sz,y:oy+y*sz,ok:false}));
+  const paint=document.createElement('canvas');paint.width=W*dpr;paint.height=HH*dpr;const pg=paint.getContext('2d');pg.scale(dpr,dpr);pg.lineCap='round';pg.lineJoin='round';
+  let last=performance.now(),left=DUR,fin=false,down=false,prev=null,started=false;
+  const pct=()=>Math.round(P.filter(p=>p.ok).length/P.length*100);
+  const pos=e=>{const b=C.getBoundingClientRect();return [(e.clientX-b.left)*W/b.width,(e.clientY-b.top)*HH/b.height];};
+  const stroke=(x,y)=>{pg.strokeStyle='#ff2f8f';pg.lineWidth=13;pg.beginPath();pg.moveTo(prev?prev[0]:x,prev?prev[1]:y);pg.lineTo(x,y);pg.stroke();prev=[x,y];
+    P.forEach(p=>{if(!p.ok&&(p.x-x)**2+(p.y-y)**2<16*16)p.ok=true;});$('tgS').textContent=`🎨 ${pct()} %`;if(pct()>=96)end();};
+  C.addEventListener('pointerdown',e=>{e.preventDefault();if(fin)return;started=true;down=true;try{C.setPointerCapture(e.pointerId);}catch(_){}prev=null;stroke(...pos(e));});
+  C.addEventListener('pointermove',e=>{e.preventDefault();if(down&&!fin)stroke(...pos(e));});
+  const up=()=>{down=false;prev=null;};C.addEventListener('pointerup',up);C.addEventListener('pointercancel',up);
+  const end=()=>{if(fin)return;fin=true;const v=pct();setTimeout(()=>{if(C.isConnected)onEnd(v);},500);};
+  const loop=now=>{if(!C.isConnected)return;const dt=Math.min(.05,(now-last)/1000);last=now;if(started&&!fin){left-=dt;$('tgT').textContent=`🚓 ${Math.max(0,Math.ceil(left))} s`;if(left<=0)end();}
+    g.fillStyle='#7a7f89';g.fillRect(0,0,W,HH);g.strokeStyle='rgba(0,0,0,.18)';g.lineWidth=1;for(let y=0;y<HH;y+=22)for(let x=(y/22%2)*24;x<W;x+=48){g.strokeRect(x,y,48,22);}
+    g.fillStyle='rgba(255,255,255,.08)';g.fillRect(0,HH-26,W,26);
+    P.forEach(p=>{g.fillStyle=p.ok?'rgba(255,47,143,.0)':'rgba(255,255,255,.55)';g.beginPath();g.arc(p.x,p.y,2.4,0,7);g.fill();});
+    g.drawImage(paint,0,0,W,HH);
+    const k=Math.max(0,left/DUR);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(8,HH-18,W-16,10);g.fillStyle=k>.4?'#7CFC9A':k>.2?'#ffb347':'#ff4d4d';g.fillRect(8,HH-18,(W-16)*k,10);
+    g.font='16px sans-serif';g.textAlign='center';g.fillText('🚓',8+(W-16)*(1-k),HH-22);
+    if(left<4&&!fin&&Math.floor(now/250)%2){g.fillStyle='rgba(79,163,255,.18)';g.fillRect(0,0,W,HH);}
+    requestAnimationFrame(loop);};
+  requestAnimationFrame(loop);
+}
+const BAN_SLOGANS=['ON LACHE RIEN','SOLIDARITE','TOUS ENSEMBLE','RESISTANCE','PAS DE RETRAITE','LIBERTE'];
+function banGame(onEnd){
+  const sl=BAN_SLOGANS[Math.floor(Math.random()*BAN_SLOGANS.length)],letters=sl.replace(/ /g,'').split('');let pos=0,left=18,fin=false,started=false,last=performance.now(),err=0;
+  const tiles=letters.map((c,i)=>({c,i})).sort(()=>Math.random()-.5);
+  sheet(`<h3>🏳️ Banderole</h3><p>Peins le slogan sur la banderole : touche les lettres <b>dans l'ordre</b>. Une erreur coûte 2 secondes.</p>
+    <div id="bnBan" style="background:#f4f1e8;color:#c8102e;border:3px solid #3a2a1a;border-radius:6px;padding:12px 6px;text-align:center;font:900 22px/1.2 Impact,'Arial Black',sans-serif;letter-spacing:2px;min-height:34px"></div>
+    <div id="bnTiles" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:12px 0"></div>
+    <div class="row" style="justify-content:space-between;font-weight:600"><span id="bnT">⏱ 18 s</span><span id="bnS">0/${letters.length}</span></div>`,true);
+  const draw=()=>{let k=0;$('bnBan').innerHTML=sl.split('').map(ch=>ch===' '?'&nbsp;&nbsp;':(k++<pos?ch:'<span style="color:#d9d4c5">_</span>')).join('');$('bnS').textContent=`${pos}/${letters.length}`;};
+  $('bnTiles').innerHTML=tiles.map((t,j)=>`<button data-bn="${j}" style="width:42px;height:46px;border-radius:10px;border:none;background:#2b2f3a;color:#fff;font:800 20px sans-serif">${t.c}</button>`).join('');draw();
+  const end=ok=>{if(fin)return;fin=true;setTimeout(()=>{if($('bnTiles'))onEnd(ok,err);},600);};
+  $('bnTiles').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-bn]');if(!b||fin||b.disabled)return;e.preventDefault();started=true;const t=tiles[+b.dataset.bn];
+    if(t.c===letters[pos]){pos++;b.disabled=true;b.style.opacity='.25';draw();if(pos>=letters.length)end(true);}
+    else{err++;left-=2;b.style.background='#c0392b';setTimeout(()=>{if(!b.disabled)b.style.background='#2b2f3a';},250);}});
+  const loop=now=>{if(!$('bnT'))return;const dt=(now-last)/1000;last=now;if(started&&!fin){left-=dt;if(left<=0){left=0;end(false);}}$('bnT').textContent=`⏱ ${Math.ceil(left)} s`;if(!fin)requestAnimationFrame(loop);};
+  requestAnimationFrame(loop);
+}
 function fuiteGame(){
   const s=S,need=Math.round(34-(s.discr||0)/6);let n=0,left=6,run=false,timer=0,done=false;
   sheet(`<h3>🔥 Action musclée… les gendarmes arrivent !</h3><p>FUIS ! Tape ${need} fois en 6 secondes pour t'échapper.</p>
@@ -1477,8 +1527,10 @@ function act(a){
     }
     switch(a){
     case 'manif':if(s.energy<20)return toast('Trop fatigué pour défiler.');dailyEvent(s,'manif');s.nManif=(s.nManif||0)+1;if(s.nManif>=5)addMedal(s,'r_manif5');s.busyUntil=s.t+20*M;s.energy=clamp(s.energy-10);log(s,'📢 Il part manifester avec le groupe (20 min).');toast('En route pour la manif ! 📢');lastLook='';lastBg=null;save();render();return;
-    case 'tag':if(cdA('tagc',1))return;if(risky(.14))return;s.nTag=(s.nTag||0)+1;if(s.nTag>=10)addMedal(s,'r_tag10');s.rep=clamp((s.rep||0)+5);s.discr=clamp((s.discr||0)-10);s.tenue=clamp(s.tenue-6);fx('🎨',2);log(s,'🎨 Un tag de plus sur un mur du quartier. Réputation +5.');toast('Tag réalisé… discrétion en baisse.');break;
-    case 'banderole':if(cdA('banc',1))return;dailyEvent(s,'banderole');s.rep=clamp((s.rep||0)+3);s.motiv=clamp(s.motiv+4);s.energy=clamp(s.energy-6);fx('🏳️');toast('Banderoles prêtes pour la prochaine manif.');break;
+    case 'tag':if(cdA('tagc',1))return;return tagGame(v=>{tick();const ok=v>=80;if(risky(ok?.08:.22))return;s.nTag=(s.nTag||0)+1;if(s.nTag>=10)addMedal(s,'r_tag10');const r=v>=96?8:ok?5:2;s.rep=clamp((s.rep||0)+r);s.discr=clamp((s.discr||0)-(ok?8:14));s.tenue=clamp(s.tenue-6);fx('🎨',2);
+      log(s,`🎨 Tag ${v>=96?'parfait':ok?'réussi':'bâclé'} (${v} %) sur un mur du quartier. Réputation +${r}.`,ok?'good':'');sfx(ok?'win':'fail');sheet(`<h3>${v>=96?'🎨 Chef-d\'œuvre !':ok?'🎨 Tag réussi':'🎨 Tag bâclé…'}</h3><p>${v} % du pochoir. Réputation +${r}, discrétion −${ok?8:14}.</p><button class="primary" data-o="close">OK</button>`,true);save();render();});break;
+    case 'banderole':if(cdA('banc',1))return;return banGame((ok,err)=>{tick();dailyEvent(s,'banderole');const r=ok?(err?3:5):1,m=ok?6:2;s.rep=clamp((s.rep||0)+r);s.motiv=clamp(s.motiv+m);s.energy=clamp(s.energy-6);fx('🏳️');sfx(ok?'win':'fail');
+      log(s,ok?`🏳️ Banderole peinte${err?'':' sans faute'} : réputation +${r}, rage +${m}.`:'🏳️ Banderole pas finie à temps…',ok?'good':'');sheet(`<h3>${ok?'🏳️ Banderole prête !':'🏳️ Pas fini à temps…'}</h3><p>Réputation +${r} · rage +${m}${ok&&!err?' · sans faute 👌':''}</p><button class="primary" data-o="close">OK</button>`,true);save();render();});
     case 'reseaux':if(cdA('resc',2))return;if(risky(.06))return;s.rep=clamp((s.rep||0)+4);s.discr=clamp((s.discr||0)-6);fx('📱');log(s,'📱 Il poste des vidéos de manif : nouveaux abonnés, mais il se fait remarquer.');toast('Réputation +4… et pas que chez ses amis.');break;
     case 'cacher':if(cdA('cachc',3))return;s.discr=clamp((s.discr||0)+25);s.motiv=clamp(s.motiv-4);fx('🕶️');toast('Nouveau look, téléphone éteint : il se fait oublier.');break;
     case 'muscle':if(s.motiv<50)return toast('Pas assez de rage pour ça.');if(s.energy<30)return toast('Trop fatigué.');if(cool(s._musc||0,3))return toast('Trop tôt : les forces de l\'ordre sont encore sur les dents.');return fuiteGame();
@@ -3386,7 +3438,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795385863';
+const BUILD_ID='1795763742';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3400,8 +3452,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.17.23', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.17.24', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
+ {v:'1.17.24',d:'27 novembre',items:[['🎨','Tags en mini-jeu','Repasse le pochoir du doigt avant que la patrouille n\'arrive : plus c\'est propre, plus ça rapporte (et moins on se fait prendre).',1],['🏳️','Banderoles en mini-jeu','Peins le slogan lettre par lettre, dans l\'ordre et sans faute, avant la fin du temps.',1]]},
  {v:'1.17.21',d:'23 novembre',items:[['⚽','Jour de match revu','Une petite cinématique d\'arrivée au stade, puis une nouvelle mission en tribune : éteins les fumigènes et sépare les bagarres avant qu\'elles éclatent, sans embêter les supporters qui chantent.'],['🖤','Et de l\'autre côté…','Allume un maximum de fumigènes avec tes copains en tribune… sans te faire prendre dans le projecteur des stadiers.',1]]},
  {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
  {v:'1.17.12',d:'15 novembre',items:[['🔊','Des sons !','Petits bruitages pour les actions, les mini-jeux, les médailles, les passages de grade et les événements. Ça se coupe dans ⚙️ → Sons. (Pas de son si le téléphone est en mode silencieux.)']]},
