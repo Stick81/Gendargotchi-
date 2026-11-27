@@ -2339,6 +2339,8 @@ REBEL_T.r_camp=['🏴','Victoire du camp','Gagner la guerre des camps de la sema
 for(const k of ['r_duel','r_camp']){const v=REBEL_T[k];MEDALS[k]=[v[0],v[1]];MEDAL_ART[k]=Object.assign({m:'black',r:['#111','#c8102e','#111']},v[3]);}
 const campSide=s=>!s?null:s.stage==='autre'?'reb':['gav','ecole','service','choix','affect'].includes(s.stage)?'gend':null;
 const CAMP_NAME={gend:'👮 Gendarmes',reb:'🖤 Rebelles'};
+/* visible pour les rebelles, et pour les gendarmes seulement une fois en unité */
+const campVis=s=>!!s&&(s.stage==='autre'||s.stage==='service'||rebelSeen(s));
 let campB=null,campDefis=[],campBusy=false;
 async function campAdd(pts,reason){const side=campSide(S);if(!ME||!ME.pseudo||!side||!pts)return;try{await rpc('camp_add',{p_id:ME.id,p_secret:ME.secret,p_side:side,p_pts:Math.min(30,Math.round(pts)),p_reason:reason||''});campKey='';}catch(e){}}
 const campAvg=(B,lw)=>lw?[B.lw_gend/B.lwn_gend,B.lw_reb/B.lwn_reb]:[B.gend/B.n_gend,B.reb/B.n_reb];
@@ -2349,7 +2351,7 @@ async function campSync(){if(campBusy||!S)return;campBusy=true;try{
   const side=campSide(S);if(campB&&side&&(S.campClaim!==campB.last_week)&&(campB.lw_gend+campB.lw_reb)>0){const [g,r]=campAvg(campB,true);const win=g>r?'gend':r>g?'reb':null;S.campClaim=campB.last_week;
     if(win===side){tick();S.moral=clamp(S.moral+10);if(side==='reb')S.rep=clamp((S.rep||0)+5);else S.motiv=clamp(S.motiv+10);addMedal(S,side==='reb'?'r_camp':'camp');log(S,`🏆 Ton camp a gagné la guerre des camps (${campB.last_week.split('-S')[1]}e semaine) ! Moral +10, ${side==='reb'?'réputation +5':'motivation +10'}.`,'good');toast('🏆 Ton camp a gagné la semaine dernière !');sfx('up');}
     save();}
-}catch(e){}campBusy=false;campKey='';renderCamp();if(casTab==='camp'&&$('casBody')&&$('caserne')&&!$('caserne').classList.contains('hide'))loadCamp();}
+}catch(e){}campBusy=false;campKey='';renderCamp();if(casTab==='camp'&&$('casBody'))loadCamp();}
 function defiResults(){const s=S;s.defiSeen=s.defiSeen||[];let msg=null;
   campDefis.filter(d=>d.status==='done'&&!s.defiSeen.includes(d.id)).forEach(d=>{s.defiSeen.push(d.id);const other=d.mine?d.to_pseudo:d.from_pseudo,side=campSide(s);
     if(d.winner===ME.pseudo){addMedal(s,side==='reb'?'r_duel':'duel');log(s,side==='reb'?`😎 Duel gagné contre ${other} : pas vu, pas pris !`:`🚔 Duel gagné : ${other} est interpellé !`,'good');msg=`⚔️ Duel gagné contre ${other} !`;}
@@ -2357,19 +2359,21 @@ function defiResults(){const s=S;s.defiSeen=s.defiSeen||[];let msg=null;
     else log(s,`⚔️ Duel nul contre ${other}.`);});
   s.defiSeen=s.defiSeen.slice(-60);if(msg){toast(msg);save();}}
 let campKey='';
-function renderCamp(){const el=$('campBar');if(!el)return;const side=campSide(S);if(!side||!campB){el.style.display='none';return;}
+function renderCamp(){const el=$('campBar');if(!el)return;const side=campSide(S);if(!side||!campB||!campVis(S)){el.style.display='none';campKey='';return;}
+  if(!S.campIntro){S.campIntro=1;save();setTimeout(()=>sheet(`<h3>⚔️ La guerre des camps</h3><p>${side==='gend'?'En unité, tu découvres une autre réalité : de l\'autre côté, des rebelles jouent contre la gendarmerie.':'De l\'autre côté, ton camp affronte les gendarmes.'}</p><p>Chaque semaine, missions, épreuves, événements et <b>duels</b> rapportent des points à ton camp (moyenne par joueur). Le camp vainqueur gagne un bonus et un trophée le lundi.</p>${side==='gend'?'<p>🚨 Surveille l\'<b>avis de recherche</b> : un rebelle battu en duel est interpellé !</p>':'<p>🚨 Attention : un gendarme qui te bat en duel t\'interpelle (réputation −6).</p>'}<button class="primary" data-cas-open="camp">Voir la guerre des camps</button>`,true),800);}
   const [g,r]=campAvg(campB).map(x=>Math.round(x)),inc=campDefis.filter(d=>d.status==='open'&&!d.mine).length,key=[g,r,inc,side].join('|');if(key===campKey)return;campKey=key;el.style.display='';
   el.innerHTML=`<button class="campBar" data-cas-open="camp"><span>⚔️</span><span class="cb"><b>Guerre des camps</b><small>👮 ${g} – ${r} 🖤 <span style="opacity:.75">(moyenne par joueur)</span></small></span>${inc?`<span class="ng">🎯 ${inc} défi${inc>1?'s':''}</span>`:`<span class="ng">${side==='gend'?(g>=r?'👮 en tête':'à la traîne'):(r>=g?'🖤 en tête':'à la traîne')}</span>`}</button>`;}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cas-open]');if(b){e.preventDefault();openCaserne(b.dataset.casOpen);return;}
   const d=e.target.closest('[data-defi-to]');if(d){e.preventDefault();defiPick(d.dataset.defiTo);return;}
   const a=e.target.closest('[data-defi-ans]');if(a){e.preventDefault();defiAnswer(+a.dataset.defiAns);return;}});
 async function loadCamp(){
+  if(!campVis(S)){casTab='rank';return loadRank();}
   if(!campB)try{campB=(await rpc('camp_board',{})).data;}catch(e){}
   if(ME&&ME.pseudo)try{campDefis=(await rpc('defi_list',{p_id:ME.id,p_secret:ME.secret})).data||[];}catch(e){}
   const B=campB;if(!B||!$('casBody'))return;const side=campSide(S),[g,r]=campAvg(B),[lg,lr]=campAvg(B,true);
   const bar=(a,b)=>{const t=a+b||1;return `<div style="display:flex;height:14px;border-radius:8px;overflow:hidden;margin:6px 0"><div style="width:${a/t*100}%;background:#3b6fd8"></div><div style="width:${b/t*100}%;background:#c8102e"></div></div>`;};
   const top=(arr)=>arr&&arr.length?arr.map((x,i)=>`${['🥇','🥈','🥉'][i]} ${esc(x.pseudo)} <small>(${x.pts})</small>`).join('<br>'):'<small>personne encore</small>';
-  const opp=(B.players||[]).filter(p=>side&&p.side&&p.side!==side&&p.pseudo!==ME.pseudo);
+  const opp=(B.players||[]).filter(p=>side&&p.side&&p.side!==side&&p.vis&&p.pseudo!==ME.pseudo);
   const wanted=(B.players||[]).filter(p=>p.side==='reb'&&p.rep>=50);
   const incoming=campDefis.filter(d=>d.status==='open'&&!d.mine),mine=campDefis.filter(d=>d.status==='open'&&d.mine),done=campDefis.filter(d=>d.status!=='open').slice(0,6);
   const K={stade:'⚽ Stade',marche:'🎄 Marché'};
@@ -2444,7 +2448,7 @@ async function openProfile(id){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-prof]');if(b){e.preventDefault();openProfile(b.dataset.prof);}});
 function casShell(inner){
   $('panel').innerHTML=`<h3>🏰 La caserne</h3>
-    <div class="row">${[['rank','🏆'],['camp','⚔️'],['sport','🏋️'],['duo','🤝'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
+    <div class="row">${[['rank','🏆'],...(campVis(S)?[['camp','⚔️']]:[]),['sport','🏋️'],['duo','🤝'],['msg','💬'],['online','🟢']].map(([k,l])=>`<button class="primary ${casTab===k?'':'ghost'}" style="padding:9px 6px;font-size:13.5px" data-cas="${k}">${l}</button>`).join('')}</div>
     <div id="casBody">${inner}</div>
     <p style="font-size:11.5px">Connecté en tant que <b>${esc(ME&&ME.pseudo||'?')}</b> · <a href="#" data-cas="pseudo" style="color:var(--gold)">changer de pseudo</a> · <a href="#" data-cas="code" style="color:var(--gold)">🔑 mon code de récupération</a></p>
     <button class="cancel" data-cas="close">Fermer</button>`;
@@ -3045,12 +3049,12 @@ function renderNev(){const el=$('nevBar');if(!el)return;const s=S,g=nevGroup(s),
   const key=E&&g?[E.id,st.done,(s.hotUntil||0)>Date.now(),(s.hotCd||0)>Date.now(),P?P[side]:'',Math.floor((E.end-Date.now())/H)].join('|'):'';if(key===nevKey)return;nevKey=key;
   if(!key){el.innerHTML='';el.style.display='none';return;}el.style.display='';
   try{if(localStorage.getItem('gendargotchi-sirene')!==E.id){localStorage.setItem('gendargotchi-sirene',E.id);setTimeout(()=>sfx('siren'),400);}}catch(_){}
-  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}${P?`<br>⚔️ Missions : 👮 ${P.gend} – ${P.reb} 🖤`:''}${P&&P[side]<P[side+'_target']?` · 🤝 il manque ${P[side+'_target']-P[side]} participant${P[side+'_target']-P[side]>1?'s':''} !`:P?'<br>🤝 Objectif collectif atteint !':''}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>${E.k==='froid'?`<button class="nevHot" data-a="hot" ${(s.hotCd||0)>Date.now()?'disabled':''}>☕ ${(s.hotUntil||0)>Date.now()?'Au chaud ✓':(s.hotCd||0)>Date.now()?'Boisson chaude (dans '+nevDur(s.hotCd-Date.now())+')':'Boisson chaude'}</button>`:''}`;}
+  el.innerHTML=`<button class="nevBar" data-a="nev"><span class="ne">${E.ev.e}</span><span class="nt"><b>${E.ev.n}${E.gold?' ⭐':''}</b><small>${st.done?'✅ Mission accomplie':'🎯 Mission spéciale à faire'} · ⏳ ${nevDur(E.end-Date.now())}${P&&campVis(s)?`<br>⚔️ Missions : 👮 ${P.gend} – ${P.reb} 🖤`:''}${P&&P[side]<P[side+'_target']?` · 🤝 il manque ${P[side+'_target']-P[side]} participant${P[side+'_target']-P[side]>1?'s':''} !`:P?'<br>🤝 Objectif collectif atteint !':''}</small></span>${P?`<span class="ng">${P[side]}/${P[side+'_target']}</span>`:''}</button>${E.k==='froid'?`<button class="nevHot" data-a="hot" ${(s.hotCd||0)>Date.now()?'disabled':''}>☕ ${(s.hotUntil||0)>Date.now()?'Au chaud ✓':(s.hotCd||0)>Date.now()?'Boisson chaude (dans '+nevDur(s.hotCd-Date.now())+')':'Boisson chaude'}</button>`:''}`;}
 function openNev(){const s=S,g=nevGroup(s),E=nevAt(Date.now());
   if(!E||!g){const N=nevNext(Date.now());return sheet(`<h3>📅 Événements nationaux</h3><p>Aucun événement en cours.${N?` Prochain : ${NEV[N.k].e} dans ${nevDur(N.start-Date.now())}.`:''}</p><button class="primary" data-o="close">OK</button>`,true);}
   tick();const st=nevState(s,E),M=E.ev.m[g],side=nevSide(g),P=nevProg[E.id],now=Date.now();
   const bar=(lab,c,t,col,names)=>`<div style="margin:6px 0"><div class="row" style="justify-content:space-between;font-size:13px;font-weight:600"><span>${lab}</span><span>${c}/${t}${c>=t?' ✅':''}</span></div><div style="height:12px;border-radius:7px;background:rgba(127,127,127,.25);overflow:hidden"><div style="height:100%;width:${Math.min(100,c/t*100)}%;background:${col}"></div></div>${c<t?`<small style="color:#ffd54f;font-weight:600">Il manque ${t-c} participant${t-c>1?'s':''} !</small><br>`:''}${names&&names.length?`<small style="opacity:.7">${names.map(esc).join(', ')}</small>`:''}</div>`;
-  const showReb=true;
+  const showReb=side==='reb'||campVis(S);
   const col=s.nevCol||{};
   const mBtn=st.done?`<p>✅ <b>Mission accomplie.</b> ${ME&&ME.pseudo?(st.contrib?'Ta participation compte dans la jauge.':'Envoi de ta participation…'):'Inscris-toi à la caserne 👥 pour compter dans la jauge.'}</p>`
     :st.next>now?`<button class="primary" disabled>🔁 Nouvel essai dans ${Math.ceil((st.next-now)/M_)} min</button>`:`<button class="primary" data-a="nevGo">🎯 Lancer la mission</button>`;
@@ -3512,7 +3516,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795774417';
+const BUILD_ID='1795774630';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3526,9 +3530,9 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.18', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.18.1', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
- {v:'1.18',d:'27 novembre',items:[['⚔️','La guerre des camps','Gendarmes contre rebelles, chaque semaine ! Missions, épreuves, événements et duels rapportent des points à ton camp. On compare la moyenne par joueur. Le camp vainqueur gagne un bonus et un trophée le lundi.'],['🎯','Les duels','Défie un joueur de l\'autre camp depuis la caserne (onglet ⚔️) : vous jouez la même épreuve avec le même tirage, chacun dans son rôle. Le meilleur gagne 20 points pour son camp.'],['🚨','Avis de recherche','Les rebelles les plus connus (réputation 50+) sont affichés aux gendarmes. Un rebelle battu en duel est interpellé : réputation −6 !']]},
+ {v:'1.18',d:'27 novembre',items:[['⚔️','La guerre des camps','Gendarmes contre rebelles, chaque semaine ! Missions, épreuves, événements et duels rapportent des points à ton camp. On compare la moyenne par joueur. Le camp vainqueur gagne un bonus et un trophée le lundi.',1],['🎯','Les duels','Défie un joueur de l\'autre camp depuis la caserne (onglet ⚔️) : vous jouez la même épreuve avec le même tirage, chacun dans son rôle. Le meilleur gagne 20 points pour son camp.',1],['🚨','Avis de recherche','Les rebelles les plus connus (réputation 50+) sont affichés aux gendarmes. Un rebelle battu en duel est interpellé : réputation −6 !',1]]},
  {v:'1.17.24',d:'27 novembre',items:[['🎨','Tags en mini-jeu','Repasse le pochoir du doigt avant que la patrouille n\'arrive : plus c\'est propre, plus ça rapporte (et moins on se fait prendre).',1],['🏳️','Banderoles en mini-jeu','Peins le slogan lettre par lettre, dans l\'ordre et sans faute, avant la fin du temps.',1]]},
  {v:'1.17.21',d:'23 novembre',items:[['⚽','Jour de match revu','Une petite cinématique d\'arrivée au stade, puis une nouvelle mission en tribune : éteins les fumigènes et sépare les bagarres avant qu\'elles éclatent, sans embêter les supporters qui chantent.'],['🖤','Et de l\'autre côté…','Allume un maximum de fumigènes avec tes copains en tribune… sans te faire prendre dans le projecteur des stadiers.',1]]},
  {v:'1.17.14',d:'17 novembre',items:[['🏋️','Classement sport','Nouvel onglet 🏋️ dans la caserne : qui fait le meilleur sprint et le plus de pompes de la semaine ? Remise à zéro chaque lundi, record de la caserne affiché. Juste pour la gloire, aucun effet sur le jeu.']]},
