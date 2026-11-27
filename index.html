@@ -1330,7 +1330,7 @@ function render(){
       <div class="card"><h4>Carrière <span>Concours : ${ok}/5 critères</span></h4>${bars([['🔥','Motivation',s.motiv,'linear-gradient(90deg,#f3964b,#f3c74b)',REQ.motiv],['🏃','Forme',s.forme,'#4fd1c5',REQ.forme],['🎖️','Discipline',s.disc,'#9db4ff',REQ.disc],['📚','Révisions',s.comp,'#c49bff',0,1]])}</div>`;
   }
   $('cards').innerHTML=T(html);
-  renderActions();renderNev();renderCamp();
+  renderActions();renderNev();renderCamp();careerTip();
   {const b=$('dailyBtn');if(b){const pend=dailyPending(s);b.style.boxShadow=pend?'0 0 0 2px #f3c74b':'';b.style.display=(st==='over'||st==='egg'&&!s.daily)?'none':'';}
    if(s.daily&&s.daily.pendingPopup&&$('home').classList.contains('hide')&&!$('sheet').classList.contains('show')&&st!=='over'){openDaily();}}
   // journal
@@ -1371,7 +1371,7 @@ function renderActions(){
     const B=(a,e,l,al,d)=>`<button class="act ${al?'alert':''}" data-a="${a}" ${dis(d)}><span class="e">${e}</span>${l}</button>`;
     const sleepB=B('sleep',z?'⏰':'🛏️',z?'Réveiller':(CTX.startsWith('gm_')?'Repos':'Coucher'),0,busy),recB=['grOff','gd','gmHome'].includes(CTX)?recupBtn(s,z,busy):'';
     const SP=s.spec&&SPECS[s.spec],spB=SP?B('specAct',SP.act[0],SP.act[1],0,z||busy||!!s.mission):'',enqB=s.opj&&CTX==='gd'?B('enquete','🔎','Enquête',0,z||busy):'';
-    const common=[B('carriere','🎓','Carrière',!!(s.sboard&&s.sboard.until>s.t),0),B('talk','💬','Entretien',s.motiv<30,z||busy),B('heal','💊','Infirmerie',s.sick,z||busy),B('dossier','📁','Dossier',0,0)];
+    const common=[B('carriere','🎓','Carrière',!!(s.sboard&&s.sboard.until>s.t)||careerReady(s),0),B('talk','💬','Entretien',s.motiv<30,z||busy),B('heal','💊','Infirmerie',s.sick,z||busy),B('dossier','📁','Dossier',0,0)];
     let L=[];
     if(CTX==='grDuty')L=[B('impassible','😐','Impassible',0,0),B('rectif','🧍','Rectifier la position',s.tenue<40,0),B('releve','🔁','Demander la relève',s.food<20||s.sick,0),B('dossier','📁','Dossier',0,0)];
     else if(CTX==='grOff')L=[B('eat','🍽️','Manger',s.food<25,z),sleepB,recB,B('wash','✨','Astiquer la tenue',s.tenue<30,z),B('sport','🏃','Sport',s.forme<40,z),B('instr','📘','Instruction',0,z),spB,B('fun','🎉','Détente',s.moral<30,z),...common];
@@ -2360,7 +2360,7 @@ function defiResults(){const s=S;s.defiSeen=s.defiSeen||[];let msg=null;
   s.defiSeen=s.defiSeen.slice(-60);if(msg){toast(msg);save();}}
 let campKey='';
 function renderCamp(){const el=$('campBar');if(!el)return;const side=campSide(S);if(!side||!campB||!campVis(S)){el.style.display='none';campKey='';return;}
-  if(!S.campIntro){S.campIntro=1;save();setTimeout(()=>sheet(`<h3>⚔️ La guerre des camps</h3><p>${side==='gend'?'En unité, tu découvres une autre réalité : de l\'autre côté, des rebelles jouent contre la gendarmerie.':'De l\'autre côté, ton camp affronte les gendarmes.'}</p><p>Chaque semaine, missions, épreuves, événements et <b>duels</b> rapportent des points à ton camp (moyenne par joueur). Le camp vainqueur gagne un bonus et un trophée le lundi.</p>${side==='gend'?'<p>🚨 Surveille l\'<b>avis de recherche</b> : un rebelle battu en duel est interpellé !</p>':'<p>🚨 Attention : un gendarme qui te bat en duel t\'interpelle (réputation −6).</p>'}<button class="primary" data-cas-open="camp">Voir la guerre des camps</button>`,true),800);}
+  if(!S.campIntro&&!$('sheet').classList.contains('show')){S.campIntro=1;save();setTimeout(()=>sheet(`<h3>⚔️ La guerre des camps</h3><p>${side==='gend'?'En unité, tu découvres une autre réalité : de l\'autre côté, des rebelles jouent contre la gendarmerie.':'De l\'autre côté, ton camp affronte les gendarmes.'}</p><p>Chaque semaine, missions, épreuves, événements et <b>duels</b> rapportent des points à ton camp (moyenne par joueur). Le camp vainqueur gagne un bonus et un trophée le lundi.</p>${side==='gend'?'<p>🚨 Surveille l\'<b>avis de recherche</b> : un rebelle battu en duel est interpellé !</p>':'<p>🚨 Attention : un gendarme qui te bat en duel t\'interpelle (réputation −6).</p>'}<button class="primary" data-cas-open="camp">Voir la guerre des camps</button>`,true),800);}
   const [g,r]=campAvg(campB).map(x=>Math.round(x)),inc=campDefis.filter(d=>d.status==='open'&&!d.mine).length,key=[g,r,inc,side].join('|');if(key===campKey)return;campKey=key;el.style.display='';
   el.innerHTML=`<button class="campBar" data-cas-open="camp"><span>⚔️</span><span class="cb"><b>Guerre des camps</b><small>👮 ${g} – ${r} 🖤 <span style="opacity:.75">(moyenne par joueur)</span></small></span>${inc?`<span class="ng">🎯 ${inc} défi${inc>1?'s':''}</span>`:`<span class="ng">${side==='gend'?(g>=r?'👮 en tête':'à la traîne'):(r>=g?'🖤 en tête':'à la traîne')}</span>`}</button>`;}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cas-open]');if(b){e.preventDefault();openCaserne(b.dataset.casOpen);return;}
@@ -2895,6 +2895,18 @@ const SPEC_DAYS_MIN=3;
  MEDALS.parcours=['🧗','Parcours de commando'];MEDAL_ART.parcours={m:'silver',r:['#2e8b57','#fff','#2e8b57'],sym:'n',t:'15'};
  MEDALS.ligne5=['🛡️','Mur de boucliers'];MEDAL_ART.ligne5={m:'silver',r:['#1b3a8c','#fff','#1b3a8c'],sym:'txt',t:'MO'};
  MEDALS.adc=['🎖️','Adjudant-chef'];MEDAL_ART.adc={m:'gold',r:['#7a1020','#f3c74b','#7a1020'],sym:'txt',t:'ADC'};}
+function careerReady(s){if(s.stage!=='service')return false;
+  if(s.sub==='GD'&&!s.opj&&!((s.opjCd||0)>s.t)&&opjReqList(s).every(x=>x[1]))return true;
+  if(s.spec)return false;return Object.entries(SPECS).some(([k,sp])=>sp.sub===s.sub&&!((s.specCd&&s.specCd[k]||0)>s.t)&&specReqList(s,sp).every(x=>x[1]));}
+function careerTip(){const s=S;if(!s||s.stage!=='service'||s.careerTip||s.leave||!$('home').classList.contains('hide')||$('sheet').classList.contains('show')||events.length)return;
+  if(!s.campIntro&&typeof campB!=='undefined'&&campB&&campVis(s))return;
+  s.careerTip=1;save();
+  sheet(`<h3>🎓 Ta carrière en unité</h3><p>Ta recrue est affectée : la suite se joue depuis le bouton <b>🎓 Carrière</b>.</p>
+   <p>⭐ <b>Spécialités</b> : ${Object.values(SPECS).filter(sp=>sp.sub===s.sub).map(sp=>sp.e+' '+sp.n).join(', ')}. Chacune a ses conditions (jauges, expérience, ${SPEC_DAYS_MIN} jours d'ancienneté) et une sélection en mini-jeux. Une seule par carrière !</p>
+   ${s.sub==='GD'?'<p>📝 <b>Qualification OPJ</b> : un examen à passer pour débloquer les enquêtes.</p>':''}
+   <p>🎖️ <b>Avancement</b> : une commission régulière pour monter en grade.</p>
+   <p class="sub">Le bouton 🎓 s'allume quand une sélection ou un examen est accessible.</p>
+   <button class="primary" data-o="close">Compris</button>`,true);}
 function specReqList(s,sp){const r=sp.req,L=[];
   for(const [k,lab] of [['forme','Condition physique'],['disc','Discipline'],['motiv','Motivation'],['moral','Moral'],['exp','Expérience']])if(r[k])L.push([lab,(s[k]||0)>=r[k],`${Math.floor(s[k]||0)} / ${r[k]}`]);
   if(r.srank)L.push(['Grade minimum',(s.srank||0)>=r.srank,SGRADES[r.srank]]);
@@ -3814,7 +3826,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795813252';
+const BUILD_ID='1795814900';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
@@ -3828,7 +3840,7 @@ async function checkUpdate(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
 setTimeout(checkUpdate,600);
-const APP_VERSION='1.19.2', NEWS_KEY='gendargotchi-version-vue';
+const APP_VERSION='1.19.3', NEWS_KEY='gendargotchi-version-vue';
 const CHANGELOG=[
  {v:'1.19',d:'27 novembre',items:[['❄️','Épisode neigeux','Nouvel événement d\'hiver : routes fermées, chasse-neige de sortie. Mission : place tes 2 barrières au bon endroit pour faire demi-tour aux voitures, sans bloquer le chasse-neige.'],['🛍️','Soldes d\'hiver','Pendant la vraie période des soldes : au centre de supervision, repère les pickpockets sur 4 caméras… sans confondre avec ceux qui fouillent leur propre sac.'],['🖤','Et de l\'autre côté…','Bonshommes de neige militants sous le nez de la patrouille, et affiches « Stop conso » sur les vitrines des grandes enseignes, quand le vigile a le dos tourné.',1]]},
  {v:'1.18',d:'27 novembre',items:[['⚔️','La guerre des camps','Gendarmes contre rebelles, chaque semaine ! Missions, épreuves, événements et duels rapportent des points à ton camp. On compare la moyenne par joueur. Le camp vainqueur gagne un bonus et un trophée le lundi.',1],['🎯','Les duels','Défie un joueur de l\'autre camp depuis la caserne (onglet ⚔️) : vous jouez la même épreuve avec le même tirage, chacun dans son rôle. Le meilleur gagne 20 points pour son camp.',1],['🚨','Avis de recherche','Les rebelles les plus connus (réputation 50+) sont affichés aux gendarmes. Un rebelle battu en duel est interpellé : réputation −6 !',1]]},
