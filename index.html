@@ -3006,7 +3006,7 @@ const NEV={
  sommet:{e:'🌍',n:'Sommet international',d:'Des chefs d\'État arrivent : sécurité maximale.',m:{gav:['Filtrage des accès','quiz',3],ecole:['Exercice de protection rapprochée','cibles',6],GD:['Périmètre de sécurité','cibles',7],GM:['Face au contre-sommet','pave',10],GR:['Escorte des chefs d\'État','tap',90],reb:['Grand rassemblement du contre-sommet','tap',80]}},
  crue:{e:'🌊',n:'Inondations',d:'La rivière déborde : plan ORSEC déclenché.',m:{gav:['Évacuation en barque avec les pompiers','crue',9,'gend'],ecole:['Renfort plan ORSEC : évacuation','crue',11,'gend'],GD:['Évacuation des riverains en barque','crue',13,'gend'],GM:['Renfort sur la zone inondée','crue',13,'gend'],GR:['Évacuation en barque','crue',13,'gend'],reb:['Sacs de sable au squat','crue',12,'reb']}},
  match:{e:'⚽',n:'Jour de match',d:'Stade plein, supporters chauffés à blanc : tout le monde est mobilisé.',m:{gav:['Surveillance de la tribune','stade',12,'gend'],ecole:['Exercice en tribune','stade',15,'gend'],GD:['Sécurisation de la tribune','stade',18,'gend'],GM:['Sécurisation de la tribune','stade',18,'gend'],GR:['Sécurisation de la tribune d\'honneur','stade',18,'gend'],reb:['Fumigènes en tribune','stade',20,'reb']}},
- neige:{e:'❄️',n:'Épisode neigeux',d:'Routes blanches, chasse-neige de sortie : le plan neige est déclenché.',real:[12,1,2,28],realOnly:1,m:{gav:['Fermeture de route avec la DIR','neige',8,'gend'],ecole:['Exercice plan neige','neige',10,'gend'],GD:['Fermeture des routes enneigées','neige',12,'gend'],GM:['Renfort plan neige','neige',12,'gend'],GR:['Fermeture du col','neige',12,'gend'],reb:['Bonhomme de neige militant','neige',5,'reb']}},
+ neige:{e:'❄️',n:'Épisode neigeux',d:'Routes blanches, chasse-neige de sortie : le plan neige est déclenché.',real:[12,1,2,28],realOnly:1,m:{gav:['Fermeture de route avec la DIR','neige',8,'gend'],ecole:['Exercice plan neige','neige',10,'gend'],GD:['Fermeture des routes enneigées','neige',12,'gend'],GM:['Renfort plan neige','neige',12,'gend'],GR:['Fermeture du col','neige',12,'gend'],reb:['Bonhomme de neige militant','neige',6,'reb']}},
  soldes:{e:'🛍️',n:'Soldes d\'hiver',d:'Ruée dans les magasins : foule, bonnes affaires… et pickpockets.',real:[1,13,2,9],realOnly:1,m:{gav:['Stage au centre de supervision de la mairie','soldes',9,'gend'],ecole:['Exercice de vidéoprotection','soldes',11,'gend'],GD:['Vidéoprotection du centre commercial','soldes',13,'gend'],GM:['Renfort vidéoprotection','soldes',13,'gend'],GR:['Vidéoprotection de la galerie','soldes',13,'gend'],reb:['Collage anti-conso','soldes',16,'reb']}}
 };
 const NEV_K=Object.keys(NEV),NEV_MON=4*D,NEV_LEN=48*H,NEV_SLOT=[11*H,4*D+11*H];// lun. et ven. 11 h UTC
@@ -3673,7 +3673,7 @@ function renderHomeNews(){
 setTimeout(()=>{loadAnn();flushAnn();},3500);
 setInterval(()=>{if(!document.hidden){loadAnn();flushAnn();}},60000);
 /* ======================= QUOI DE NEUF ======================= */
-const BUILD_ID='1795812160';
+const BUILD_ID='1795812166';
 /* rechargement automatique quand une nouvelle version est en ligne (version GitHub) */
 let lastUpdCheck=0;
 async function checkUpdate(){
